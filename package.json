@@ -27,7 +27,7 @@
 		"eslint": "^10.14.0",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
 		"vitest": "^5.1.0",
-		"wrangler": "^4.157.0"
+		"wrangler": "^4.158.0"
 	},
 	"dependencies": {
 		"@astral-sh/ruff-wasm-web": "^0.17.3",
