@@ -1,0 +1,10 @@
+[
+  {
+    "results": [
+      {"homework_id": "homework-1", "set_slug": "two-pointers"},
+      {"homework_id": "homework-2", "set_slug": "hash-tables"}
+    ],
+    "success": true,
+    "meta": {"duration": 0}
+  }
+]
