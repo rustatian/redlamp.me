@@ -763,3 +763,24 @@ func TestProblemsDetailsLeetCodeRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestProblemsRestoreToLibraryAndHomework(t *testing.T) {
+	_, s, cookie := problemsSetup(t)
+	id := addProblem(t, s, cookie, problemsInput(nil))
+	parent := loginAs(t, s, "parent")
+	if w := request(t, s, "/problems/"+id+"/archive", http.MethodPost, map[string]any{"version": 1}, cookie); w.Code != http.StatusOK {
+		t.Fatalf("archive: status = %d, want 200; body %s", w.Code, w.Body.String())
+	}
+	restored := request(t, s, "/problems/"+id+"/restore", http.MethodPost, map[string]any{"version": 2}, parent)
+	if restored.Code != http.StatusOK {
+		t.Errorf("restore: status = %d, want 200; body %s", restored.Code, restored.Body.String())
+	}
+	problemsMatchBody(t, decode[any](t, restored), map[string]any{"id": id, "archivedAt": nil, "version": 3})
+	problemsMatchBody(t, decode[any](t, request(t, s, "/problems", http.MethodGet, nil, cookie)), map[string]any{"items": []any{map[string]any{"id": id}}})
+	homework := decode[struct {
+		ID string `json:"id"`
+	}](t, request(t, s, "/homework", http.MethodPost, map[string]any{"title": "Week 41", "instructions": "", "dueDate": nil}, parent))
+	if w := request(t, s, "/tasks", http.MethodPost, map[string]any{"homeworkId": homework.ID, "problemId": id}, parent); w.Code != http.StatusCreated {
+		t.Errorf("task: status = %d, want 201; body %s", w.Code, w.Body.String())
+	}
+}

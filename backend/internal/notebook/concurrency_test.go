@@ -5,7 +5,9 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -94,5 +96,124 @@ func TestNewID(t *testing.T) {
 	}
 	if _, err := uuid(first); err != nil {
 		t.Errorf("the identifier check rejects %q: %v", first, err)
+	}
+}
+
+var raceSets = []LearningSet{{Slug: "race-set", Title: "Race set", Chapters: []Chapter{{Title: "First chapter"}}}}
+
+// raceActors are the data of one case of TestConcurrentRequestsOfHomework.
+type raceActors struct {
+	pool      *pgxpool.Pool
+	s         *Server
+	student   string
+	parent    string
+	problemID string
+	homework  string
+}
+
+// Each case sends two requests that are in progress at the same time. The rule of the case must hold for the two together.
+func TestConcurrentRequestsOfHomework(t *testing.T) {
+	post := func(a raceActors, path, body, cookie string) func() *httptest.ResponseRecorder {
+		return func() *httptest.ResponseRecorder {
+			return call(a.s, http.MethodPost, "/leetcode/api"+path, body, cookie)
+		}
+	}
+	tests := []struct {
+		name string
+		// setup prepares the data and returns the write that both requests wait for, and the two requests.
+		setup         func(t *testing.T, a raceActors) (hold string, args []any, first, second func() *httptest.ResponseRecorder)
+		wantConflicts int
+		count         string
+		wantCount     int64
+	}{
+		{
+			name: "a problem gets one active homework task from two requests that assign it",
+			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				assign := post(a, "/tasks", `{"homeworkId":"`+a.homework+`","problemId":"`+a.problemID+`"}`, a.parent)
+				return "UPDATE problems SET version=version WHERE id=$1", []any{a.problemID}, assign, assign
+			},
+			wantConflicts: 1,
+			count:         "SELECT count(*) FROM homework_tasks WHERE state='assigned'",
+			wantCount:     1,
+		},
+		{
+			name: "an archive and a new homework task of one problem do not both succeed",
+			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				return "UPDATE problems SET version=version WHERE id=$1", []any{a.problemID},
+					post(a, "/problems/"+a.problemID+"/archive", `{"version":1}`, a.parent),
+					post(a, "/tasks", `{"homeworkId":"`+a.homework+`","problemId":"`+a.problemID+`"}`, a.parent)
+			},
+			wantConflicts: 1,
+			count:         "SELECT count(*) FROM problems p WHERE p.archived_at IS NOT NULL AND EXISTS(SELECT 1 FROM homework_tasks t WHERE t.problem_id=p.id AND t.state='assigned')",
+			wantCount:     0,
+		},
+		{
+			name: "a submission gets one review from two requests of the parent",
+			setup: func(t *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				attempt := decode[Attempt](t, request(t, a.s, "/problems/"+a.problemID+"/attempts", http.MethodPost, `{}`, a.student)).ID
+				task, submission := newID(), newID()
+				exec(t, a.pool, "INSERT INTO homework_tasks (id,homework_id,problem_id,state,version,created_at,updated_at) VALUES ($1,$2,$3,'submitted',2,'t0','t0')", task, a.homework, a.problemID)
+				exec(t, a.pool, "INSERT INTO submissions VALUES ($1,$2,$3,2,'t0')", submission, task, attempt)
+				exec(t, a.pool, "UPDATE homework_tasks SET current_submission_id=$1 WHERE id=$2", submission, task)
+				review := post(a, "/tasks/"+task+"/review", `{"version":2,"submissionId":"`+submission+`","decision":"completed","body":""}`, a.parent)
+				return "UPDATE homework_tasks SET version=version WHERE id=$1", []any{task}, review, review
+			},
+			wantConflicts: 1,
+			count:         "SELECT count(*) FROM feedback",
+			wantCount:     1,
+		},
+		{
+			name: "a homework gets one postponement from two requests of the student",
+			setup: func(t *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				exec(t, a.pool, "UPDATE homework SET due_date=$1 WHERE id=$2", time.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly), a.homework)
+				postpone := post(a, "/homework/"+a.homework+"/postpone", `{"version":1}`, a.student)
+				return "UPDATE homework SET version=version WHERE id=$1", []any{a.homework}, postpone, postpone
+			},
+			wantConflicts: 1,
+			count:         "SELECT count(*) FROM homework h JOIN postponements p ON p.homework_id=h.id WHERE h.due_date=p.to_date AND h.due_date=$1",
+			wantCount:     1,
+		},
+		{
+			name: "one_active_content gives one active chapter task to two requests that assign one chapter",
+			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				assign := post(a, "/homework/"+a.homework+"/content", `{"kind":"chapter","setSlug":"race-set","chapter":1}`, a.parent)
+				return "INSERT INTO homework_tasks (id,homework_id,kind,set_slug,chapter,state,created_at,updated_at) VALUES ('held',$1,'chapter','race-set',1,'assigned','t0','t0')", []any{a.homework}, assign, assign
+			},
+			wantConflicts: 0,
+			count:         "SELECT count(*) FROM homework_tasks WHERE kind='chapter' AND state='assigned'",
+			wantCount:     1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool := database(t)
+			s := newServerWithSets(t, pool, raceSets)
+			a := raceActors{pool: pool, s: s, student: loginAs(t, s, "student"), parent: loginAs(t, s, "parent")}
+			a.problemID = addProblem(t, s, a.student, raceProblem)
+			a.homework = decode[Homework](t, request(t, s, "/homework", http.MethodPost, `{"title":"Week 41","instructions":"","dueDate":null}`, a.parent)).ID
+			hold, args, first, second := tt.setup(t, a)
+			results := race(t, pool, hold, args, first, second)
+			conflicts := 0
+			for _, w := range results {
+				switch w.Code {
+				case http.StatusOK, http.StatusCreated:
+				case http.StatusConflict:
+					conflicts++
+				default:
+					t.Errorf("status = %d, body %s; want a success or 409", w.Code, w.Body.String())
+				}
+			}
+			if conflicts != tt.wantConflicts {
+				t.Errorf("%d requests got 409, want %d; bodies %s and %s", conflicts, tt.wantConflicts, results[0].Body.String(), results[1].Body.String())
+			}
+			var countArgs []any
+			if strings.Contains(tt.count, "$1") {
+				// The due date after one postponement: tomorrow and one day.
+				countArgs = []any{time.Now().UTC().AddDate(0, 0, 2).Format(time.DateOnly)}
+			}
+			if got := queryValue[int64](t, pool, tt.count, countArgs...); got != tt.wantCount {
+				t.Errorf("%s = %d, want %d", tt.count, got, tt.wantCount)
+			}
+		})
 	}
 }

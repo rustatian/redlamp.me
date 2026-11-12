@@ -110,6 +110,16 @@ func newServerWithLeetCode(t *testing.T, pool *pgxpool.Pool, leetcode LeetCode) 
 	return s
 }
 
+// newServerWithSets returns a Server with the test accounts and the content of learning sets.
+func newServerWithSets(t *testing.T, pool *pgxpool.Pool, sets []LearningSet) *Server {
+	t.Helper()
+	s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Sets: sets})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
 // addProblem creates a problem through the API as the student and returns its ID.
 func addProblem(t *testing.T, s *Server, cookie string, body any) string {
 	t.Helper()
