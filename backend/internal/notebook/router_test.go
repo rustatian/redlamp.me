@@ -1,7 +1,6 @@
 package notebook
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,15 +11,6 @@ const publicOrigin = "https://redlamp.me"
 
 // Behind CloudFront the request host is the host of the function URL.
 const functionURL = "https://abc123.lambda-url.eu-central-1.on.aws"
-
-func newServer(t *testing.T) *Server {
-	t.Helper()
-	s, err := New(nil, publicOrigin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
-}
 
 func TestNew(t *testing.T) {
 	tests := []struct {
@@ -38,7 +28,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := New(nil, tt.origin)
+			_, err := New(Config{PublicOrigin: tt.origin, Accounts: testAccounts})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("New(%q) error = %v, want an error: %v", tt.origin, err, tt.wantErr)
 			}
@@ -90,7 +80,7 @@ func TestRoutesWithoutSession(t *testing.T) {
 		{name: "public site path", method: "GET", path: "/", wantStatus: 404, outside: true},
 		{name: "path with the notebook name as a prefix", method: "GET", path: "/leetcodex", wantStatus: 404, outside: true},
 	}
-	s := newServer(t)
+	s := newServer(t, nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest(tt.method, functionURL+tt.path, nil)
@@ -139,25 +129,25 @@ func TestRoutesWithoutSession(t *testing.T) {
 
 // The expected values are the signed-in cases of test/routes.test.ts and the paths of NOTEBOOK_PAGE in shared/leetcode.ts.
 func TestRoutesWithSession(t *testing.T) {
-	const noPage = "Такой страницы тетради нет."
-	const noRequest = "Такого запроса к тетради нет."
+	const noPage = `{"error":{"code":"not_found","message":"Такой страницы тетради нет."}}`
+	const noRequest = `{"error":{"code":"not_found","message":"Такого запроса к тетради нет."}}`
 	const session = `<script id="session" type="application/json">{"role":"student","username":"student-test"}</script>`
 	tests := []struct {
 		name         string
 		path         string
 		wantStatus   int
 		wantLocation string
-		wantMessage  string
+		wantBody     string
 	}{
 		{name: "signed-in HTML alias with query", path: "/leetcode/problems.html?q=x", wantStatus: 302, wantLocation: "/leetcode/problems?q=x"},
 		{name: "signed-in slash alias", path: "/leetcode/", wantStatus: 302, wantLocation: "/leetcode"},
 		{name: "signed-in index alias of a page", path: "/leetcode/sets/index.html", wantStatus: 302, wantLocation: "/leetcode/sets"},
-		{name: "signed-in unknown page", path: "/leetcode/missing", wantStatus: 404, wantMessage: noPage},
-		{name: "signed-in task page", path: "/leetcode/tasks/11111111-1111-4111-8111-111111111111", wantStatus: 404, wantMessage: noPage},
-		{name: "signed-in chapter page with number zero", path: "/leetcode/sets/permutations-and-combinations/0", wantStatus: 404, wantMessage: noPage},
-		{name: "signed-in chapter page with three digits", path: "/leetcode/sets/permutations-and-combinations/100", wantStatus: 404, wantMessage: noPage},
-		{name: "signed-in lessons page", path: "/leetcode/lessons", wantStatus: 404, wantMessage: noPage},
-		{name: "signed-in login page with a slash", path: "/leetcode/login/", wantStatus: 404, wantMessage: noPage},
+		{name: "signed-in unknown page", path: "/leetcode/missing", wantStatus: 404, wantBody: noPage},
+		{name: "signed-in task page", path: "/leetcode/tasks/11111111-1111-4111-8111-111111111111", wantStatus: 404, wantBody: noPage},
+		{name: "signed-in chapter page with number zero", path: "/leetcode/sets/permutations-and-combinations/0", wantStatus: 404, wantBody: noPage},
+		{name: "signed-in chapter page with three digits", path: "/leetcode/sets/permutations-and-combinations/100", wantStatus: 404, wantBody: noPage},
+		{name: "signed-in lessons page", path: "/leetcode/lessons", wantStatus: 404, wantBody: noPage},
+		{name: "signed-in login page with a slash", path: "/leetcode/login/", wantStatus: 404, wantBody: noPage},
 		{name: "signed-in root", path: "/leetcode", wantStatus: 200},
 		{name: "signed-in shell", path: "/leetcode/problems", wantStatus: 200},
 		{name: "signed-in problem page", path: "/leetcode/problems/11111111-1111-4111-8111-111111111111", wantStatus: 200},
@@ -169,34 +159,29 @@ func TestRoutesWithSession(t *testing.T) {
 		{name: "signed-in tutor page", path: "/leetcode/tutor", wantStatus: 200},
 		{name: "signed-in quiz page", path: "/leetcode/quiz", wantStatus: 200},
 		{name: "signed-in deck page", path: "/leetcode/quiz/permutations-and-combinations", wantStatus: 200},
-		{name: "signed-in unknown API", path: "/leetcode/api/missing", wantStatus: 404, wantMessage: noRequest},
-		{name: "signed-in lessons API", path: "/leetcode/api/lessons", wantStatus: 404, wantMessage: noRequest},
+		{name: "signed-in unknown API", path: "/leetcode/api/missing", wantStatus: 404, wantBody: noRequest},
+		{name: "signed-in lessons API", path: "/leetcode/api/lessons", wantStatus: 404, wantBody: noRequest},
 	}
-	s := newServer(t)
-	user := &SessionUser{Role: "student", Username: "student-test"}
+	s := newServer(t, database(t))
+	cookie := login(t, s, "student-test", studentPassword)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, functionURL+tt.path, nil)
-			w := httptest.NewRecorder()
-			err := s.serve(w, r, r.URL.Path, user)
-			if tt.wantMessage != "" {
-				var failure *HTTPError
-				if !errors.As(err, &failure) || failure.Status != tt.wantStatus || failure.Code != "not_found" || failure.Message != tt.wantMessage {
-					t.Errorf("error = %#v, want %d not_found %q", err, tt.wantStatus, tt.wantMessage)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("serve: %v", err)
-			}
+			w := call(s, http.MethodGet, tt.path, "", cookie)
 			if w.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
 			}
 			if got := w.Header().Get("Location"); got != tt.wantLocation {
 				t.Errorf("Location = %q, want %q", got, tt.wantLocation)
 			}
-			if tt.wantStatus == 200 && !strings.Contains(w.Body.String(), session) {
-				t.Errorf("body = %s, want the session %s", w.Body.String(), session)
+			if got := w.Header().Get("Cache-Control"); got != "private, no-store" {
+				t.Errorf("Cache-Control = %q, want private, no-store", got)
+			}
+			body := w.Body.String()
+			if tt.wantBody != "" && body != tt.wantBody {
+				t.Errorf("body = %s, want %s", body, tt.wantBody)
+			}
+			if tt.wantStatus == 200 && !strings.Contains(body, session) {
+				t.Errorf("body = %s, want the session %s", body, session)
 			}
 		})
 	}

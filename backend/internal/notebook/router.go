@@ -3,6 +3,7 @@ package notebook
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -13,18 +14,44 @@ import (
 
 // Server is the http.Handler of the notebook paths.
 type Server struct {
-	db     *pgxpool.Pool
-	origin string
+	db         *pgxpool.Pool
+	origin     string
+	cookieName string
+	// accounts is nil when the secret is not valid. Each request that needs an account then gets the 503 setup_required error.
+	accounts map[string]account
+	logins   limiter
 }
 
-// New returns a Server. publicOrigin is the Origin header that the browser sends from the site, for example https://redlamp.me.
-// Behind CloudFront the request host is the host of the function URL, so the origin check of a write uses this value.
-func New(pool *pgxpool.Pool, publicOrigin string) (*Server, error) {
-	u, err := url.Parse(publicOrigin)
-	if err != nil || u.Scheme == "" || u.Host == "" || publicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
-		return nil, fmt.Errorf("the public origin %q does not have the form https://host", publicOrigin)
+// Config is the setup of a Server.
+type Config struct {
+	DB *pgxpool.Pool
+	// PublicOrigin is the Origin header that the browser sends from the site, for example https://redlamp.me.
+	// Behind CloudFront the request host is the host of the function URL, so the origin check of a write uses this value.
+	PublicOrigin string
+	// Accounts is the LEETCODE_ACCOUNTS secret: the JSON of the two accounts.
+	Accounts string
+}
+
+const (
+	siteCookie = "__Host-redlamp-leetcode"
+	// localCookie is the session cookie of a local HTTP origin. A browser refuses a __Host- cookie without Secure.
+	localCookie = "redlamp-leetcode-dev"
+)
+
+// New returns a Server. It fails when the public origin does not have the form https://host.
+func New(cfg Config) (*Server, error) {
+	u, err := url.Parse(cfg.PublicOrigin)
+	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
+		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	return &Server{db: pool, origin: publicOrigin}, nil
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie}
+	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
+		s.cookieName = localCookie
+	}
+	if s.accounts, err = parseAccounts(cfg.Accounts); err != nil {
+		log.Printf("the accounts secret is not valid, so sign-in is not available: %v", err)
+	}
+	return s, nil
 }
 
 func isNotebookPath(path string) bool {
@@ -56,14 +83,20 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, path string) erro
 	if !read && r.Header.Get("Origin") != s.origin {
 		return &HTTPError{Status: http.StatusForbidden, Code: "forbidden", Message: "Отправляйте изменения со страницы тетради."}
 	}
+	if path == "/leetcode/api/session" {
+		return s.handleSession(w, r)
+	}
 	if path == "/leetcode/login" {
 		if err := methods(r, http.MethodGet, http.MethodHead); err != nil {
 			return err
 		}
 		return renderShell(w, r, nil)
 	}
-	// The server has no sign-in, so each request is anonymous.
-	return s.serve(w, r, path, nil)
+	user, err := s.readSession(r)
+	if err != nil {
+		return err
+	}
+	return s.serve(w, r, path, user)
 }
 
 // serve answers an API request or a page request of user. user is nil for a request without a session.

@@ -215,7 +215,15 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		Fields  map[string]string `json:"fields,omitzero"`
 	}
 	// A value of strings always encodes.
-	data, _ := json.Marshal(map[string]body{"error": {Code: failure.Code, Message: message, Fields: failure.Fields}})
+	_ = writeJSON(w, r, failure.Status, map[string]body{"error": {Code: failure.Code, Message: message, Fields: failure.Fields}})
+}
+
+func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/json")
-	send(w, r, failure.Status, data)
+	send(w, r, status, data)
+	return nil
 }

@@ -54,7 +54,7 @@ func TestRenderShell(t *testing.T) {
 }
 
 func TestEachShellResponseHasANewNonce(t *testing.T) {
-	s := newServer(t)
+	s := newServer(t, nil)
 	read := func() string {
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, httptest.NewRequest(http.MethodGet, functionURL+"/leetcode/login", nil))
