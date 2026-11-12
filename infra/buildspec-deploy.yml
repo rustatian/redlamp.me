@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      # The artifact of the Build action is a ZIP file. The two binaries must be executable after it.
+      - chmod +x build/migrate build/sam/ApiFunction/bootstrap
+      # output prints one output value of a stack. The arguments are the region, the stack and the output key.
+      - output() { aws cloudformation describe-stacks --region "$1" --stack-name "$2" --query "Stacks[0].Outputs[?OutputKey=='$3'].OutputValue" --output text; }
+      - aws cloudformation deploy --region us-east-1 --stack-name redlamp-dns --template-file infra/dns.yaml --role-arn "$CLOUDFORMATION_ROLE" --no-fail-on-empty-changeset
+      - aws cloudformation deploy --region eu-central-1 --stack-name redlamp-data --template-file infra/data.yaml --role-arn "$CLOUDFORMATION_ROLE" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset
+      # The migrations run before the new code. The role mapping gives the database role app its rights on new tables.
+      - build/migrate -endpoint "$(output eu-central-1 redlamp-data ClusterEndpoint)" -app-role-arn "$(output eu-central-1 redlamp-api FunctionRoleArn)"
+      - sam deploy --region eu-central-1 --stack-name redlamp-api --template-file build/sam/template.yaml --s3-bucket "$ARTIFACT_BUCKET" --s3-prefix sam --role-arn "$CLOUDFORMATION_ROLE" --capabilities CAPABILITY_IAM --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides "ClusterEndpoint=$(output eu-central-1 redlamp-data ClusterEndpoint)" "ClusterArn=$(output eu-central-1 redlamp-data ClusterArn)" "DistributionId=$(output us-east-1 redlamp-edge DistributionId)"
+      - aws cloudformation deploy --region us-east-1 --stack-name redlamp-edge --template-file infra/edge.yaml --role-arn "$CLOUDFORMATION_ROLE" --no-fail-on-empty-changeset --parameter-overrides "HostedZoneId=$(output us-east-1 redlamp-dns HostedZoneId)" "FunctionUrl=$(output eu-central-1 redlamp-api FunctionUrl)"
+      - aws s3 sync dist "s3://$(output us-east-1 redlamp-edge BucketName)" --delete
+      - aws cloudfront create-invalidation --distribution-id "$(output us-east-1 redlamp-edge DistributionId)" --paths '/*'

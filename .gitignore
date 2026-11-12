@@ -7,3 +7,6 @@ dist/
 
 # Browser tests: the Go commands, the results and the report
 .playwright/
+
+# AWS SAM build output
+.aws-sam/

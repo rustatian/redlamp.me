@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "bun scripts/build.ts",
-		"test": "bun run build && vitest run",
+		"test": "bun run build && bun test scripts/edge.test.ts && vitest run",
 		"test:browser": "bun run build && playwright test",
 		"typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit -p web/tsconfig.json && node node_modules/@typescript/native/bin/tsc --noEmit -p scripts/tsconfig.json",
 		"lint": "eslint web shared scripts e2e --no-error-on-unmatched-pattern",

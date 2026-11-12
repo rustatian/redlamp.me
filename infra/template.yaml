@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: The notebook server of redlamp.me on Lambda behind a function URL, with its alarm and its cost alert. The stack is in eu-central-1.
+
+Parameters:
+  ClusterEndpoint:
+    Type: String
+    Description: The endpoint of the Aurora DSQL cluster of the stack redlamp-data.
+  ClusterArn:
+    Type: String
+    Description: The ARN of the Aurora DSQL cluster of the stack redlamp-data.
+  # The distribution needs the function URL, so the first deploy of this stack has no distribution. A second deploy gives the ID.
+  DistributionId:
+    Type: String
+    Default: ''
+    Description: The ID of the CloudFront distribution of the stack redlamp-edge in us-east-1.
+  # The repository is public, so the address is a stack parameter.
+  AlarmEmail:
+    Type: String
+    NoEcho: true
+    Description: The email address that gets the alarm and the cost alert of the stack.
+
+Conditions:
+  HasDistribution: !Not [!Equals [!Ref DistributionId, '']]
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+
+  # SNS sends the alarm to the address only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours.
+  # https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: redlamp-api-alarms
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+
+  # The Errors metric has no value while the function does not run, so a period with no value counts as good.
+  # https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html
+  ErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: redlamp-api-errors
+      AlarmDescription: The notebook function of redlamp.me ended a request with a function error.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  # The alert tells the owner about a flood of requests. The filter selects the two services that bill each request, because the account has other costs.
+  # A budget with a filter expression must name its metric.
+  # https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_budgets_CreateBudget.html
+  CostAlert:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 10
+          Unit: USD
+        Metrics:
+          - UnblendedCost
+        FilterExpression:
+          Dimensions:
+            Key: SERVICE
+            Values:
+              - AWS Lambda
+              - Amazon CloudFront
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlarmEmail
+
+  # The server streams its responses, so the function URL has the invoke mode RESPONSE_STREAM.
+  # https://docs.aws.amazon.com/lambda/latest/dg/config-rs-invoke-furls.html
+  # Lambda runs at most 10 instances of the function at one time. This limits the cost of a flood of requests.
+  # https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html
+  # One measured request needs about 113 MB of heap for the expected answers of a test.
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: ../backend/cmd/api
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 600
+      ReservedConcurrentExecutions: 10
+      LoggingConfig:
+        LogGroup: !Ref LogGroup
+      Environment:
+        Variables:
+          DSQL_ENDPOINT: !Ref ClusterEndpoint
+          PUBLIC_ORIGIN: https://redlamp.me
+          ANTHROPIC_API_KEY_PARAMETER: /redlamp/anthropic-api-key
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+        InvokeMode: RESPONSE_STREAM
+      Policies:
+        - Statement:
+            # The database role app maps to this role (cmd/migrate); dsql:DbConnect allows no admin connection.
+            - Effect: Allow
+              Action: dsql:DbConnect
+              Resource: !Ref ClusterArn
+            # The owner writes the two SecureString parameters.
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource:
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/redlamp/leetcode-accounts
+                - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/redlamp/anthropic-api-key
+            # The action has no resource type.
+            # https://docs.aws.amazon.com/service-authorization/latest/reference/list_transcribe.html#list_transcribe-actions-as-permissions
+            - Effect: Allow
+              Action: transcribe:StartStreamTranscription
+              Resource: '*'
+
+  # CloudFront signs each request to the function URL as its service principal, and a function URL needs both actions.
+  # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html#oac-permission-to-access-lambda
+  # https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html#urls-auth-iam
+  DistributionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasDistribution
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${DistributionId}
+
+  DistributionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasDistribution
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${DistributionId}
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  FunctionRoleArn:
+    Value: !GetAtt ApiFunctionRole.Arn
