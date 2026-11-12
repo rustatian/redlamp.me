@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // The cases of test/game.test.ts.
@@ -149,7 +151,7 @@ func gameOnTime(late bool) gameSpec {
 }
 
 // gameTaskSlug is taskSlug(): the problem slug of the URL of a set task.
-func gameTaskSlug(task SetTask) string {
+func gameTaskSlug(task sets.Task) string {
 	parts := strings.Split(strings.Trim(strings.TrimPrefix(task.URL, "https://"), "/"), "/")
 	if parts[0] == "codeforces.com" {
 		return "cf-" + parts[3] + "-" + strings.ToLower(parts[4])
@@ -158,9 +160,9 @@ func gameTaskSlug(task SetTask) string {
 }
 
 // gameSetProblems is an accepted problem for each task of the named sets, in the order of sets, without the task with the slug skip.
-func gameSetProblems(sets []LearningSet, skip string, slugs ...string) []gameSpec {
+func gameSetProblems(content []sets.LearningSet, skip string, slugs ...string) []gameSpec {
 	var specs []gameSpec
-	for _, set := range sets {
+	for _, set := range content {
 		if !slices.Contains(slugs, set.Slug) {
 			continue
 		}
@@ -279,7 +281,7 @@ func TestGameCountsFiveContentTasksOnTime(t *testing.T) {
 }
 
 func TestGameXPLevelAndBadges(t *testing.T) {
-	sets := goldenSets(t)
+	content := goldenSets(t)
 	today := gameDay(0)
 	tests := []struct {
 		name                        string
@@ -314,8 +316,8 @@ func TestGameXPLevelAndBadges(t *testing.T) {
 		{name: "five independent", problems: slices.Repeat([]gameSpec{{difficulty: "easy", attempts: gameAccepted("independent")}}, 5), xp: 100, level: 2, levelXp: 100, nextLevelXp: 300, earned: []string{"first-accept", "independent-five"}},
 		{name: "three save days in a row", problems: []gameSpec{{difficulty: "medium", attempts: []gameAttempt{{acceptance: "not_accepted", savedAt: "2026-10-01T23:59:00.000Z"}, {acceptance: "not_accepted", savedAt: "2026-10-02T00:01:00.000Z"}, {acceptance: "not_accepted", savedAt: "2026-10-03T12:00:00.000Z"}}}}, xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"three-day-streak"}},
 		{name: "gap day", problems: []gameSpec{{difficulty: "medium", attempts: []gameAttempt{{acceptance: "not_accepted", savedAt: "2026-10-01T12:00:00.000Z"}, {acceptance: "not_accepted", savedAt: "2026-10-02T12:00:00.000Z"}, {acceptance: "not_accepted", savedAt: "2026-10-04T12:00:00.000Z"}}}}, xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
-		{name: "set cleared", problems: gameSetProblems(sets, "", "permutations-and-combinations"), xp: 370, level: 3, levelXp: 300, nextLevelXp: 600, earned: []string{"first-accept", "first-hard", "ten-accepted", "set-cleared", "first-codeforces"}},
-		{name: "set one short", problems: gameSetProblems(sets, "next-permutation", "permutations-and-combinations"), xp: 350, level: 3, levelXp: 300, nextLevelXp: 600, earned: []string{"first-accept", "first-hard", "ten-accepted", "first-codeforces"}},
+		{name: "set cleared", problems: gameSetProblems(content, "", "permutations-and-combinations"), xp: 370, level: 3, levelXp: 300, nextLevelXp: 600, earned: []string{"first-accept", "first-hard", "ten-accepted", "set-cleared", "first-codeforces"}},
+		{name: "set one short", problems: gameSetProblems(content, "next-permutation", "permutations-and-combinations"), xp: 350, level: 3, levelXp: 300, nextLevelXp: 600, earned: []string{"first-accept", "first-hard", "ten-accepted", "first-codeforces"}},
 		{name: "correct card", cards: []gameCard{{correct: true, on: "2026-10-01"}}, xp: 2, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
 		{name: "wrong card", cards: []gameCard{{correct: false, on: "2026-10-01"}}, xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
 		{name: "same card on two days", cards: []gameCard{{correct: true, on: "2026-10-01"}, {correct: true, on: "2026-10-02"}}, xp: 4, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
@@ -366,7 +368,7 @@ func TestGameXPLevelAndBadges(t *testing.T) {
 		{name: "ten recalls", problems: []gameSpec{{difficulty: "easy", attempts: gameAccepted("with_help"), reviews: gameRecalls(10)}}, xp: 60, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept", "ten-recalls"}},
 		{name: "accepted Codeforces problem", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), slug: "cf-1538-c"}}, xp: 20, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept", "first-codeforces"}},
 		{name: "Codeforces problem not accepted", problems: []gameSpec{{difficulty: "medium", slug: "cf-1538-c", attempts: []gameAttempt{{acceptance: "not_accepted"}}}}, xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
-		{name: "two sets cleared", problems: gameSetProblems(sets, "", "permutations-and-combinations", "two-pointers"), xp: 630, level: 4, levelXp: 600, nextLevelXp: 1000, earned: []string{"first-accept", "first-hard", "ten-accepted", "set-cleared", "twenty-five-accepted", "two-sets", "first-codeforces"}},
+		{name: "two sets cleared", problems: gameSetProblems(content, "", "permutations-and-combinations", "two-pointers"), xp: 630, level: 4, levelXp: 600, nextLevelXp: 1000, earned: []string{"first-accept", "first-hard", "ten-accepted", "set-cleared", "twenty-five-accepted", "two-sets", "first-codeforces"}},
 		{name: "four tasks on time", problems: slices.Repeat([]gameSpec{gameOnTime(false)}, 4), xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
 		{name: "five tasks on time", problems: slices.Repeat([]gameSpec{gameOnTime(false)}, 5), xp: 0, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"on-time-five"}},
 		{name: "four on time and one late", problems: append(slices.Repeat([]gameSpec{gameOnTime(false)}, 4), gameOnTime(true)), xp: 0, late: 1, level: 1, levelXp: 0, nextLevelXp: 100, earned: nil},
@@ -379,7 +381,7 @@ func TestGameXPLevelAndBadges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := database(t)
-			s := newServerWithSets(t, pool, sets)
+			s := newServerWithSets(t, pool, content)
 			student := loginAs(t, s, "student")
 			for _, problem := range tt.problems {
 				gameSeed(t, pool, problem)

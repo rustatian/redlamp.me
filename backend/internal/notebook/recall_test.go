@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // The cases of test/recall.test.ts.
@@ -50,7 +52,7 @@ func recallSlug(url string) string {
 }
 
 // recallLabel returns the label of a set task, as taskLabel of src/leetcode/sets.
-func recallLabel(task SetTask) string {
+func recallLabel(task sets.Task) string {
 	if rest, ok := strings.CutPrefix(recallSlug(task.URL), "cf-"); ok {
 		return "Codeforces " + strings.ToUpper(strings.Replace(rest, "-", "", 1))
 	}
@@ -61,10 +63,10 @@ func recallLabel(task SetTask) string {
 }
 
 // recallTwoPointers returns the slugs of the tasks of the set two-pointers in order, and each task by its slug.
-func recallTwoPointers(t *testing.T) ([]string, map[string]SetTask) {
+func recallTwoPointers(t *testing.T) ([]string, map[string]sets.Task) {
 	t.Helper()
 	var slugs []string
-	tasks := map[string]SetTask{}
+	tasks := map[string]sets.Task{}
 	for _, set := range goldenSets(t) {
 		if set.Slug != "two-pointers" {
 			continue
@@ -158,10 +160,16 @@ func TestRecallPicks(t *testing.T) {
 					want = append(want, map[string]any{"url": "https://leetcode.com/problems/" + slug + "/", "title": "Problem", "difficulty": "medium", "topics": []string{}, "note": "", "slug": slug, "label": "LeetCode", "problemId": ids[slug]})
 					continue
 				}
-				pick := map[string]any{"url": task.URL, "title": task.Title, "difficulty": task.Difficulty, "topics": recallSetTopics[slug], "note": task.Note, "slug": slug, "label": recallLabel(task), "problemId": nil}
-				if task.Number != nil {
-					pick["number"] = *task.Number
+				// A pick of a learning set is the whole task with other topics, the slug, the label and the problem of the library.
+				pick := map[string]any{}
+				data, err := json.Marshal(task)
+				if err != nil {
+					t.Fatal(err)
 				}
+				if err := json.Unmarshal(data, &pick); err != nil {
+					t.Fatal(err)
+				}
+				pick["topics"], pick["slug"], pick["label"], pick["problemId"] = recallSetTopics[slug], slug, recallLabel(task), nil
 				if id, ok := ids[slug]; ok {
 					pick["problemId"] = id
 				}

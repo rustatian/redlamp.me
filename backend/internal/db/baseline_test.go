@@ -22,6 +22,7 @@ func baseline(t *testing.T) *pgxpool.Pool {
 }
 
 // The expected tables and columns are the D1 schema after migrations/0017_homework_content.sql, without tutor_account.
+// quiz_decks is not in D1: it is the guard row of the one-hour pause of a quiz deck.
 func TestBaselineTables(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -41,6 +42,7 @@ func TestBaselineTables(t *testing.T) {
 		{name: "problem_tests", columns: "id,problem_id,input,created_at"},
 		{name: "problems", columns: "id,slug,number,title,difficulty,topics,summary,search_text,understanding,next_review_date,archived_at,version,created_at,updated_at,progress_version"},
 		{name: "quiz_attempts", columns: "id,deck,correct,total,passed,created_at"},
+		{name: "quiz_decks", columns: "deck,last_attempt_at"},
 		{name: "reviews", columns: "id,problem_id,result,note,reviewed_on,next_review_date,created_at"},
 		{name: "sessions", columns: "token_hash,role,credential_fingerprint,created_at,expires_at"},
 		{name: "submissions", columns: "id,task_id,attempt_id,task_version,created_at"},

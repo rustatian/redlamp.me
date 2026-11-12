@@ -1,4 +1,4 @@
-// The source of game.json and sets.json. See vitest.config.ts for the command.
+// The source of game.json. See vitest.config.ts for the command.
 // Each scenario is a list of database rows. The Worker answers GET /leetcode/api/game for them, and the answer is the expected value of the Go test.
 import { env, exports } from 'cloudflare:workers';
 import { applyD1Migrations, reset } from 'cloudflare:test';
@@ -232,5 +232,4 @@ it('writes the golden files', async () => {
 	// The scenarios use dates relative to today, so the whole run must be on one UTC day.
 	expect(new Date().toISOString().slice(0, 10)).toBe(today);
 	console.log(`GOLDEN game ${JSON.stringify({ now: now.toISOString(), scenarios: results })}`);
-	console.log(`GOLDEN sets ${JSON.stringify(sets.map(set => ({ slug: set.slug, title: set.title, chapters: set.chapters.map(chapter => ({ title: chapter.title, tasks: chapter.tasks.map(task => ({ url: task.url, number: task.number ?? null, title: task.title, difficulty: task.difficulty, topics: task.topics, note: task.note })) })) })))}`);
 });

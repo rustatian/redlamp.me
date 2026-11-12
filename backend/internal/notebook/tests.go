@@ -9,20 +9,9 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
-
-// testSpec tells the runner of the web client how to call the code. Mode is "call" (LeetCode) or "stdio" (Codeforces).
-type testSpec struct {
-	Mode   string `json:"mode"`
-	Method string `json:"method,omitempty"`
-	Check  string `json:"check,omitempty"`
-}
-
-// testCase is one example. Expected is null when the statement gives no output for it.
-type testCase struct {
-	Input    string  `json:"input"`
-	Expected *string `json:"expected"`
-}
 
 type ownTest struct {
 	ID        string `json:"id"`
@@ -31,11 +20,11 @@ type ownTest struct {
 }
 
 type problemTests struct {
-	Spec     *testSpec  `json:"spec"`
-	Source   string     `json:"source"`
-	Standard []testCase `json:"standard"`
-	Own      []ownTest  `json:"own"`
-	Skeleton string     `json:"skeleton"`
+	Spec     *sets.TestSpec  `json:"spec"`
+	Source   string          `json:"source"`
+	Standard []sets.TestCase `json:"standard"`
+	Own      []ownTest       `json:"own"`
+	Skeleton string          `json:"skeleton"`
 }
 
 type testRun struct {
@@ -79,8 +68,8 @@ func python(value string) string {
 
 // lookupResult is the data of one LeetCode question for the runner. tests is nil for a problem without a runner.
 type lookupResult struct {
-	tests    *testSpec
-	cases    []testCase
+	tests    *sets.TestSpec
+	cases    []sets.TestCase
 	skeleton *string
 }
 
@@ -147,12 +136,12 @@ func (s *Server) lookup(ctx context.Context, titleSlug string) (*lookupResult, e
 	for _, match := range outputLine.FindAllStringSubmatch(statement, -1) {
 		outputs = append(outputs, python(strings.TrimSpace(match[1])))
 	}
-	result.tests = &testSpec{Mode: "call", Method: meta.Name}
+	result.tests = &sets.TestSpec{Mode: "call", Method: meta.Name}
 	if meta.Output != nil && meta.Output.Paramindex != nil && *meta.Output.Paramindex == 0 {
 		result.tests.Check = "arg0"
 	}
 	for i, input := range question.ExampleTestcaseList {
-		example := testCase{Input: python("[" + strings.ReplaceAll(input, "\n", ",") + "]")}
+		example := sets.TestCase{Input: python("[" + strings.ReplaceAll(input, "\n", ",") + "]")}
 		if len(outputs) == len(question.ExampleTestcaseList) {
 			example.Expected = &outputs[i]
 		}
@@ -235,13 +224,19 @@ func (s *Server) tests(w http.ResponseWriter, r *http.Request, problemID, testID
 		// A failed lookup gives the page without examples.
 		found, _ = s.lookup(ctx, problem.Slug)
 	}
-	result := problemTests{Source: "none", Standard: []testCase{}, Own: []ownTest{}}
+	result := problemTests{Source: "none", Standard: []sets.TestCase{}, Own: []ownTest{}}
+	// The tests of a learning set task come first, then the examples of LeetCode.
+	task, inSet := s.setTask(problem.Slug)
 	switch {
+	case inSet && task.Tests != nil:
+		spec := task.Tests.TestSpec
+		result.Spec, result.Source = &spec, "set"
+		result.Standard = append(result.Standard, task.Tests.Cases...)
 	case found != nil && found.tests != nil:
 		result.Spec, result.Source = found.tests, "leetcode"
 		result.Standard = append(result.Standard, found.cases...)
 	case codeforces:
-		result.Spec = &testSpec{Mode: "stdio"}
+		result.Spec = &sets.TestSpec{Mode: "stdio"}
 	}
 	rows, err := s.db.Query(ctx, "SELECT id,input,created_at FROM problem_tests WHERE problem_id=$1 ORDER BY created_at,id", problem.ID)
 	if err != nil {
@@ -282,7 +277,9 @@ func (s *Server) handleStatement(w http.ResponseWriter, r *http.Request, _ *Sess
 		HTML *string `json:"html"`
 		Text *string `json:"text"`
 	}
-	if !strings.HasPrefix(problem.Slug, "cf-") {
+	if task, ok := s.setTask(problem.Slug); ok && task.Statement != "" {
+		statement.HTML = &task.Statement
+	} else if !strings.HasPrefix(problem.Slug, "cf-") {
 		// A failed lookup gives no text.
 		if raw, err := s.leetcode.Question(r.Context(), problem.Slug, "content"); err == nil && raw != nil {
 			var question struct {

@@ -2,7 +2,8 @@
 // Run from the repository root:
 //   bun run build
 //   bunx vitest run --config backend/internal/notebook/testdata/golden/vitest.config.ts
-// It writes ../game.json and ../sets.json. The dates of game.json are relative to the day of the run, and the file records that moment.
+// It writes ../game.json and ../../../sets/settest/sets.json. The dates of game.json are relative to the day of the run, and the file records that moment.
+// To write only one file, add the name of its source to the command: sets.golden or game.golden.
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
@@ -10,6 +11,7 @@ import { defineConfig } from 'vitest/config';
 import { testAccountSecret } from '../../../../../test/fixtures.ts';
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
+const targets: Record<string, string> = { game: '../game.json', sets: '../../../sets/settest/sets.json' };
 export default defineConfig({
 	root,
 	// The generator runs in the runtime of the Worker tests, with the D1 schema and the test accounts.
@@ -24,7 +26,7 @@ export default defineConfig({
 		// The Worker runtime has no file system, so the test prints each file as one line and this process writes it.
 		onConsoleLog(log) {
 			const files = [...log.matchAll(/^GOLDEN (\w+) (.+)$/gm)];
-			for (const [, name, json] of files) writeFileSync(path.join(import.meta.dirname, '..', `${name}.json`), `${JSON.stringify(JSON.parse(json), null, '\t')}\n`);
+			for (const [, name, json] of files) writeFileSync(path.join(import.meta.dirname, targets[name]), `${JSON.stringify(JSON.parse(json), null, '\t')}\n`);
 			if (files.length) return false;
 		},
 	},

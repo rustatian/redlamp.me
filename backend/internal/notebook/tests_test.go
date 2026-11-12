@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 const (
@@ -91,8 +93,9 @@ func testsSameJSON(t *testing.T, got []byte, want any) {
 	}
 }
 
-// The cases of test/tests.test.ts for GET /problems/{id}/tests with a slug outside the learning sets.
+// The cases of test/tests.test.ts for GET /problems/{id}/tests.
 // spec and standard are JSON text. own is always empty.
+// subset is expect.arrayContaining: the response has each listed standard case and can have more.
 func TestTestsStandard(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -101,8 +104,39 @@ func TestTestsStandard(t *testing.T) {
 		spec     string
 		source   string
 		standard string
+		subset   bool
 		skeleton string
 	}{
+		{
+			name:     "LeetCode task of a set",
+			slug:     "two-sum-ii-input-array-is-sorted",
+			reply:    testsQuestion(testsTwoSum, []string{"[2,7,11,15]\n9"}, testsPre("[0,1]"), testsSnippets),
+			spec:     `{"mode":"call","method":"twoSum"}`,
+			source:   "set",
+			standard: `[{"input":"[[2,7,11,15],9]","expected":"[1,2]"}]`,
+			subset:   true,
+			skeleton: testsSnippets[2].Code,
+		},
+		{
+			name:     "LeetCode task of a set with unreachable LeetCode",
+			slug:     "two-sum-ii-input-array-is-sorted",
+			reply:    testsUnreachable,
+			spec:     `{"mode":"call","method":"twoSum"}`,
+			source:   "set",
+			standard: `[{"input":"[[2,7,11,15],9]","expected":"[1,2]"}]`,
+			subset:   true,
+			skeleton: testsFallback,
+		},
+		{
+			name:     "Codeforces task of a set",
+			slug:     "cf-1821-a",
+			reply:    nil,
+			spec:     `{"mode":"stdio"}`,
+			source:   "set",
+			standard: `[{"input":"8\n??\n?\n0\n9\n03\n1??7\n?5?\n9??99\n","expected":"90\n9\n0\n1\n0\n100\n90\n100\n"}]`,
+			subset:   true,
+			skeleton: testsStdin,
+		},
 		{name: "Codeforces problem outside the sets", slug: "cf-1-a", reply: nil, spec: `{"mode":"stdio"}`, source: "none", standard: `[]`, skeleton: testsStdin},
 		{
 			name:     "LeetCode examples with two outputs",
@@ -199,11 +233,15 @@ func TestTestsStandard(t *testing.T) {
 		{name: "unreachable LeetCode", slug: "two-sum", reply: testsUnreachable, spec: `null`, source: "none", standard: `[]`, skeleton: ""},
 		{name: "LeetCode without an answer", slug: "two-sum", reply: testsNoAnswer, spec: `null`, source: "none", standard: `[]`, skeleton: ""},
 	}
+	learningSets := goldenSets(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := database(t)
 			fake := &fakeLeetCode{reply: tt.reply}
-			s := newServerWithLeetCode(t, pool, fake)
+			s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: fake, Sets: learningSets})
+			if err != nil {
+				t.Fatal(err)
+			}
 			cookie := loginAs(t, s, "student")
 			id := newID()
 			exec(t, pool, testsInsertProblem, id, tt.slug)
@@ -211,7 +249,26 @@ func TestTestsStandard(t *testing.T) {
 			if w.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200; body %s", w.Code, w.Body.String())
 			}
-			testsSameJSON(t, w.Body.Bytes(), map[string]any{"spec": json.RawMessage(tt.spec), "source": tt.source, "standard": json.RawMessage(tt.standard), "own": []any{}, "skeleton": tt.skeleton})
+			got := w.Body.Bytes()
+			if tt.subset {
+				var listed []any
+				if err := json.Unmarshal([]byte(tt.standard), &listed); err != nil {
+					t.Fatal(err)
+				}
+				body := decode[map[string]any](t, w)
+				standard, _ := body["standard"].([]any)
+				for _, item := range listed {
+					if !slices.ContainsFunc(standard, func(value any) bool { return reflect.DeepEqual(value, item) }) {
+						t.Errorf("standard = %v, want the case %v", body["standard"], item)
+					}
+				}
+				// The other fields are compared exactly.
+				body["standard"] = listed
+				if got, err = json.Marshal(body); err != nil {
+					t.Fatal(err)
+				}
+			}
+			testsSameJSON(t, got, map[string]any{"spec": json.RawMessage(tt.spec), "source": tt.source, "standard": json.RawMessage(tt.standard), "own": []any{}, "skeleton": tt.skeleton})
 			if tt.reply == nil {
 				if len(fake.calls) != 0 {
 					t.Errorf("LeetCode calls = %+v, want none", fake.calls)
@@ -226,27 +283,48 @@ func TestTestsStandard(t *testing.T) {
 	}
 }
 
-// The cases of test/tests.test.ts for GET /problems/{id}/statement with a slug outside the learning sets.
+// testsStatement is statement() of test/tests.test.ts: the statement of the set task with the slug.
+func testsStatement(t *testing.T, learningSets []sets.LearningSet, slug string) string {
+	t.Helper()
+	for _, set := range learningSets {
+		for _, task := range set.Tasks() {
+			if task.Slug() == slug {
+				return task.Statement
+			}
+		}
+	}
+	t.Fatalf("no task %s in the learning sets", slug)
+	return ""
+}
+
+// The cases of test/tests.test.ts for GET /problems/{id}/statement.
 func TestTestsStatement(t *testing.T) {
 	const content = "<p>Find <code>nums[i] + nums[j] == target</code>.</p>\n<pre>\n<strong>Input:</strong> nums = [3,3], target = 6\n</pre>\n<ul><li><code>2 &lt;= nums.length</code></li></ul>"
+	learningSets := goldenSets(t)
 	tests := []struct {
 		name     string
 		slug     string
 		reply    func(titleSlug, fields string) (json.RawMessage, error)
+		wantHTML any
 		wantText any
 	}{
-		{name: "statement of a Codeforces problem outside the sets", slug: "cf-1-a", reply: nil, wantText: nil},
-		{name: "statement of a LeetCode problem outside the sets", slug: "two-sum", reply: testsReply(map[string]any{"content": content}), wantText: "Find nums[i] + nums[j] == target.\nInput: nums = [3,3], target = 6\n2 <= nums.length"},
-		{name: "statement of a paid-only LeetCode problem", slug: "meeting-rooms", reply: testsReply(map[string]any{"content": nil}), wantText: nil},
-		{name: "statement of an unknown LeetCode problem", slug: "two-sum", reply: testsNoQuestion, wantText: nil},
-		{name: "statement with a LeetCode error response", slug: "two-sum", reply: testsBusy, wantText: nil},
-		{name: "statement with unreachable LeetCode", slug: "two-sum", reply: testsUnreachable, wantText: nil},
+		{name: "statement of a LeetCode task of a set", slug: "two-sum-ii-input-array-is-sorted", reply: nil, wantHTML: testsStatement(t, learningSets, "two-sum-ii-input-array-is-sorted"), wantText: nil},
+		{name: "statement of a Codeforces task of a set", slug: "cf-1821-a", reply: nil, wantHTML: testsStatement(t, learningSets, "cf-1821-a"), wantText: nil},
+		{name: "statement of a Codeforces problem outside the sets", slug: "cf-1-a", reply: nil, wantHTML: nil, wantText: nil},
+		{name: "statement of a LeetCode problem outside the sets", slug: "two-sum", reply: testsReply(map[string]any{"content": content}), wantHTML: nil, wantText: "Find nums[i] + nums[j] == target.\nInput: nums = [3,3], target = 6\n2 <= nums.length"},
+		{name: "statement of a paid-only LeetCode problem", slug: "meeting-rooms", reply: testsReply(map[string]any{"content": nil}), wantHTML: nil, wantText: nil},
+		{name: "statement of an unknown LeetCode problem", slug: "two-sum", reply: testsNoQuestion, wantHTML: nil, wantText: nil},
+		{name: "statement with a LeetCode error response", slug: "two-sum", reply: testsBusy, wantHTML: nil, wantText: nil},
+		{name: "statement with unreachable LeetCode", slug: "two-sum", reply: testsUnreachable, wantHTML: nil, wantText: nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := database(t)
 			fake := &fakeLeetCode{reply: tt.reply}
-			s := newServerWithLeetCode(t, pool, fake)
+			s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: fake, Sets: learningSets})
+			if err != nil {
+				t.Fatal(err)
+			}
 			cookie := loginAs(t, s, "student")
 			id := newID()
 			exec(t, pool, testsInsertProblem, id, tt.slug)
@@ -254,7 +332,7 @@ func TestTestsStatement(t *testing.T) {
 			if w.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200; body %s", w.Code, w.Body.String())
 			}
-			testsSameJSON(t, w.Body.Bytes(), map[string]any{"html": nil, "text": tt.wantText})
+			testsSameJSON(t, w.Body.Bytes(), map[string]any{"html": tt.wantHTML, "text": tt.wantText})
 			wantCalls := 0
 			if tt.reply != nil {
 				wantCalls = 1

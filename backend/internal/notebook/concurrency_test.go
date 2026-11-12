@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 var regexpV4 = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -124,7 +126,7 @@ func TestNewID(t *testing.T) {
 	}
 }
 
-var raceSets = []LearningSet{{Slug: "race-set", Title: "Race set", Chapters: []Chapter{{Title: "First chapter"}}}}
+var raceSets = []sets.LearningSet{{Slug: "race-set", Title: "Race set", Chapters: []sets.Chapter{{Title: "First chapter", Cards: []sets.Card{{ID: "race-card", Type: "choice", Prompt: "?", Options: []string{"a", "b"}, Answer: 0, Explain: "a"}}}}}}
 
 // raceActors are the data of one case of TestConcurrentRequestsOfHomework.
 type raceActors struct {
@@ -148,8 +150,10 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 		// setup prepares the data and returns the write that both requests wait for, and the two requests.
 		setup         func(t *testing.T, a raceActors) (hold string, args []any, first, second func() *httptest.ResponseRecorder)
 		wantConflicts int
-		count         string
-		wantCount     int64
+		// wantPaused is the number of requests that get 429, the answer of a quiz deck in its pause.
+		wantPaused int
+		count      string
+		wantCount  int64
 	}{
 		{
 			name: "a problem gets one active homework task from two requests that assign it",
@@ -199,6 +203,17 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 			wantCount:     1,
 		},
 		{
+			name: "a quiz deck gets one attempt from two submits of the student",
+			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				submit := post(a, "/quiz/race-set-1/attempts", `{"answers":{"race-card":0}}`, a.student)
+				return "INSERT INTO quiz_decks (deck,last_attempt_at) VALUES ('race-set-1','t0')", nil, submit, submit
+			},
+			wantConflicts: 0,
+			wantPaused:    1,
+			count:         "SELECT count(*) FROM quiz_attempts",
+			wantCount:     1,
+		},
+		{
 			name: "one_active_content gives one active chapter task to two requests that assign one chapter",
 			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
 				assign := post(a, "/homework/"+a.homework+"/content", `{"kind":"chapter","setSlug":"race-set","chapter":1}`, a.parent)
@@ -218,18 +233,20 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 			a.homework = decode[Homework](t, request(t, s, "/homework", http.MethodPost, `{"title":"Week 41","instructions":"","dueDate":null}`, a.parent)).ID
 			hold, args, first, second := tt.setup(t, a)
 			results := race(t, pool, hold, args, first, second)
-			conflicts := 0
+			conflicts, paused := 0, 0
 			for _, w := range results {
 				switch w.Code {
 				case http.StatusOK, http.StatusCreated:
 				case http.StatusConflict:
 					conflicts++
+				case http.StatusTooManyRequests:
+					paused++
 				default:
-					t.Errorf("status = %d, body %s; want a success or 409", w.Code, w.Body.String())
+					t.Errorf("status = %d, body %s; want a success, 409 or 429", w.Code, w.Body.String())
 				}
 			}
-			if conflicts != tt.wantConflicts {
-				t.Errorf("%d requests got 409, want %d; bodies %s and %s", conflicts, tt.wantConflicts, results[0].Body.String(), results[1].Body.String())
+			if conflicts != tt.wantConflicts || paused != tt.wantPaused {
+				t.Errorf("%d requests got 409 and %d got 429, want %d and %d; bodies %s and %s", conflicts, paused, tt.wantConflicts, tt.wantPaused, results[0].Body.String(), results[1].Body.String())
 			}
 			var countArgs []any
 			if strings.Contains(tt.count, "$1") {

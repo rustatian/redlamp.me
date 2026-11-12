@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // Server is the http.Handler of the notebook paths.
@@ -23,7 +25,9 @@ type Server struct {
 	accounts map[string]account
 	logins   limiter
 	leetcode LeetCode
-	sets     []LearningSet
+	sets     []sets.LearningSet
+	// decks are the quiz decks of the learning sets, one for each chapter.
+	decks []deck
 	// now is the clock of the rules that depend on the current day.
 	now func() time.Time
 	// random returns a random number from 0 to count-1. It chooses the recall days.
@@ -41,7 +45,7 @@ type Config struct {
 	// LeetCode gives the data of the problems of leetcode.com.
 	LeetCode LeetCode
 	// Sets is the content of the learning sets.
-	Sets []LearningSet
+	Sets []sets.LearningSet
 }
 
 const (
@@ -56,7 +60,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, now: time.Now, random: rand.IntN}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), now: time.Now, random: rand.IntN}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -118,7 +122,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, path string, user
 			return &HTTPError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "Войдите, чтобы продолжить."}
 		}
 		// The first handler that knows the path answers the request.
-		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleTests, s.handleStatement, s.handleRuns} {
+		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleSets, s.handleQuiz, s.handleTests, s.handleStatement, s.handleRuns} {
 			if handled, err := handle(w, r, user); handled || err != nil {
 				return err
 			}

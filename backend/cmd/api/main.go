@@ -15,6 +15,7 @@ import (
 
 	"github.com/rustatian/redlamp.me/backend/internal/db"
 	"github.com/rustatian/redlamp.me/backend/internal/notebook"
+	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
 )
 
 func main() {
@@ -37,7 +38,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}})
+	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}

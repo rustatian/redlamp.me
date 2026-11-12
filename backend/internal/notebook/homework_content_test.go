@@ -7,15 +7,17 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // The cases of test/homework-content.test.ts. The case that reads /homework/{id}/sets is in homework_dashboard_test.go.
 
 // homeworkSets is the content of src/leetcode/sets/content.ts that the homework tests need, in the same order.
 // complexity has its only chapter, which has no tasks. two-pointers has chapter 1 with its five tasks.
-var homeworkSets = []LearningSet{
-	{Slug: "complexity", Title: "Как понять O(n): время и память", Chapters: []Chapter{{Title: "Как понять O(n): время и память", Tasks: []SetTask{}}}},
-	{Slug: "two-pointers", Title: "Two Pointers", Chapters: []Chapter{{Title: "Навстречу", Tasks: []SetTask{
+var homeworkSets = []sets.LearningSet{
+	{Slug: "complexity", Title: "Как понять O(n): время и память", Chapters: []sets.Chapter{{Title: "Как понять O(n): время и память", Tasks: []sets.Task{}}}},
+	{Slug: "two-pointers", Title: "Two Pointers", Chapters: []sets.Chapter{{Title: "Навстречу", Tasks: []sets.Task{
 		{URL: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/", Number: new(int64(167)), Title: "Two Sum II - Input Array Is Sorted", Difficulty: "medium", Topics: []string{"Array", "Two Pointers"}, Note: "n - длина уже отсортированного Array, числа ограниченного размера. Время: не более n-1 вычислений суммы, O(n). Память: O(1) дополнительной, ответ - два индекса с единицы. При малой сумме исключайте левое число, при большой - правое. Brute Force проверяет до n(n-1)/2 пар; Hash Table требует O(u) записей для u разных значений."},
 		{URL: "https://leetcode.com/problems/valid-palindrome/", Number: new(int64(125)), Title: "Valid Palindrome", Difficulty: "easy", Topics: []string{"String", "Two Pointers"}, Note: "n - длина String из ASCII. Пропускайте символы, кроме букв и цифр, и сравнивайте края без учёта регистра. Время: индексы суммарно проходят не более n позиций, O(n). Память: O(1) дополнительной и Boolean-ответ. Фильтрация с созданием String и её разворот тоже требуют O(n) времени, но O(n) дополнительной памяти."},
 		{URL: "https://leetcode.com/problems/max-number-of-k-sum-pairs/", Number: new(int64(1679)), Title: "Max Number of K-Sum Pairs", Difficulty: "medium", Topics: []string{"Array", "Two Pointers", "Sorting"}, Note: "n - длина Array, u - число разных значений; числа ограниченного размера. Sorting допустим: нужны количество пар, а не исходные индексы. Время: O(n log n) на Sorting плюс O(n) на проход. Память: O(n) дополнительной в худшем случае Python Sorting; ответ - счётчик. Hash Table частот даёт ожидаемое O(n) время при хороших хешах и O(u) памяти. При сумме k используйте оба числа."},
@@ -248,4 +250,10 @@ func TestHomeworkContentAdded(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHomeworkContentMaterialsIncludeReading(t *testing.T) {
+	f := homeworkContentSetup(t)
+	request(t, f.s, "/homework/"+f.homeworkID+"/content", http.MethodPost, map[string]any{"kind": "chapter", "setSlug": "complexity", "chapter": 1}, f.parent)
+	problemsMatchBody(t, decode[any](t, request(t, f.s, "/homework/"+f.homeworkID+"/sets", http.MethodGet, nil, f.student)), map[string]any{"chapters": []any{map[string]any{"set": "complexity", "number": 1}}})
 }

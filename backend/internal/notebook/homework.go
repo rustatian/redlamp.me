@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 const (
@@ -102,7 +104,7 @@ func getHomework(ctx context.Context, q querier, id string) (Homework, error) {
 }
 
 // contentTitle is the title of a chapter task or a quiz task.
-func contentTitle(kind string, number int64, chapter Chapter) string {
+func contentTitle(kind string, number int64, chapter sets.Chapter) string {
 	word := "Глава"
 	if kind == "quiz" {
 		word = "Квиз"
@@ -244,15 +246,13 @@ func (s *Server) assignContent(w http.ResponseWriter, r *http.Request, user *Ses
 		return err
 	}
 	kinds := []string{"quiz"}
-	var problems []SetTask
+	var problems []sets.Task
 	if kind == "chapter" {
 		kinds, problems = []string{"chapter", "quiz"}, chapter.Tasks
 	}
 	slugs := make([]string, len(problems))
 	for i, problem := range problems {
-		if slugs[i], err = problemSlug(problem.URL); err != nil {
-			return fmt.Errorf("the task %q of the learning set %q: %w", problem.Title, setSlug, err)
-		}
+		slugs[i] = problem.Slug()
 	}
 	type skippedEntry struct {
 		Title  string `json:"title"`

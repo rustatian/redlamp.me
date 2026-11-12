@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 const reviewColumns = "id,problem_id,result,note,reviewed_on,next_review_date,created_at"
@@ -105,68 +106,36 @@ var recallPools = []struct {
 	{count: 2, slugs: []string{"sum-of-all-subset-xor-totals", "letter-case-permutation", "letter-combinations-of-a-phone-number"}},
 }
 
-// recallPick is a problem that the Today page offers for a recall.
+// recallPick is a problem that the Today page offers for a recall: the task with its slug, its label and its problem of the library.
 type recallPick struct {
-	URL        string   `json:"url"`
-	Number     *int64   `json:"number,omitempty"`
-	Title      string   `json:"title"`
-	Difficulty string   `json:"difficulty"`
-	Topics     []string `json:"topics"`
-	Note       string   `json:"note"`
-	Slug       string   `json:"slug"`
-	Label      string   `json:"label"`
-	ProblemID  *string  `json:"problemId"`
-}
-
-// taskLabel is the short name of a problem: its source and its number.
-func taskLabel(slug string, number *int64) string {
-	if rest, ok := strings.CutPrefix(slug, "cf-"); ok {
-		return "Codeforces " + strings.ToUpper(strings.Replace(rest, "-", "", 1))
-	}
-	if number != nil && *number != 0 {
-		return "LeetCode " + strconv.FormatInt(*number, 10)
-	}
-	return "LeetCode"
+	sets.Task
+	Slug      string  `json:"slug"`
+	Label     string  `json:"label"`
+	ProblemID *string `json:"problemId"`
 }
 
 // setTasks returns the problems of all chapters of a learning set.
-func (s *Server) setTasks(slug string) []SetTask {
-	var tasks []SetTask
+func (s *Server) setTasks(slug string) []sets.Task {
 	for _, set := range s.sets {
 		if set.Slug == slug {
-			for _, chapter := range set.Chapters {
-				tasks = append(tasks, chapter.Tasks...)
-			}
+			return set.Tasks()
 		}
 	}
-	return tasks
+	return nil
 }
 
 // recallPicks chooses the recall picks of a day. A problem in the archive, a problem that is due, and a problem that was recalled today are not picked.
 // The order of a pool follows a hash of the day and the slug, so the picks stay the same for the whole day.
 func (s *Server) recallPicks(ctx context.Context, q querier, today string) ([]recallPick, error) {
-	type candidate struct {
-		task SetTask
-		slug string
-	}
-	pools := make([][]candidate, len(recallPools))
+	pools := make([][]sets.Task, len(recallPools))
 	var slugs []string
 	for i, pool := range recallPools {
-		if pool.slugs != nil {
-			for _, slug := range pool.slugs {
-				pools[i] = append(pools[i], candidate{slug: slug})
-			}
-		} else {
-			for _, task := range s.setTasks(pool.set) {
-				slug, err := problemSlug(task.URL)
-				if err != nil {
-					return nil, err
-				}
-				pools[i] = append(pools[i], candidate{task: task, slug: slug})
-			}
+		pools[i] = s.setTasks(pool.set)
+		for _, slug := range pool.slugs {
+			pools[i] = append(pools[i], sets.Task{URL: sets.URL(slug)})
 		}
-		for _, c := range pools[i] {
-			slugs = append(slugs, c.slug)
+		for _, task := range pools[i] {
+			slugs = append(slugs, task.Slug())
 		}
 	}
 	type libraryRow struct {
@@ -204,15 +173,15 @@ func (s *Server) recallPicks(ctx context.Context, q querier, today string) ([]re
 	picks := []recallPick{}
 	for i, pool := range recallPools {
 		var poolPicks []recallPick
-		for _, c := range pools[i] {
-			row, inLibrary := library[c.slug]
-			task := c.task
+		for _, task := range pools[i] {
+			slug := task.Slug()
+			row, inLibrary := library[slug]
 			if pool.slugs != nil {
-				// A pool of slugs offers only the problems of the library.
+				// A pool of slugs offers only the problems of the library, with the data of the library.
 				if !inLibrary {
 					continue
 				}
-				task = SetTask{URL: problemURL(c.slug), Number: row.number, Title: row.title, Difficulty: row.difficulty, Note: row.summary}
+				task = sets.Task{URL: task.URL, Number: row.number, Title: row.title, Difficulty: row.difficulty, Note: row.summary}
 				if err := json.Unmarshal([]byte(row.topics), &task.Topics); err != nil {
 					return nil, err
 				}
@@ -220,7 +189,8 @@ func (s *Server) recallPicks(ctx context.Context, q querier, today string) ([]re
 			if inLibrary && row.skip {
 				continue
 			}
-			pick := recallPick{URL: task.URL, Number: task.Number, Title: task.Title, Difficulty: task.Difficulty, Topics: normalizeTopics(task.Topics, c.slug), Note: task.Note, Slug: c.slug, Label: taskLabel(c.slug, task.Number)}
+			pick := recallPick{Task: task, Slug: slug, Label: task.Label()}
+			pick.Topics = normalizeTopics(task.Topics, slug)
 			if inLibrary {
 				pick.ProblemID = &row.id
 			}
@@ -542,19 +512,12 @@ func (s *Server) game(w http.ResponseWriter, r *http.Request, user *SessionUser)
 	// A task is late after its due date in UTC. A task added after the due date is not late.
 	today := s.now().UTC().Format(time.DateOnly)
 	var setSlugs [][]string
-	var all []string
 	for _, set := range s.sets {
 		var slugs []string
-		for _, chapter := range set.Chapters {
-			for _, task := range chapter.Tasks {
-				slug, err := problemSlug(task.URL)
-				if err != nil {
-					return err
-				}
-				slugs = append(slugs, slug)
-			}
+		for _, task := range set.Tasks() {
+			slugs = append(slugs, task.Slug())
 		}
-		setSlugs, all = append(setSlugs, slugs), append(all, slugs...)
+		setSlugs = append(setSlugs, slugs)
 	}
 	count := func(condition string) string {
 		return "coalesce(sum(CASE WHEN " + condition + " THEN 1 ELSE 0 END),0)"
@@ -597,11 +560,7 @@ func (s *Server) game(w http.ResponseWriter, r *http.Request, user *SessionUser)
 		if err := tx.QueryRow(ctx, "SELECT coalesce(($1::text::date-min(day)::date)-"+count("day<$1")+",0)::bigint,(SELECT coalesce(max(n),0) FROM (SELECT count(*) AS n FROM (SELECT day::date-(row_number() OVER (ORDER BY day))::int AS run FROM visits) runs GROUP BY run) lengths) FROM visits", today).Scan(&t.missed, &t.longest); err != nil {
 			return err
 		}
-		rows, err = tx.Query(ctx, "SELECT p.slug FROM problems p WHERE p.slug=ANY($1) AND "+solvedSQL, all)
-		if err != nil {
-			return err
-		}
-		accepted, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		accepted, err := s.acceptedSetSlugs(ctx, tx)
 		if err != nil {
 			return err
 		}
