@@ -53,7 +53,7 @@ func main() {
 	if *assets != "" {
 		files = site(*assets)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Anthropic: tutorClient(ctx), Transcriber: speech})
+	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: secret(ctx, "LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Anthropic: tutorClient(ctx), Transcriber: speech})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}
@@ -70,22 +70,28 @@ func main() {
 	log.Fatal(http.ListenAndServe(*listen, srv))
 }
 
-// tutorClient returns the client of the Anthropic API, or nil when the server has no API key.
-// The key is the value of ANTHROPIC_API_KEY, or the SecureString parameter of SSM Parameter Store that ANTHROPIC_API_KEY_PARAMETER names.
-func tutorClient(ctx context.Context) *anthropic.Client {
-	key := os.Getenv("ANTHROPIC_API_KEY")
-	if name := os.Getenv("ANTHROPIC_API_KEY_PARAMETER"); key == "" && name != "" {
+// secret returns the value of the variable name, or the value of the SecureString parameter of SSM Parameter Store that the variable name_PARAMETER names.
+// The Lambda function has the parameter names. A local server has the values.
+func secret(ctx context.Context, name string) string {
+	value := os.Getenv(name)
+	if parameter := os.Getenv(name + "_PARAMETER"); value == "" && parameter != "" {
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err == nil {
-			var parameter *ssm.GetParameterOutput
-			if parameter, err = ssm.NewFromConfig(cfg).GetParameter(ctx, &ssm.GetParameterInput{Name: &name, WithDecryption: aws.Bool(true)}); err == nil {
-				key = aws.ToString(parameter.Parameter.Value)
+			var found *ssm.GetParameterOutput
+			if found, err = ssm.NewFromConfig(cfg).GetParameter(ctx, &ssm.GetParameterInput{Name: &parameter, WithDecryption: aws.Bool(true)}); err == nil {
+				value = aws.ToString(found.Parameter.Value)
 			}
 		}
 		if err != nil {
-			log.Printf("the API key of the tutor is not available: %v", err)
+			log.Printf("the parameter of %s is not available: %v", name, err)
 		}
 	}
+	return value
+}
+
+// tutorClient returns the client of the Anthropic API, or nil when the server has no API key.
+func tutorClient(ctx context.Context) *anthropic.Client {
+	key := secret(ctx, "ANTHROPIC_API_KEY")
 	if key == "" {
 		return nil
 	}

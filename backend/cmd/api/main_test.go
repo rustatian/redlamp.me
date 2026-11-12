@@ -51,3 +51,26 @@ func TestSite(t *testing.T) {
 		})
 	}
 }
+
+// A secret comes from its variable. The variable wins over the Parameter Store name, so a local server needs no AWS access.
+func TestSecret(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     string
+		parameter string
+		want      string
+	}{
+		{name: "value of the variable", value: "local-secret", want: "local-secret"},
+		{name: "variable and parameter name", value: "local-secret", parameter: "/redlamp/test", want: "local-secret"},
+		{name: "no variable and no parameter name", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("REDLAMP_TEST_SECRET", tt.value)
+			t.Setenv("REDLAMP_TEST_SECRET_PARAMETER", tt.parameter)
+			if got := secret(t.Context(), "REDLAMP_TEST_SECRET"); got != tt.want {
+				t.Errorf("secret = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
