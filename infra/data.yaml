@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The Aurora DSQL cluster of the redlamp.me notebook and its daily backup. The stack is in eu-central-1.
+
+Resources:
+  # Aurora DSQL refuses to delete a cluster while deletion protection is on.
+  # https://docs.aws.amazon.com/aurora-dsql/latest/APIReference/API_CreateCluster.html#auroradsql-CreateCluster-request-deletionProtectionEnabled
+  Cluster:
+    Type: AWS::DSQL::Cluster
+    Properties:
+      DeletionProtectionEnabled: true
+
+  # CloudFormation makes no default vault.
+  # https://docs.aws.amazon.com/aws-backup/latest/devguide/create-a-vault.html
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: redlamp-data
+
+  # Each backup is a full copy of the cluster, and a restore makes a new cluster.
+  # https://docs.aws.amazon.com/aurora-dsql/latest/userguide/backup-aurora-dsql.html
+  # A backup needs a cluster in the Active state. A cluster without connections goes to the Idle state, and its backup fails. The schedule is 17:00 UTC, in the hours of normal use.
+  # https://docs.aws.amazon.com/aurora-dsql/latest/userguide/cluster-lifecycle.html#dsql-scale-to-zero-restricted-operations
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: redlamp-data
+        BackupPlanRule:
+          - RuleName: daily
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 17 * * ? *)
+            Lifecycle:
+              DeleteAfterDays: 35
+
+  # The managed policy has the dsql actions that a backup job needs.
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSBackupServiceRolePolicyForBackup.html
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: cluster
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - !GetAtt Cluster.ResourceArn
+
+Outputs:
+  ClusterEndpoint:
+    Value: !GetAtt Cluster.Endpoint
+  ClusterArn:
+    Value: !GetAtt Cluster.ResourceArn
