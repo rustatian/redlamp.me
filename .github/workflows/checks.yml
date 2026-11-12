@@ -10,14 +10,10 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-24.04
-    # The image has Node 24; --init reaps stopped Worker processes.
+    # The image has Node 24.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
-      options: --init
     timeout-minutes: 20
-    env:
-      WRANGLER_SEND_METRICS: 'false'
-      WRANGLER_WRITE_LOGS: 'false'
     steps:
       - uses: actions/checkout@v7.0.1
       - run: npm install --global bun@1.4.4
@@ -25,6 +21,36 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
-      # Browser tests run locally with `bun run test:browser`: Workers AI has no local simulation, so the test harness needs a Cloudflare login.
-      # https://developers.cloudflare.com/workers/development-testing/
-      - run: bunx wrangler deploy --dry-run --outdir .wrangler/dry-run
+
+  browser:
+    runs-on: ubuntu-24.04
+    # The image has Node 24 and Chromium; --init reaps the server processes that the tests stop.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --init
+    timeout-minutes: 60
+    # Each browser test starts the Go server with its own schema in PostgreSQL 16.
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      # A job in a container reaches a service by the name of the service.
+      # https://docs.github.com/en/actions/tutorials/use-containerized-services/use-docker-service-containers
+      TEST_DATABASE_URL: postgres://postgres:test@postgres:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: npm install --global bun@1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run test:browser

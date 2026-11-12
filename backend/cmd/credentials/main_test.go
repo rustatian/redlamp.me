@@ -18,7 +18,7 @@ import (
 	"github.com/rustatian/redlamp.me/backend/migrations"
 )
 
-// The username rule of scripts/credentials.ts: two different names of 3 to 40 letters, digits, dots, dashes or underscores.
+// The username rule: two different names of 3 to 40 letters, digits, dots, dashes or underscores.
 func TestGenerateChecksTheUsernames(t *testing.T) {
 	tests := []struct {
 		name      string

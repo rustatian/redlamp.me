@@ -1,7 +1,7 @@
 export type Role = 'parent' | 'student';
 export interface SessionUser { role: Role; username: string }
 export interface Page<T> { items: T[]; nextOffset: number | null }
-export const NOTEBOOK_PAGE = /^\/leetcode(?:\/(?:problems|homework)(?:\/[a-f0-9-]{36}(?:\/review)?)?|\/sets(?:\/[a-z0-9-]+(?:\/(?:[1-9][0-9]?|problems\/[a-z0-9-]+))?)?|\/quiz(?:\/[a-z0-9-]+)?|\/tutor)?$/;
+export const NOTEBOOK_PAGE = /^\/leetcode(?:\/(?:problems|homework)(?:\/[a-f0-9-]{36}(?:\/review)?)?|\/sets(?:\/[a-z0-9-]+(?:\/(?:[1-9][0-9]?|problems\/[a-z0-9-]+))?)?|\/quiz(?:\/[a-z0-9-]+)?)?$/;
 export type Acceptance = 'not_submitted' | 'not_accepted' | 'accepted';
 export type Understanding = 'needs_practice' | 'with_help' | 'independent';
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -114,8 +114,8 @@ export interface Dashboard {
 }
 export type TutorKind = 'problem' | 'set';
 export interface TutorMessage { id: string; author: 'student' | 'assistant'; body: string; quote: string | null; createdAt: string }
-export type TutorEvent = { delta: string } | { done: true } | { error: { code: string; message: string } };
-export interface TutorAccount { connected: boolean; connectedAt: string | null; model: string | null; models: { slug: string; name: string }[]; pending: boolean }
+// thinking is the sign that the model works and has no new text yet.
+export type TutorEvent = { delta: string } | { done: true } | { error: { code: string; message: string } } | { thinking: true };
 export type BadgeId = 'first-accept' | 'three-day-streak' | 'first-hard' | 'ten-accepted' | 'independent-five' | 'set-cleared' | 'week-no-miss' | 'month-no-miss' | 'twenty-five-accepted' | 'fifty-accepted' | 'fifty-cards' | 'ten-recalls' | 'first-codeforces' | 'first-try' | 'two-sets' | 'on-time-five' | 'level-five';
 export interface Game { xp: number; level: number; levelXp: number; nextLevelXp: number; late: number; missed: number; badges: { id: BadgeId; earned: boolean }[] }
 export function newApproach(): Approach {

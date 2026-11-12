@@ -49,21 +49,14 @@ const labelSize = (link: Locator) => link.evaluate(element => {
 	return { lines: new Set(rects.map(rect => rect.top)).size, height: box.height, contained: rects.every(rect => rect.left >= box.left && rect.right <= box.right && rect.top >= box.top && rect.bottom <= box.bottom) };
 });
 for (const row of navigation) {
-	test(`homework navigation with Noto Sans: ${row.name}`, async ({ page }) => {
+	test(`homework navigation: ${row.name}`, async ({ page }) => {
 		await page.setViewportSize({ width: row.width, height: 1000 });
 		await signIn(page, row.role);
 		if (row.theme === 'light') await page.getByRole('button', { name: 'Светлая тема', exact: true }).click();
 		await page.locator('.sidebar').evaluate((sidebar, size) => {
-			sidebar.style.fontFamily = '"Noto Sans"';
 			if (size) for (const link of sidebar.querySelectorAll<HTMLElement>('nav a')) link.style.fontSize = `${size}px`;
 		}, row.enlarged ? row.width > 620 ? 26 : 22 : 0);
 		const nav = page.getByRole('navigation', { name: 'Тетрадь' }), homework = nav.getByRole('link', { name: 'Домашняя работа', exact: true });
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('DOM.enable');
-		await cdp.send('CSS.enable');
-		const { root } = await cdp.send('DOM.getDocument');
-		const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: 'nav a[href="/leetcode/homework"]' });
-		await expect.poll(async () => (await cdp.send('CSS.getPlatformFontsForNode', { nodeId })).fonts.map(font => font.familyName)).toEqual(['Noto Sans']);
 		await expect(homework).not.toHaveAttribute('aria-current');
 		await expect(homework).toHaveCSS('font-weight', '400');
 		await homework.scrollIntoViewIfNeeded();

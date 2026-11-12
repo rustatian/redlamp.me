@@ -41,6 +41,8 @@ type Server struct {
 	thinkingEvery time.Duration
 	// transcriber is nil when the server has no speech service. A dictation then gets the 503 dictation_unavailable error.
 	transcriber Transcriber
+	// assets answers the paths outside the notebook and the notebook assets. It is nil behind CloudFront, which sends these paths to S3.
+	assets http.Handler
 }
 
 // Config is the setup of a Server.
@@ -63,6 +65,8 @@ type Config struct {
 	Anthropic *anthropic.Client
 	// Transcriber is the speech service of the dictation, or nil when the server has none.
 	Transcriber Transcriber
+	// Assets serves the built site for a local server: the public pages and the notebook assets. With nil these paths get 404.
+	Assets http.Handler
 }
 
 const (
@@ -77,7 +81,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second, transcriber: cfg.Transcriber}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second, transcriber: cfg.Transcriber, assets: cfg.Assets}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -92,12 +96,16 @@ func isNotebookPath(path string) bool {
 }
 
 // notebookPage matches the paths of the web client pages. It equals NOTEBOOK_PAGE of shared/leetcode.ts.
-var notebookPage = regexp.MustCompile(`^/leetcode(?:/(?:problems|homework)(?:/[a-f0-9-]{36}(?:/review)?)?|/sets(?:/[a-z0-9-]+(?:/(?:[1-9][0-9]?|problems/[a-z0-9-]+))?)?|/quiz(?:/[a-z0-9-]+)?|/tutor)?$`)
+var notebookPage = regexp.MustCompile(`^/leetcode(?:/(?:problems|homework)(?:/[a-f0-9-]{36}(?:/review)?)?|/sets(?:/[a-z0-9-]+(?:/(?:[1-9][0-9]?|problems/[a-z0-9-]+))?)?|/quiz(?:/[a-z0-9-]+)?)?$`)
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	// CloudFront sends the asset paths and the public site to S3.
 	if !isNotebookPath(path) || strings.HasPrefix(path, "/leetcode/assets/") {
+		if s.assets != nil {
+			s.assets.ServeHTTP(w, r)
+			return
+		}
 		http.NotFound(w, r)
 		return
 	}

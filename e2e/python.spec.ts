@@ -1,4 +1,4 @@
-import { test, expect, signIn, type TestEnv } from './fixtures';
+import { test, expect, signIn } from './fixtures';
 import { sha256, type Problem, type TestCase, type TestSpec } from '../shared/leetcode';
 
 test('loads Python and Ruff from the notebook assets under the page CSP', async ({ page, notebook, baseURL }) => {
@@ -44,9 +44,9 @@ const storedRuns = [
 	{ name: 'shows the count of the stored run to the parent', passed: 0, text: 'Последний запуск: пройдено 0 из 1' },
 ];
 for (const row of storedRuns) {
-	test(row.name, async ({ page, notebook, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv(), { id, problemId, document } = notebook.attempt;
-		await DB.prepare("INSERT INTO test_runs (id,problem_id,attempt_id,approach_id,code_hash,passed,total,run_on,created_at) VALUES (?,?,?,?,?,?,1,'2026-10-12','now')").bind(crypto.randomUUID(), problemId, id, document.approaches[0].id, await sha256(document.approaches[0].code), row.passed).run();
+	test(row.name, async ({ page, notebook, db }) => {
+		const { id, problemId, document } = notebook.attempt;
+		await db.query("INSERT INTO test_runs (id,problem_id,attempt_id,approach_id,code_hash,passed,total,run_on,created_at) VALUES ($1,$2,$3,$4,$5,$6,1,'2026-10-12','now')", [crypto.randomUUID(), problemId, id, document.approaches[0].id, await sha256(document.approaches[0].code), row.passed]);
 		await signIn(page, 'parent');
 		await page.goto(`/leetcode/problems/${problemId}`);
 		await expect(page.getByText(row.text, { exact: true })).toBeVisible();
@@ -109,7 +109,10 @@ for (const row of setRuns) {
 		const problem = await (await page.request.post('/leetcode/api/problems', { headers, data: { url: row.url, number: null, title: 'Task', difficulty: 'easy', topics: [], summary: '' } })).json() as Problem;
 		expect((await page.request.post(`/leetcode/api/problems/${problem.id}/attempts`, { headers, data: {} })).status()).toBe(201);
 		await page.goto(`/leetcode/problems/${problem.id}`);
-		await page.getByLabel('Код решения', { exact: true }).fill(row.code);
+		const code = page.getByLabel('Код решения', { exact: true });
+		// The starter code fills an empty code field when the tests load. A fill at that moment keeps both texts, so the test types after the starter code shows.
+		await expect(code).toHaveText(/\S/);
+		await code.fill(row.code);
 		await page.getByRole('button', { name: 'Запустить тесты', exact: true }).click();
 		await expect(page.getByText(/^Пройдено/)).toHaveText(row.summary, { timeout: 30_000 });
 	});

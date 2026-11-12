@@ -77,7 +77,7 @@ function ChapterPage({ slug, number, user }: { slug: string; number: number; use
 	</div>;
 }
 
-// The lesson HTML is repository content: src/leetcode/sets/<set>/chapter<N>.html. Each figure draws into its placeholder <figure data-figure="id">.
+// The lesson HTML is repository content: backend/internal/sets/<set>/chapter<N>.html. Each figure draws into its placeholder <figure data-figure="id">.
 // Each Python sample without the class no-run gets a run button and an output inside its <pre>. The first use of each glossary word gets its tip.
 export function Lesson({ html, figures, ref }: { html: string; figures?: Figure[]; ref: RefObject<HTMLElement | null> }) {
 	const [slots, setSlots] = useState<[Figure, Element][]>([]), [samples, setSamples] = useState<[string, Element][]>([]), [exercises, setExercises] = useState<HTMLElement[]>([]);

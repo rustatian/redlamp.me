@@ -1,4 +1,4 @@
-import { globSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { loadPyodide } from 'pyodide';
 
@@ -35,14 +35,12 @@ const expectedSamples = [
 	{ name: 'starter code of a Codeforces task', output: '0\n0\n' },
 ];
 
-// Each lesson sample with a run button runs through web/harness.py, as the button runs it. Workers do not allow WebAssembly.compile, so this check runs in Node and not in vitest. https://developers.cloudflare.com/workers/runtime-apis/web-standards/#javascript-standards
+// Each lesson sample with a run button runs through web/harness.py, as the button runs it. The lessons come from sets.json, the JSON copy of the Go learning sets.
 // The test opens no page, so it needs no server and no browser.
-const root = 'src/leetcode/sets', entities: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', '#39': "'" };
-const lessons = globSync(`${root}/*/chapter*.html`).flatMap(path => {
-	const html = readFileSync(path, 'utf8');
-	// The rule of the button: code.language-python in a <pre> without the class no-run.
-	return [...html.matchAll(/<pre(?![^>]*\bno-run\b)[^>]*><code class="language-python">([\s\S]*?)<\/code>/g)].map((match, index) => ({ name: `${path.slice(root.length + 1, -5)} sample ${index + 1}`, code: match[1].replace(/&(lt|gt|amp|quot|#39);/g, (_, name: string) => entities[name]), input: '' }));
-});
+const entities: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', '#39': "'" };
+const content = JSON.parse(readFileSync('backend/internal/sets/settest/sets.json', 'utf8')) as { slug: string; chapters: { lesson: string }[] }[];
+// The rule of the button: code.language-python in a <pre> without the class no-run.
+const lessons = content.flatMap(set => set.chapters.flatMap((chapter, number) => [...chapter.lesson.matchAll(/<pre(?![^>]*\bno-run\b)[^>]*><code class="language-python">([\s\S]*?)<\/code>/g)].map((match, index) => ({ name: `${set.slug}/chapter${number + 1} sample ${index + 1}`, code: match[1].replace(/&(lt|gt|amp|quot|#39);/g, (_, name: string) => entities[name]), input: '' }))));
 // The starter code of a Codeforces task is a function for one test, called once for each test. The placeholder returns 0.
 const starter = 'def ans():\n    N = int(input())\n    a = list(map(int, input().split()))\n    # Посчитайте ответ и верните его.\n    return 0\n\nt = int(input())\na = [ans() for _ in range(t)]\nfor res in a:\n    print(res)\n';
 const samples = [...lessons, { name: 'starter code of a Codeforces task', code: starter, input: '2\n3\n1 2 3\n1\n5\n' }];

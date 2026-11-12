@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { diagramLabel, layoutTree, parseAnswer, type Block, type Diagram, type Inline, type TreeNode } from '../web/markdown';
+import { diagramLabel, layoutTree, parseAnswer, type Block, type Diagram, type Inline, type TreeNode } from './markdown';
 
 const p = (...children: Inline[]): Block => ({ kind: 'p', children });
 const strong = (...children: Inline[]): Inline => ({ kind: 'strong', children });

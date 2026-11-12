@@ -4,7 +4,7 @@ import type { TestSpec } from '../shared/leetcode';
 import cases from '../shared/answers.cases.json';
 
 // The Go copy of shared/answers.ts reads the same cases (backend/internal/answers), so the two copies stay equal.
-// scripts/golden-answers.ts wrote the file. The values of the first list are the results of Python ast.literal_eval and repr.
+// A one-time script wrote the file. The values of the first list are the results of Python ast.literal_eval and repr.
 it.each(cases.parse)('parses $name', ({ text, value }) => {
 	expect(parsePy(text)).toEqual(value);
 });

@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bot, Brain, CalendarCheck, ClipboardCheck, CodeXml, LogOut, Moon, Search, Sun, Tent } from 'lucide-react';
+import { Brain, CalendarCheck, ClipboardCheck, CodeXml, LogOut, Moon, Search, Sun, Tent } from 'lucide-react';
 import { NOTEBOOK_PAGE, type Game, type SessionUser } from '../shared/leetcode';
 import { api, ApiError, message } from './api';
 import { Login } from './Login';
@@ -13,7 +13,6 @@ import { SetProblem, Sets } from './Sets';
 import { Quiz } from './Quiz';
 import { Today } from './Today';
 import { Review } from './Review';
-import { TutorPage } from './TutorPage';
 import { useResource } from './useResource';
 import { TermTips } from './Terms';
 
@@ -27,7 +26,7 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 		setDark(!dark);
 		try { localStorage.setItem('leetcode:appearance', dark ? 'light' : 'dark'); } catch { /* Appearance remains available in this page. */ }
 	}
-	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Бомжарня', Icon: Tent }, { path: '/quiz', label: 'Квиз', Icon: Brain }, ...(user.role === 'parent' ? [{ path: '/tutor', label: 'ИИ-репетитор', Icon: Bot }] : [])];
+	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Бомжарня', Icon: Tent }, { path: '/quiz', label: 'Квиз', Icon: Brain }];
 	return <div className="app">
 		<a className="skip-link" href="#main">К содержимому</a>
 		<aside className="sidebar">
@@ -93,6 +92,6 @@ export function App() {
 	const setProblem = /^\/leetcode\/sets\/([a-z0-9-]+)\/problems\/([a-z0-9-]+)$/.exec(path);
 	const quiz = /^\/leetcode\/quiz(?:\/([a-z0-9-]+))?$/.exec(path);
 	const review = /^\/leetcode\/problems\/([a-f0-9-]{36})\/review$/.exec(path);
-	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : path === '/leetcode/tutor' ? <TutorPage user={user} /> : <Today user={user} />;
+	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : <Today user={user} />;
 	return <Layout user={user} visit={visit} logout={logout}>{error && <p className="error" role="alert">{error}</p>}<Fragment key={visit}>{screen}</Fragment></Layout>;
 }

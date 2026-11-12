@@ -15,13 +15,15 @@ async function microphone(page: Page, allowed = true) {
 	}, allowed);
 }
 const mic = (field: Locator) => field.locator('..').getByRole('button', { name: 'Голосовой ввод' });
+// Returns the seconds from the first click to the end of the second click. The recording is shorter.
 async function dictate(page: Page, field: Locator) {
 	await microphone(page);
-	const button = mic(field);
+	const button = mic(field), start = performance.now();
 	await button.click();
 	await expect(button).toHaveAttribute('aria-pressed', 'true');
 	await expect(button).toContainText('0:01');
 	await button.click();
+	return (performance.now() - start) / 1000;
 }
 
 const rows = [
@@ -33,16 +35,19 @@ const rows = [
 ];
 for (const row of rows) {
 	test(`dictation ${row.name}`, async ({ page, notebook }) => {
-		let sent: { audio?: string } = {};
-		await page.route('**/leetcode/api/dictation', route => { sent = route.request().postDataJSON(); return route.fulfill({ json: { text: 'Два указателя.' } }); });
+		let sent: { type?: string; size?: number } = {};
+		await page.route('**/leetcode/api/dictation', route => { sent = { type: route.request().headers()['content-type'], size: route.request().postDataBuffer()?.length }; return route.fulfill({ json: { text: 'Два указателя.' } }); });
 		const field = page.getByLabel('Основная идея', { exact: true });
 		await field.fill(row.value);
 		await field.evaluate((element: HTMLTextAreaElement, [start, end]) => element.setSelectionRange(start, end), row.cursor);
-		await dictate(page, field);
+		const seconds = await dictate(page, field);
 		await expect(field).toHaveValue(row.result);
 		await expect(field).toBeFocused();
-		// A WebM file starts with the EBML magic bytes 1A 45 DF A3.
-		expect(sent.audio).toMatch(/^GkXfo/);
+		// Mono 16 kHz PCM with 16-bit samples has 32,000 bytes for each second. The timer showed 0:01, so the recording has 1 s or more, less 0.1 s for the start of the recorder.
+		expect(sent.type).toBe('application/octet-stream');
+		expect(sent.size! % 2).toBe(0);
+		expect(sent.size).toBeGreaterThanOrEqual(32_000 * 0.9);
+		expect(sent.size).toBeLessThanOrEqual(32_000 * seconds);
 		// The saved draft has the text, so React got it too.
 		await expect.poll(async () => (await (await page.request.get(`/leetcode/api/problems/${notebook.problem.id}/attempts/${notebook.attempt.id}`)).json() as Attempt).document.approaches[0].idea, { timeout: 10_000 }).toBe(row.result);
 	});

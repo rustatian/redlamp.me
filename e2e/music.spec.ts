@@ -1,4 +1,4 @@
-import { test, expect, signIn, type TestEnv } from './fixtures';
+import { test, expect, signIn } from './fixtures';
 
 for (const [title, position] of [['Бомжарня', '0:11 / 0:23'], ['Жирчевня', '1:32 / 3:04']]) test(`plays ${title} across page changes`, async ({ page, notebook }) => {
 	await page.goto('/leetcode');
@@ -53,10 +53,9 @@ test('keeps the latest selection when the other download finishes', async ({ pag
 	} finally { release(); }
 });
 
-for (const width of [390, 760]) test(`keeps pagination clickable above the players at ${width}px`, async ({ page, server }) => {
+for (const width of [390, 760]) test(`keeps pagination clickable above the players at ${width}px`, async ({ page, db }) => {
 	await page.setViewportSize({ width, height: 844 });
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	await DB.batch(Array.from({ length: 21 }, (_, i) => DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES (?,?,?,'easy','[]','','','now','now')").bind(crypto.randomUUID(), `music-layout-${i}`, `Problem ${i}`)));
+	for (let i = 0; i < 21; i++) await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,$2,$3,'easy','[]','','','now','now')", [crypto.randomUUID(), `music-layout-${i}`, `Problem ${i}`]);
 	await signIn(page);
 	await page.goto('/leetcode/problems?limit=20');
 	const next = page.getByRole('link', { name: 'Ещё задачи', exact: true });

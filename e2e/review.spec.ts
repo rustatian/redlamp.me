@@ -1,13 +1,12 @@
-import { test, expect, type TestEnv } from './fixtures';
+import { test, expect } from './fixtures';
 
-test('reads saved attempts beyond the first page and returns to newer work', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), ids = Array.from({ length: 51 }, () => crypto.randomUUID());
-	const insert = DB.prepare("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,created_at,updated_at,saved_at) VALUES (?,?,'saved',?,'','not_submitted','needs_practice',?,?,?)");
-	await DB.batch(ids.map((id, i) => {
+test('reads saved attempts beyond the first page and returns to newer work', async ({ page, notebook, db }) => {
+	const ids = Array.from({ length: 51 }, () => crypto.randomUUID());
+	for (const [i, id] of ids.entries()) {
 		const at = new Date(Date.UTC(2026, 0, 1) + i * 60_000).toISOString();
 		const document = { ...notebook.attempt.document, approaches: [{ ...notebook.attempt.document.approaches[0], code: `print('saved_${i}')` }] };
-		return insert.bind(id, notebook.problem.id, JSON.stringify(document), at, at, at);
-	}));
+		await db.query("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,created_at,updated_at,saved_at) VALUES ($1,$2,'saved',$3,'','not_submitted','needs_practice',$4,$5,$6)", [id, notebook.problem.id, JSON.stringify(document), at, at, at]);
+	}
 	await page.getByRole('link', { name: 'Повторить задачу', exact: true }).click();
 	await page.getByRole('button', { name: 'Показать сохранённую работу', exact: true }).click();
 	const attempts = page.getByRole('combobox', { name: 'Сохранённая попытка', exact: true }), code = page.getByLabel('Код решения', { exact: true });

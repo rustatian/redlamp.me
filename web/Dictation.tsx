@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, Mic, Square } from 'lucide-react';
 import { api, message } from './api';
 
-const LIMIT = 120;
+const LIMIT = 120, RATE = 16_000;
 
 // Puts the text at the cursor with a space on each side where a word touches it. setRangeText does not change the value that React remembers, so the input event makes React run onChange.
 function insertText(field: HTMLTextAreaElement, text: string) {
@@ -11,12 +11,17 @@ function insertText(field: HTMLTextAreaElement, text: string) {
 	field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-const base64 = (audio: Blob) => new Promise<string>((resolve, reject) => {
-	const reader = new FileReader();
-	reader.onload = () => resolve((reader.result as string).split(',')[1]);
-	reader.onerror = () => reject(reader.error);
-	reader.readAsDataURL(audio);
-});
+// Makes mono 16 kHz PCM with signed 16-bit little-endian samples from a recording, the audio format of the server. The result has LIMIT seconds or fewer.
+// decodeAudioData changes the sample rate to the rate of its context: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData
+async function pcm(audio: Blob): Promise<Uint8Array<ArrayBuffer>> {
+	const decoded = await new OfflineAudioContext(1, 1, RATE).decodeAudioData(await audio.arrayBuffer());
+	const channels = Array.from({ length: decoded.numberOfChannels }, (_, i) => decoded.getChannelData(i)), length = Math.min(decoded.length, LIMIT * RATE), samples = new DataView(new ArrayBuffer(length * 2));
+	for (let i = 0; i < length; i++) {
+		const sample = channels.reduce((sum, channel) => sum + channel[i], 0) / channels.length;
+		samples.setInt16(i * 2, Math.round(Math.max(-1, Math.min(1, sample)) * 32767), true);
+	}
+	return new Uint8Array(samples.buffer);
+}
 
 // Records speech and puts the Russian text into the textarea of the same label.
 export function Dictation() {
@@ -49,7 +54,9 @@ export function Dictation() {
 	async function send(audio: Blob) {
 		setState('sending');
 		try {
-			const { text } = await api<{ text: string }>('/dictation', { method: 'POST', body: JSON.stringify({ audio: await base64(audio) }) });
+			// A recording that the browser cannot decode has no speech.
+			const samples = await pcm(audio).catch(() => new Uint8Array());
+			const text = samples.length ? (await api<{ text: string }>('/dictation', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: samples })).text : '';
 			const field = textarea();
 			if (!text) setError('Речь не распознана. Попробуйте ещё раз.');
 			else if (field) { insertText(field, text); field.focus(); }

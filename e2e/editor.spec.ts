@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import type { Locator, Page } from '@playwright/test';
-import { test, expect, signIn, type TestEnv } from './fixtures';
+import { test, expect, signIn } from './fixtures';
 
 // The editor draws each line of the code in its own element, and toHaveText ignores the spaces at the start of a line.
 const lines = (code: Locator) => code.locator('.cm-line').allTextContents();
@@ -19,6 +20,15 @@ test('keeps edits made during a pending save', async ({ page, notebook }) => {
 	await expect(page.getByRole('status', { name: 'Состояние сохранения' })).toHaveText('Сохранено');
 	await page.reload();
 	await expect(page.getByLabel('Основная идея', { exact: true })).toHaveValue('Updated explanation');
+});
+
+// CloudFront signs the request to the function URL with the SHA-256 of the body that the client sends. The hash is of the UTF-8 bytes.
+test('sends the SHA-256 of the body with a draft save', async ({ page, notebook }) => {
+	const save = page.waitForRequest(request => request.method() === 'PUT' && new URL(request.url()).pathname.endsWith(`/attempts/${notebook.attempt.id}`));
+	await page.getByLabel('Основная идея', { exact: true }).fill('Хеш тела запроса.');
+	const request = await save;
+	expect(await request.headerValue('content-type')).toBe('application/json');
+	expect(await request.headerValue('x-amz-content-sha256')).toBe(createHash('sha256').update(request.postDataBuffer()!).digest('hex'));
 });
 
 test('recovers after a failed save and reload', async ({ page, notebook }) => {
@@ -59,12 +69,11 @@ test('shows both copies after a two-tab conflict', async ({ page, context, noteb
 	await expect(second.getByLabel('Основная идея', { exact: true })).toHaveValue('First tab explanation');
 });
 
-test('recovers after the same account signs in', async ({ page, server, notebook }) => {
+test('recovers after the same account signs in', async ({ page, db, notebook }) => {
 	await expect(page.getByLabel('Основная идея', { exact: true })).toBeVisible();
 	await page.clock.install();
 	await page.getByLabel('Основная идея', { exact: true }).fill('Keep this unsaved explanation');
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	await DB.prepare("DELETE FROM sessions WHERE role='student'").run();
+	await db.query("DELETE FROM sessions WHERE role='student'");
 	await page.clock.runFor(1_600);
 	await expect(page.getByRole('status', { name: 'Состояние сохранения' })).toHaveText('Войдите, чтобы сохранить');
 	await page.getByRole('button', { name: 'Войти снова' }).click();
