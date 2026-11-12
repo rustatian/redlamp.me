@@ -69,7 +69,7 @@ export function Tutor({ context, title, flush, lesson, evaluate }: { context: { 
 				for (const line of frames.flatMap(frame => frame.split(/\r?\n/))) {
 					if (!line.startsWith('data:')) continue;
 					const event = JSON.parse(line.slice(5)) as TutorEvent;
-					if ('delta' in event) setPending({ body, quote, answer: answer += event.delta }); else if ('thinking' in event) setPending({ body, quote, answer, thinking: true }); else end = event;
+					if ('delta' in event) setPending({ body, quote, answer: answer += event.delta }); else if ('thinking' in event) setPending(value => value?.thinking ? value : { body, quote, answer, thinking: true }); else end = event;
 				}
 			}
 			if (!end) throw new Error('Ответ прервался. Отправьте сообщение ещё раз.');
