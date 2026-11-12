@@ -269,7 +269,7 @@ func (s *Server) tutorHistory(ctx context.Context, kind, id string) ([]anthropic
 	}
 	defer rows.Close()
 	var history []anthropic.BetaMessageParam
-	student, size := false, 0
+	size := 0
 	for rows.Next() {
 		var author, body string
 		var quote *string
@@ -277,18 +277,21 @@ func (s *Server) tutorHistory(ctx context.Context, kind, id string) ([]anthropic
 			return nil, err
 		}
 		content := said(body, quote)
+		// The Messages API takes no text block without text. A stored answer can have a blank body.
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
 		if size += units(content); size > 16_000 {
 			break
 		}
-		student = author == "student"
-		if student {
+		if author == "student" {
 			history = append(history, anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(content)))
 		} else {
 			history = append(history, anthropic.BetaMessageParam{OfAssistant: &anthropic.BetaAssistantMessageParam{Content: []anthropic.BetaContentBlockParamUnion{anthropic.NewBetaTextBlock(content)}}})
 		}
 	}
-	// The Messages API takes a user turn first. The character limit can cut the history between a question and its answer.
-	if len(history) > 0 && !student {
+	// The Messages API takes a user turn first. The limits can cut the history before an answer, and two questions at the same time store two answers one after the other.
+	for len(history) > 0 && history[len(history)-1].OfAssistant != nil {
 		history = history[:len(history)-1]
 	}
 	slices.Reverse(history)

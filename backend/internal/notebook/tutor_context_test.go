@@ -271,6 +271,51 @@ func TestTutorHistory(t *testing.T) {
 	}
 }
 
+// The Messages API takes a user turn first and takes no text block without text, so the request leaves out the stored turns that break these rules.
+func TestTutorHistoryRules(t *testing.T) {
+	type turn struct{ author, body string }
+	// later are 9 questions with their answers: 18 turns.
+	var later []turn
+	for i := range 9 {
+		later = append(later, turn{author: "student", body: fmt.Sprintf("question %d", i)}, turn{author: "assistant", body: fmt.Sprintf("answer %d", i)})
+	}
+	tests := []struct {
+		name string
+		// stored are the stored turns from the oldest to the newest.
+		stored []turn
+		// want are the stored turns of the request.
+		want []turn
+	}{
+		// Two questions at the same time store their answers after the two questions. The newest 20 turns start with the two answers.
+		{name: "two answers at the start of the newest 20 turns", stored: slices.Concat([]turn{{author: "student", body: "first"}, {author: "student", body: "second"}, {author: "assistant", body: "to the first"}, {author: "assistant", body: "to the second"}}, later), want: later},
+		{name: "answer with an empty body", stored: []turn{{author: "student", body: "first"}, {author: "assistant", body: ""}, {author: "student", body: "second"}, {author: "assistant", body: "to the second"}}, want: []turn{{author: "student", body: "first"}, {author: "student", body: "second"}, {author: "assistant", body: "to the second"}}},
+		{name: "answer with only white space", stored: []turn{{author: "student", body: "first"}, {author: "assistant", body: " \n"}, {author: "student", body: "second"}, {author: "assistant", body: "to the second"}}, want: []turn{{author: "student", body: "first"}, {author: "student", body: "second"}, {author: "assistant", body: "to the second"}}},
+	}
+	content := goldenSets(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool := database(t)
+			for i, item := range tt.stored {
+				exec(t, pool, tutorContextInsertMessage, newID(), "set", tutorSet, item.author, item.body, nil, tutorContextMinute(i))
+			}
+			u := newTutorUpstream(t, tutorAnswer())
+			s := tutorServer(t, Config{DB: pool, Sets: content}, u)
+			request(t, s, "/tutor/messages", http.MethodPost, tutorSend(nil), loginAs(t, s, "student"))
+			body, block := tutorContextBody(t, u)
+			want := []any{}
+			for _, item := range tt.want {
+				role := "user"
+				if item.author == "assistant" {
+					role = "assistant"
+				}
+				want = append(want, tutorContextMessage(role, item.body))
+			}
+			want = append(want, tutorContextMessage("user", block), tutorContextMessage("user", "Explain this part."))
+			reviewsEqualJSON(t, body["messages"], want)
+		})
+	}
+}
+
 // The evaluate flag selects the system prompt. The context has the normalized topics and the notes, and the attempt does not change.
 func TestTutorPrompt(t *testing.T) {
 	tests := []struct {
