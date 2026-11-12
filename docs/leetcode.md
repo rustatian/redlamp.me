@@ -2,42 +2,76 @@
 
 The private notebook at `https://redlamp.me/leetcode` supports one parent and one student. Use LeetCode for code runs and submissions. Use this notebook for explanations, saved attempts, homework, feedback, learning sets, and review reminders.
 
-The application uses the existing Worker, one D1 database, React, and Bun. The account uses Workers Paid, which includes D1. By default, each request can use up to 30 seconds of CPU time ([CPU time](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)).
+The notebook server is a Go program in `backend/`. On AWS, it runs as a Lambda function behind CloudFront and keeps its data in Aurora DSQL. A local server uses PostgreSQL 16. The web client uses React and Bun.
 
 ## Local setup
 
-Install Bun and a current Node.js release. Install the pinned dependencies:
+Install these tools:
 
-```sh
+- Bun 1.4.4 and Node.js 24.
+- Go, the version in `backend/go.mod`.
+- Docker, for PostgreSQL.
+- golangci-lint 2.15.0, for the Go lint check.
+
+Install the pinned dependencies in the repository root:
+
+```bash
 bun install --frozen-lockfile
 ```
 
-Generate the two accounts in an interactive terminal. Replace the example usernames with two distinct names. Use 3-40 letters, digits, dots, dashes, or underscores.
+Start PostgreSQL 16 in Docker. Aurora DSQL uses UTF-8 and the C collation only, so the local database uses them too. Text then sorts in the same order as on AWS.
 
-```sh
-umask 077
-mkdir -p .wrangler
-bun run credentials parent-name student-name > .wrangler/leetcode-accounts.json
+```bash
+docker run -d --name redlamp-backend-test -e POSTGRES_PASSWORD=test -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --locale=C" -p 127.0.0.1:54329:5432 postgres:16.15
 ```
 
-The command shows two generated 24-character passwords on the terminal. Save them in a password manager. Standard output contains the usernames and password digests. Keep that JSON file private. This digest format requires the generated high-entropy passwords.
+Set the connection string in each shell that runs the server or the checks:
 
-For a new checkout, create `.dev.vars` with these values:
-
-```sh
-printf 'LEETCODE_ACCOUNTS=%s\nLEETCODE_LOCAL_HTTP=1\n' "$(cat .wrangler/leetcode-accounts.json)" > .dev.vars
+```bash
+export TEST_DATABASE_URL='postgres://postgres:test@127.0.0.1:54329/postgres?sslmode=disable'
 ```
 
-If `.dev.vars` already exists, set these two values in that file. Preserve its other values. Both `.dev.vars` and `.wrangler/` are ignored by Git. The local HTTP setting enables a separate development cookie on `localhost` and `127.0.0.1`.
+### Start a local server
 
-Apply the local migrations. Then start development:
+Build the site. The build copies the public site files from `public/` to `dist/` and writes the notebook assets to `dist/leetcode/assets/`.
 
-```sh
-bunx wrangler d1 migrations apply redlamp-leetcode --local
-bun run dev
+```bash
+bun run build
 ```
 
-Open `http://localhost:8787/leetcode`. Wrangler builds the browser assets and watches `src/`, `web/`, `shared/`, and `public/`. The build copies the public site files from `public/` to `dist/`.
+Run the next commands in `backend/`:
+
+```bash
+cd backend
+```
+
+Apply the migrations:
+
+```bash
+go run ./cmd/migrate -database-url "$TEST_DATABASE_URL"
+```
+
+The tests make their own schemas in the same database. The local server keeps its data in the schema `public`.
+
+Generate the two accounts in an interactive terminal. Replace the example usernames with two distinct names. The first name is the parent, and the second name is the student. Use 3-40 letters, digits, dots, dashes, or underscores.
+
+```bash
+export LEETCODE_ACCOUNTS="$(go run ./cmd/credentials parent-name student-name)"
+```
+
+The command writes two generated 24-character passwords to the terminal. Save them in a password manager. Standard output contains only the usernames and the password digests, so the variable gets no password. This digest format requires the generated high-entropy passwords. If the variable does not have two valid accounts, the server starts without sign-in and answers "Аккаунты тетради не настроены."
+
+Start the server:
+
+```bash
+PUBLIC_ORIGIN=http://localhost:8787 go run ./cmd/api -listen localhost:8787 -database-url "$TEST_DATABASE_URL" -assets ../dist
+```
+
+Open `http://localhost:8787/leetcode`. Use the origin of `PUBLIC_ORIGIN` in the browser, because the server refuses a change from another origin. `PUBLIC_ORIGIN` must be an origin in lower case without a path, for example `https://redlamp.me` or `http://localhost:8787`. If it has another form, the server does not start. For `http://localhost` and `http://127.0.0.1`, the server uses a separate session cookie without the `Secure` attribute.
+
+The server serves the files of `dist/` and does not watch them. Run `bun run build` again after a change in `web/`, `shared/`, or `public/`. Restart the server after a change in `backend/`.
+
+A local server has no speech service, so dictation answers "Распознавание речи сейчас недоступно. Попробуйте позже." A local server has a tutor only when `ANTHROPIC_API_KEY` contains an Anthropic API key. Set this variable before you start the server. Each tutor question then goes to Anthropic under the account of that key. See [AI tutor](#ai-tutor).
 
 ## Use the notebook
 
@@ -61,7 +95,7 @@ Open `http://localhost:8787/leetcode`. Wrangler builds the browser assets and wa
 - Use **Recall this problem** to practise before revealing saved work. Record the result. Choose the next review date. When revealing saved work, use **Старые попытки** and **Новые попытки** to page through the saved attempts.
 - **Today** also shows random recall picks from the library: three problems of the Two Pointers set and two problems of the first permutations homework. The picks change every day. A pick that you recall today leaves the list. The recall page of a pick does not show the summary or the saved work. Use **Start a new attempt** to solve the problem again. If the problem has a draft, the button saves the draft as an attempt and starts a new empty draft. This save does not change the understanding of the problem.
 - **Archive problem** moves a problem to **Archived problems** in the library and blocks new homework tasks for it. **Restore problem** returns it. Restore the problem before returning a completed homework task for another attempt.
-- As the student, use **Голосовой ввод** (the microphone button) to dictate Russian text into a notes field, the review note, the tutor message, or the problem description. Select the button again to stop. A recording stops after 2 minutes. The notebook puts the text at the cursor, or at the end when you did not select a position in the field. The Worker sends the audio to Whisper on Cloudflare Workers AI and does not keep it.
+- As the student, use **Голосовой ввод** (the microphone button) to dictate Russian text into a notes field, the review note, the tutor message, or the problem description. Select the button again to stop. A recording stops after 2 minutes. The notebook puts the text at the cursor, or at the end when you did not select a position in the field. The browser sends the audio as mono 16 kHz PCM. The server sends it to Amazon Transcribe streaming with the language Russian and does not store the audio.
 - If a save fails, keep the page open. Use **Retry save** or **Copy unsaved work**. Reload recovery is available in the same tab when browser session storage works. Conflicting edits require an explicit choice of the server copy.
 
 ## Learning sets
@@ -74,66 +108,74 @@ Learning explanations use Russian. Algorithm and data-structure names use Englis
 
 Each worked example explains its input sizes, counted operations, time bound, and peak auxiliary memory. State the assumptions for average or amortized bounds. Count Python copies, sorting workspace, and pending calls. Separate input storage and growing output storage from auxiliary memory. Show a concrete count table or figure. Explain a useful alternative when the chapter compares techniques. Label model growth values as model values, not measured time. Each problem note includes **Время:** and **Память:** with its variables and assumptions.
 
-Keep each lesson below 12,000 text characters, including collapsed sections. Keep the main explanation short. Put longer comparisons in `details` elements. Figures use separate metadata; include their main count and conclusion in the lesson text so the tutor also receives them. The tutor allows 50,000 lesson characters for a set and 16,000 characters for a problem chapter and its outline.
+Keep each lesson below 12,000 text characters, including collapsed sections. Keep the main explanation short. Put longer comparisons in `details` elements. The figures are data in `set.go`, outside the lesson HTML. Put their main count and conclusion in the lesson text too, so the tutor also receives them. The tutor allows 50,000 lesson characters for a set and 16,000 characters for a problem chapter and its outline.
 
 As the parent, use **Добавить главу в домашнюю работу** on a chapter page. This adds the chapter reading, its quiz deck, and its available problems together. The dialog shows active homework. Use the search box to find homework by title. Use **Назначить** to add the chapter to that homework. Use **Создать и назначить** to create homework with the chapter. The notebook adds missing problems to the library. It skips problems that are complete, archived, or already assigned. The result lists each skipped item and its reason.
 
 To assign only a quiz, open its page as the parent and use **Добавить квиз в домашнюю работу**. A new passing attempt completes the quiz homework task. An earlier pass does not complete a new assignment. As the student, use **Прочитал главу** on an assigned chapter to complete its reading task. As the parent, use **Отменить** on the homework page to cancel an active chapter or quiz task.
 
-For the student, a chapter page shows **Explain with AI** below the text that is selected in the lesson. Ctrl+Enter or Cmd+Enter does the same. The AI tutor then explains the selected text. When an answer quotes the lesson, **Show in the lesson** marks the passage. The parent does not see these controls.
+For the student, a chapter page shows **Объяснить с ИИ** below the text that is selected in the lesson. Ctrl+Enter or Cmd+Enter does the same. The AI tutor then explains the selected text. When an answer quotes the lesson, **Показать в уроке** marks the passage. The parent does not see these controls.
 
 The parent can also link a set to a problem or to homework. Choose the set in **Materials**. The link opens the set page.
 
 The **Квиз** page shows one deck for each chapter. An attempt answers all cards of one deck. The page sends the answers to the server after the last card. If the student leaves before the last card, the notebook keeps no answers. An attempt passes with 80 % or more correct answers: 8 cards need 7, 7 cards need 6, 6 cards need 5. After a passed attempt, the page shows each card with the answer of the student, the right answer and the explanation. After a failed attempt, the page shows only the cards with a wrong answer, without the right answers. After each attempt, passed or failed, the notebook closes the deck for 1 hour. The quiz status is **Пройден** with the best passed result, or **Не пройден**, and the time of the next attempt during the pause. The parent sees all cards of a deck with the answers. A quiz round shows no AI tutor.
 
-To add a set:
+A learning set is a Go package in `backend/internal/sets/<name>/`. The model of a set is in `backend/internal/sets/model.go`. To add a set:
 
-1. Create the folder `src/leetcode/sets/<slug>/`. Use lowercase letters, digits, and dashes in the slug.
-2. Write `chapter<N>.ts` for each chapter. Export the chapter data as the default export. Type it with `satisfies Chapter`. Give the chapter a title, a summary, its tasks and its cards. Put the lesson pictures in `figures`, see step 3. For each task, use the problem slug from its LeetCode URL.
-3. Write `chapter<N>.html` for each chapter as an HTML fragment. The chapter page inserts it without changes. Start with `<p class="lead">` and one sentence. Then write sections that start with `<h2 id="sN">`. Use only these elements: `h2 h3 p ul ol li table caption thead tbody tr th td pre code strong em sup blockquote details summary a br figure`, and `<div class="rule">` for a rule. Put a picture as `<figure data-figure="<id>"></figure>` on its own line. Describe it in `figures` of `chapter<N>.ts` in the same order. A figure has an id, a Russian title and one or more frames. A frame has a Russian caption and rows of cells. A row can have a label, marked cells, dimmed cells, pointers under the cells and a window bracket. A row with `tree: true` draws its cells as a binary tree in `heapq` order: the children of place i are places 2i + 1 and 2i + 2. An empty string is an empty place. A tree row has no pointers and no window. A marked cell is a cell that the step works on. A dimmed cell holds a value that a move removed. Do not show a pointer that is past the end of its row. Say in the caption where that pointer is. Make each frame from a trace of the algorithm on the numbers of the picture. Do not use scripts, styles, `style` attributes or event attributes. Write code blocks as `<pre><code class="language-python">`. Write a hint as `<details><summary>Подсказка 1</summary>...</details>`. Give external links `target="_blank" rel="noopener noreferrer"`.
-4. Write `set.ts`. Export the set data as the default export. Type it with `satisfies LearningSet`. Import the chapters into `chapters` in reading order. Add a new chapter only after the last chapter of a published set, and do not change the slug of a published set. The quiz attempts keep the deck as `<set slug>-<chapter number>`.
-5. Write `solutions.ts` with a reference solution for each task. Export an object with the task slugs as keys as the default export. Type it with `satisfies Record<string, Reference>`. A reference has the mode of the task tests. A `call` reference returns the value that the tests compare. A `stdio` reference returns the standard output. Check the constraints of the statement first with the functions in `src/leetcode/sets/constraints.ts`. Lint stops an import from `src/` in `web/`, so the reference solutions do not get to the browser.
-6. In `src/leetcode/sets/index.ts`, import the set, its chapter lessons and its reference solutions. Add the set to `sets` with `lessons: [...]` in chapter order. The order of `sets` is the display order. Add the reference solutions to `references`.
-7. Find the hard words in the student text: the summaries, the lessons, the statements, the notes and the cards. For each hard word that `shared/glossary.ts` does not have, add an entry. Give the entry a pattern for the word and its forms. Give it a plain Russian tip of one or two short sentences. Add the start of the word to `hardWord` in `test/sets.test.ts`. Do not add a word that has two meanings in the sets. Use exact English names such as `Array`, `Hash Table`, `Two Pointers`, `Heap (Priority Queue)`, `Queue`, `Deque`, and `Stack`. Use precise names such as `Min-Heap` or `Monotonic Deque` when explaining an implementation. Keep Python API names such as `heapq` and `collections.deque` unchanged. Use "очередь" only for a real line of people.
-8. Run `bun run test`. `test/sets.test.ts` checks content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, glossary coverage, English technical names, problem cost notes, and reference answers. Run `bun run test:browser` to check executable lesson outputs, figures, and navigation.
+1. Create the folder `backend/internal/sets/<name>/`. A Go package name has no dashes, so the folder name can be different from the slug of the set, for example `twopointers` for `two-pointers`. Use lowercase letters, digits, and dashes in the slug.
+2. Write `chapter<N>.html` for each chapter as an HTML fragment. The chapter page inserts it without changes. Start with `<p class="lead">` and one sentence. Then write sections that start with `<h2 id="sN">`. Use only these elements: `h2 h3 p ul ol li table caption thead tbody tr th td pre code strong em sup blockquote details summary a br figure`, and `<div class="rule">` for a rule. Put a picture as `<figure data-figure="<id>"></figure>` on its own line. Do not use scripts, styles, `style` attributes or event attributes. Write code blocks as `<pre><code class="language-python">`. Write a hint as `<details><summary>Подсказка 1</summary>...</details>`. Give external links `target="_blank" rel="noopener noreferrer"`.
+3. Write `set.go`. Embed each lesson with `//go:embed chapter<N>.html` in a `string` variable. Export `var Set = sets.LearningSet{...}` with the `Slug`, `Title`, `Summary`, `Topics` and `Chapters` of the set, with the chapters in reading order. Give each chapter a `Title`, a `Summary`, its `Lesson`, `Tasks`, `Cards`, `Links` and `Figures`. For each task, give the problem `URL` on LeetCode or Codeforces, its `Number`, `Title`, `Difficulty`, `Topics`, `Note` and `Statement`, and the standard tests in `Tests`. Do not change the slug of a published set. The quiz attempts keep the deck as `<set slug>-<chapter number>`.
+4. Describe each picture in `Figures` of its chapter, in the order of the placeholders in the lesson. A figure has an ID, a Russian title and one or more frames. A frame has a Russian caption and rows of cells. A row can have a label, marked cells, dimmed cells, pointers under the cells and a window bracket. A row with `Tree: true` draws its cells as a binary tree in `heapq` order: the children of place i are places 2i + 1 and 2i + 2. An empty string is an empty place. A tree row has no pointers and no window. A marked cell is a cell that the step works on. A dimmed cell holds a value that a move removed. Do not show a pointer that is past the end of its row. Say in the caption where that pointer is. Make each frame from a trace of the algorithm on the numbers of the picture.
+5. Write `solutions.go`. Export `var References = map[string]sets.Reference{...}` with a reference solution for each task, by task slug. A `call` reference has `Arity` and `Call`, and `Call` returns the value that the tests compare. A `stdio` reference has `Stdio`, and `Stdio` returns the standard output. First check the constraints of the statement with the helpers in `backend/internal/sets/constraints.go`, for example `sets.Int`, `sets.Ints` and `sets.NewReader`. A failed check panics with `sets.ErrConstraints` from `backend/internal/sets/reference.go`. The references stay on the server, so the student cannot read them.
+6. Write `generators.go`. Export `var Generators = map[string]sets.Generator{...}` with a generator of hidden tests for each task, by task slug. A generator gets a seeded random function and returns 10 to 16 inputs in the test format of the task. A set without tasks needs no `solutions.go` and no `generators.go`.
+7. In `backend/internal/sets/content/content.go`, import the package. Add its `Set` to `Sets`. The order of `Sets` is the display order. Add its `References` to `References` and its `Generators` to `Generators`.
+8. Find the hard words in the student text: the summaries, the lessons, the statements, the notes and the cards. For each hard word that `shared/glossary.ts` does not have, add an entry. Give the entry a pattern for the word and its forms. Give it a plain Russian tip of one or two short sentences. Add the start of the word to `hardWord` in `web/glossary.test.ts`. Do not add a word that has two meanings in the sets. Use exact English names such as `Array`, `Hash Table`, `Two Pointers`, `Heap (Priority Queue)`, `Queue`, `Deque`, and `Stack`. Use precise names such as `Min-Heap` or `Monotonic Deque` when explaining an implementation. Keep Python API names such as `heapq` and `collections.deque` unchanged. Use "очередь" only for a real line of people.
+9. Write the JSON copy of the learning sets again. The web tests and the browser tests read this copy in `backend/internal/sets/settest/sets.json`. Run this command in `backend/`:
+
+   ```bash
+   go test ./internal/sets/content/ -run TestSetsEqualTheFile -update
+   ```
+
+10. Run the checks, see [Checks](#checks). In `backend/`, `go test ./...` runs the content checks of `backend/internal/notebook/content_checks_test.go` and `backend/internal/notebook/sets_references_test.go`. They check content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, English technical names, problem cost notes, and reference answers. `bun run test` checks the glossary coverage. `bun run test:browser` checks executable lesson outputs, figures, and navigation.
+
+The file `backend/internal/sets/settest/references.json` has recorded hidden tests of earlier tasks. A task without recorded hidden tests needs no entry there.
+
+To add a chapter to a published set:
+
+1. Write `chapter<N>.html` for the new chapter. Use the next number after the last chapter.
+2. In `set.go` of the set, embed the new lesson and add the chapter at the end of `Chapters`. Add a new chapter only after the last chapter, because the quiz attempts keep the deck as `<set slug>-<chapter number>`.
+3. For each new task, add a reference to `References` in `solutions.go` and a generator to `Generators` in `generators.go`.
+4. Add the missing hard words, as in step 8 of the list above.
+5. Write `sets.json` again and run the checks, as in steps 9 and 10 of the list above.
 
 ## AI tutor
 
-The AI tutor uses the parent's ChatGPT plan through Sign in with ChatGPT. The plan must be ChatGPT Plus or Pro. The Worker keeps the ChatGPT tokens in D1. It encrypts them with AES-GCM and the key in the `TUTOR_TOKEN_KEY` secret. The tokens never go to the browser.
+The AI tutor uses the Anthropic API with the model Claude Opus 5.5 (`claude-opus-5-5`), adaptive thinking and the effort `xhigh`. When the API declines a question for this model, another Claude model of the API can answer it. The server uses the API key of the parent. On AWS, the key is in the SecureString parameter `/redlamp/anthropic-api-key`, see [Secrets](#secrets). The server reads the parameter that `ANTHROPIC_API_KEY_PARAMETER` names. When `ANTHROPIC_API_KEY` has a value, the server uses that value and does not read the parameter. The server reads the key when it starts.
 
-OpenAI permits plan usage for open-source and locally hosted apps. For a remotely hosted app, OpenAI asks for the [interest form](https://openai.com/form/sign-in-with-chatgpt-interest/). A Worker is a remotely hosted app. The student also uses the plan of the parent. The parent decides if these conditions are acceptable.
+Each question of the student goes to Anthropic under the API account of the parent, with the earlier messages of the chat and the context of the open page. This context can contain the problem, the LeetCode or Codeforces statement, the homework instructions, the lesson text, and the draft or the newest saved attempt of the student with its notes and code. For a problem in a set chapter, the context also has the lesson text of the first such chapter.
 
-Create the key and upload it:
+The notebook has no usage cap. The parent sets a spend limit in the Anthropic Console.
 
-```sh
-openssl rand -base64 32 | bunx wrangler secret put TUTOR_TOKEN_KEY
-```
+The tutor gives hints. It does not write the solution, also when the student asks for it. For a new question about how to solve a problem, it asks one guiding question. When the student asks for more help, it names the idea, then gives the key step on a small example, and then names the parts of the function. When the student asks it to check the code, it tells about one bug in each answer and gives a small input that shows the bug. It does not write the corrected code. The rules are in `backend/internal/notebook/tutor-prompt.txt`.
 
-For local development, add `TUTOR_TOKEN_KEY=<value>` to `.dev.vars`. Use a value from `openssl rand -base64 32`. A missing key or a key that is not 32 bytes stops the tutor with "The AI tutor needs configuration."
+On a problem page with code, **Оценить решение с ИИ** asks the tutor for an evaluation of the code and the notes of the student. The answer ends with a score from 1 to 10. The rules of the evaluation are in `backend/internal/notebook/evaluate-prompt.txt`.
 
-Apply the remote migrations and upload the secret before you deploy. A version gets only the secrets that exist when you upload it. `preview_urls = false` in `wrangler.toml` turns off the Version URLs, because a Version URL serves an old version with its old code and the production database.
+Each problem and set has one chat. The student selects **Спросить ИИ** on these pages. On a screen of 1400 px and wider, the chat panel stays open beside the page, also on the next page. On a smaller screen, the panel opens over the page. Ctrl+Enter or Cmd+Enter sends the message. On a chapter page, the student can also select text in the lesson and choose **Объяснить с ИИ**. See [Learning sets](#learning-sets).
 
-To connect ChatGPT:
+Only the student can read and use the chats. The parent cannot read them, and the pages of the parent show no tutor.
 
-1. As the parent, open **AI tutor** and select **Continue with ChatGPT**.
-2. Open the ChatGPT sign-in page and approve access. The browser then shows an error page for `127.0.0.1`. This is expected.
-3. Copy the full address from that page. Paste it in **Address from the error page** and select **Connect**. Do this at once: the sign-in expires after 10 minutes, and the code in the address is valid for a short time.
+The thinking text of the model can contain the full solution, so it never goes to the browser. The server sends only the text of the answer. While the model thinks, the server sends a sign every 10 seconds, and the panel shows "Репетитор думает." The server stops a request to Anthropic after 9 minutes.
 
-After the connection, select the model in **Model**. The list contains the models of the plan. A new connection reads the list again. It keeps the selected model when the new list contains it.
+The notebook keeps a turn only when the answer is complete. When the browser closes the connection, the server still reads the answer to its end and keeps the turn. If an answer stops, the student sends the question again. The tutor shows these errors:
 
-The tutor gives hints. It does not write the solution, also when the student asks for it. For a new question about how to solve a problem, it asks one guiding question. When the student asks for more help, it names the idea, then gives the key step on a small example, and then names the parts of the function. When the student asks it to check the code, it tells about one bug in each answer and gives a small input that shows the bug. It does not write the corrected code. The rules are in `src/leetcode/tutor-prompt.txt`.
-
-Each problem and set has one chat. The student selects **Ask AI** on these pages. On a screen of 1400 px and wider, the chat panel stays open beside the page, also on the next page. On a smaller screen, the panel opens over the page. Ctrl+Enter or Cmd+Enter sends the message. On a chapter page, the student can also select text in the lesson and choose **Explain with AI**. See [Learning sets](#learning-sets).
-
-Only the student can read and use the chats. The parent cannot read them, and the pages of the parent show no tutor. The **AI tutor** page of the parent only manages the ChatGPT connection. The notebook keeps a turn only when the answer is complete. If an answer stops, the student sends the question again.
-
-Each question of the student goes to OpenAI under the ChatGPT account of the parent, with the earlier messages of the chat and the context of the open page. This context can contain the problem, the LeetCode statement, the homework instructions, the notes and code of the student, and the lesson text. For a problem in a set chapter, the context also has the lesson text of the first such chapter. The tutor uses the same plan limits as the parent's own ChatGPT and Codex use. On ChatGPT Plus, all apps share one five-hour limit. Use **Manage usage** to see the usage.
-
-The connection stays valid while the tutor is in use. After 30 days with no tutor use, the refresh token expires. Then connect again.
-
-**Disconnect** revokes the ChatGPT tokens and removes them from D1. If ChatGPT does not confirm the revocation, remove the app in the ChatGPT settings. OpenAI does not tell the notebook about a removal in the ChatGPT settings.
-
-To rotate the key, select **Disconnect** before you upload a new key, so that ChatGPT revokes the old tokens. Then upload the new `TUTOR_TOKEN_KEY` and connect again. If you changed the key first, the page still shows Connected: select **Disconnect**, and then remove the app in the ChatGPT settings.
+| Code | Cause |
+|---|---|
+| `setup_required` | The server has no API key, or the Anthropic API refuses the key, the billing or the permission. |
+| `ai_usage_limit` | The Anthropic API answers with a rate limit. |
+| `ai_unavailable` | The Anthropic API is overloaded or has an error, or the server cannot reach it. |
+| `ai_interrupted` | The answer stops before its end, reaches the token limit or takes more than 9 minutes, or the server cannot store the turn. |
+| `ai_refused` | The model refuses to answer the message. |
+| `ai_failed` | The Anthropic API refuses the request for another reason. |
 
 ## Levels and badges
 
@@ -183,99 +225,134 @@ A badge stays earned, except Уровень 5: it shows the current level. The s
 
 The hidden tests or **Решено** set the acceptance, and the understanding is automatic. The **Today** counts do not include archived problems, so they can be different from the XP.
 
-## Cloudflare setup
+## AWS setup
 
-Use an account with Workers Paid. It includes D1. Check the account's existing usage before deployment. The application uses no R2 storage. Dictation uses Workers AI. Its free allocation is 10,000 neurons a day, about 214 minutes of dictation with `@cf/openai/whisper-large-v3-turbo`. More dictation costs $0.011 for each 1,000 neurons, about $0.0005 for each minute ([pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)). `bun run dev` also sends dictation to Workers AI. The tests do not.
+The site runs in one AWS account. The templates are in `infra/`. Route 53 takes the key of a DNSSEC key-signing key only from us-east-1, and CloudFront takes a certificate only from us-east-1. For these reasons, the zone stack and the edge stack are in us-east-1. The other stacks are in eu-central-1.
 
-Authenticate Wrangler:
+| Stack | Region | Template | Parameters | Outputs |
+|---|---|---|---|---|
+| `redlamp-dns` | us-east-1 | `infra/dns.yaml` | `AlarmEmail` | `HostedZoneId`, `NameServers` |
+| `redlamp-data` | eu-central-1 | `infra/data.yaml` | none | `ClusterEndpoint`, `ClusterArn` |
+| `redlamp-api` | eu-central-1 | `infra/template.yaml` | `ClusterEndpoint`, `ClusterArn`, `DistributionId`, `AlarmEmail` | `FunctionUrl`, `FunctionRoleArn` |
+| `redlamp-edge` | us-east-1 | `infra/edge.yaml` | `HostedZoneId`, `FunctionUrl` | `BucketName`, `DistributionId`, `DistributionDomainName` |
+| the pipeline stack | eu-central-1 | `infra/pipeline.yaml` | `AlarmEmail` | none |
 
-```sh
-bunx wrangler login
-```
+- `redlamp-dns` has the zone `redlamp.me`, the SPF and DMARC records of a domain that sends no mail, the KMS key and the key-signing key of DNSSEC, and two DNSSEC alarms on the topic `redlamp-dns-alarms`. CloudFormation keeps the zone when it deletes the stack, because the domain registration names the name servers of this zone.
+- `redlamp-data` has the Aurora DSQL cluster with deletion protection and its daily backup. See [Backup and recovery](#backup-and-recovery).
+- `redlamp-api` is an AWS SAM template. It has the Lambda function of `backend/cmd/api` on arm64, with 512 MB of memory and a timeout of 600 seconds. Lambda runs at most 10 instances of the function at one time. The function URL uses IAM authentication and response streaming. The stack also has a log group with 30 days of retention, the alarm `redlamp-api-errors` on the topic `redlamp-api-alarms`, and a monthly cost alert at 10 USD for AWS Lambda and Amazon CloudFront.
+- `redlamp-edge` has the certificate of `redlamp.me` and `www.redlamp.me`, the site bucket `redlamp-site-<account ID>`, the CloudFront distribution with its viewer request function, and the alias records of the two names.
+- The pipeline stack has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, and the topic `redlamp-pipeline-alarms` for a failed execution.
 
-The `[[d1_databases]]` binding in `wrangler.toml` contains the ID of the production database. To use a new database, create it:
+CloudFront sends `/leetcode`, `/leetcode.html` and `/leetcode/*` to the function URL, except `/leetcode/assets/*`. It sends the other paths to the site bucket. On the public site, a path that ends with a slash gets `index.html`, and a path without a dot gets the extension `.html`. A request to `www.redlamp.me` gets a redirect to `https://redlamp.me` with the same path and query. CloudFront signs each request to the function URL, so the browser sends the SHA-256 of the body of each change request in the header `x-amz-content-sha256`.
 
-```sh
-bunx wrangler d1 create redlamp-leetcode
-```
+The function has these environment variables: `DSQL_ENDPOINT` with the cluster endpoint, `PUBLIC_ORIGIN` with `https://redlamp.me`, `LEETCODE_ACCOUNTS_PARAMETER` with `/redlamp/leetcode-accounts`, and `ANTHROPIC_API_KEY_PARAMETER` with `/redlamp/anthropic-api-key`. The function connects to the cluster as the database role `app`. `cmd/migrate` maps this role to the IAM role of the function. Sessions expire after seven days. The server permits 10 sign-in attempts in 60 seconds for each source address. Each function instance counts the attempts separately.
 
-Then replace the `database_id` value in `wrangler.toml` with the returned ID.
+### Secrets
 
-Apply the remote migrations. Then upload the account secret:
+The secrets are SecureString parameters of SSM Parameter Store in eu-central-1. The owner writes both parameters. The function stack lets the function read them. The server reads each secret from the parameter that its variable names: `LEETCODE_ACCOUNTS_PARAMETER` and `ANTHROPIC_API_KEY_PARAMETER`. When `LEETCODE_ACCOUNTS` or `ANTHROPIC_API_KEY` has a value, the server uses that value and does not read the parameter. The server reads both secrets when it starts, so a function instance that already runs keeps the old values.
 
-```sh
-bunx wrangler d1 migrations apply redlamp-leetcode --remote
-bunx wrangler secret put LEETCODE_ACCOUNTS < .wrangler/leetcode-accounts.json
-```
+- `/redlamp/leetcode-accounts`: the accounts secret, the standard output of `go run ./cmd/credentials`.
+- `/redlamp/anthropic-api-key`: the Anthropic API key of the parent.
 
-Deploy after the local checks pass:
+The repository is public, so the alarm address is not in the templates. The stacks `redlamp-dns` and `redlamp-api` and the pipeline stack take it as the parameter `AlarmEmail`. SNS sends a message only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours. The cost alert of `redlamp-api` also goes to this address.
 
-```sh
-bun run deploy
-```
+### First deploy
 
-The production origin is `redlamp.me`. Notebook reads on `www.redlamp.me` redirect to that origin. Sessions expire after seven days. Login permits approximately ten attempts per source IP per minute at each Cloudflare location.
+The stacks take outputs of other stacks as parameters. For the first deploy, use this order:
 
-Check login, logout, and a normal draft save on the deployed Worker. The Cloudflare dashboard shows the CPU time and the D1 usage of the Worker.
+1. Deploy `redlamp-dns` with `AlarmEmail`. The domain registration of `redlamp.me` must name the name servers of the zone. The output `NameServers` gives them.
+2. Deploy `redlamp-data`.
+3. Write the two SecureString parameters.
+4. Deploy `redlamp-api` with `ClusterEndpoint` and `ClusterArn` from `redlamp-data`, and with `AlarmEmail`. Leave `DistributionId` empty. The distribution needs the function URL, so the first deploy of this stack has no distribution.
+5. Deploy `redlamp-edge` with `HostedZoneId` from `redlamp-dns` and `FunctionUrl` from `redlamp-api`. ACM adds the validation records of the certificate to the zone.
+6. Deploy the pipeline stack with `AlarmEmail`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console.
+
+`infra/buildspec-deploy.yml` has the deploy command of each stack, with its region and its parameters. After the first deploy, each execution of the pipeline applies the migrations and deploys `redlamp-api` again with `DistributionId` from `redlamp-edge`. See [Releases](#releases).
 
 ## Releases
 
 The sidebar shows the version from `package.json`. The versions follow [Semantic Versioning](https://semver.org/). Increase the version in `package.json` in the pull request that changes the notebook. A feature increases the minor version. A fix increases the patch version.
 
-Each release must have a published Git tag named `v<version>` at the deployed commit. After the pull request is merged, use the clean merged commit to create and publish the signed tag. Apply pending database migrations before deployment:
+A push to `main` starts the pipeline `redlamp` in eu-central-1. The pipeline runs one execution at a time, so two pushes deploy in their order. It has three stages:
 
-```sh
-release_version=$(bun -p 'require("./package.json").version')
-git tag -s "v$release_version" -m "Release $release_version"
-git push origin "v$release_version"
-bunx wrangler d1 migrations apply redlamp-leetcode --remote
-bun run deploy
-gh release create "v$release_version" --verify-tag --title "v$release_version" --notes-from-tag
-```
+1. Source: the connection `redlamp-github` gives a Git clone of `main`.
+2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.15 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
+3. Deploy: the CodeBuild project `redlamp-deploy` runs `infra/buildspec-deploy.yml`. It deploys the stacks in this order: `redlamp-dns`, `redlamp-data`, the database migrations, `redlamp-api`, `redlamp-edge`. Then it uploads `dist/` to the site bucket and clears the cache of CloudFront.
 
-`bun run build` compiles assets without checking the release tag. This also applies to production builds on `main`. `bun run deploy` rejects uncommitted changes and a missing or incorrect remote tag.
+The migrations run before the new code of the function. They are the files of `backend/migrations/`, with one SQL statement in each file. `cmd/migrate` applies the files that the table `schema_migrations` does not have, in the order of their names. On AWS, it connects as the database role `admin` and maps the database role `app` to the IAM role of the function.
+
+A failed execution sends a message to the topic `redlamp-pipeline-alarms`. CloudFormation changes the four stacks of the site with the role of the pipeline stack. This role can give each policy to an IAM role with the prefix `redlamp-`, so a commit on `main` has the rights of an administrator of the account.
+
+After a deploy, check sign-in, sign-out, and a normal draft save on `https://redlamp.me/leetcode`. The logs of the function are in the log group of `redlamp-api`.
 
 ## Credential rotation
 
-Run the account-generation command again with the intended usernames. Save the new passwords. Then upload the new `LEETCODE_ACCOUNTS` secret. The command generates new credentials for both accounts. Changing an account's username or password digest invalidates its existing sessions. For local development, replace the account-secret value in `.dev.vars`. Then restart Wrangler.
+Run the account-generation command again with the intended usernames. Run it in `backend/`, in an interactive terminal:
 
-## Database export and recovery
-
-Export before a migration that can remove data. Keep the export private and outside `public/` and `dist/`:
-
-```sh
-umask 077
-bunx wrangler d1 export redlamp-leetcode --remote --output .wrangler/redlamp-leetcode-backup.sql
+```bash
+go run ./cmd/credentials parent-name student-name
 ```
 
-D1 keeps 30 days of recovery history on Workers Paid ([Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/#notes)). To inspect a recovery point, use a selected timestamp with its UTC offset:
+Save the new passwords. Write the standard output to the parameter `/redlamp/leetcode-accounts`. The command generates new credentials for both accounts. Changing an account's username or password digest invalidates its existing sessions. For a local server, set `LEETCODE_ACCOUNTS` to the new output, as in [Local setup](#local-setup). Then restart the server.
 
-```sh
-bunx wrangler d1 time-travel info redlamp-leetcode
-bunx wrangler d1 time-travel info redlamp-leetcode --timestamp "2026-10-07T10:00:00+00:00"
-```
+To rotate the API key of the tutor, write the new key to the parameter `/redlamp/anthropic-api-key`. A function instance that already runs keeps the old accounts and the old key until it stops, see [Secrets](#secrets).
 
-Select the intended point. Check it before you restore the database. Restore replaces the whole database, including session records. Later notebook changes are removed. Set `BOOKMARK` to the selected value from the command output. Then run this command:
+## Backup and recovery
 
-```sh
-bunx wrangler d1 time-travel restore redlamp-leetcode --bookmark "$BOOKMARK"
-```
+AWS Backup makes a backup of the cluster each day at 17:00 UTC and keeps it for 35 days, in the vault `redlamp-data`. Each backup is a full copy of the cluster. A backup needs a cluster in the Active state. A cluster without connections goes to the Idle state, and its backup fails. For this reason, the backup starts in the hours of normal use. Aurora DSQL refuses to delete the cluster while deletion protection is on.
 
-Keep the previous bookmark from the restore output if you need to undo the restore. Rotate both accounts after recovery to invalidate sessions from the restored database. See [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) for the recovery procedure.
+A restore makes a new cluster from a backup. Each pipeline execution gives `redlamp-api` the endpoint and the ARN of the cluster from the outputs of `redlamp-data`. The restored cluster has the session records of the backup. Rotate both accounts after recovery to invalidate these sessions.
 
 ## Checks
 
-Browser tests run a local Worker and D1 with fixed test credentials. They do not use production data.
+The Go tests and the browser tests use the local PostgreSQL and fixed test credentials. They do not use production data. Set `TEST_DATABASE_URL` first, see [Local setup](#local-setup).
 
-```sh
-bun install --frozen-lockfile
-bunx playwright install chromium
+Run the web checks in the repository root:
+
+```bash
 bun run lint
-bun run typecheck
-bun run build
-bun run test:browser
-bun run test
-bunx wrangler deploy --dry-run --outdir .wrangler/leetcode-dry-run
 ```
 
-Browser reports and screenshots are in `.wrangler/playwright/`. The dry run writes its output to `.wrangler/leetcode-dry-run/`. Generic JavaScript and CSS assets are public. The Worker checks access before serving notebook data, lessons, or the application shell.
+```bash
+bun run typecheck
+```
+
+```bash
+bun run test
+```
+
+`bun run test` builds the site and then runs the Vitest tests in `web/`.
+
+Run the Go checks in `backend/`:
+
+```bash
+go vet ./...
+```
+
+```bash
+go test ./...
+```
+
+```bash
+golangci-lint run ./...
+```
+
+Without `TEST_DATABASE_URL`, `go test` skips the database tests. When the variable `CI` is set, a missing `TEST_DATABASE_URL` fails them.
+
+Run the browser tests in the repository root. Install Chromium for Playwright one time:
+
+```bash
+bunx playwright install chromium
+```
+
+Then run the tests:
+
+```bash
+bun run test:browser
+```
+
+`bun run test:browser` builds the site, builds the Go commands `api` and `migrate` to `.playwright/bin/`, and runs the Playwright tests in Chromium. Each test starts its own Go server with a new schema in the database of `TEST_DATABASE_URL`. These servers have no tutor key and no speech service, and they cannot reach leetcode.com. The cases "homework navigation with Noto Sans" need the system font Noto Sans. The report is in `.playwright/report/`. The results, with the screenshots of failed tests, are in `.playwright/results/`.
+
+The workflow `Checks` runs the web checks in the job `checks` and the browser tests in the job `browser`, for each push and pull request. The workflow `Backend` runs the Go checks in the job `go` when a change touches `backend/`, `shared/answers.cases.json` or the workflow file.
+
+The notebook assets in `/leetcode/assets/` are public. The server checks the session before it serves notebook data, lessons, or the application shell.
