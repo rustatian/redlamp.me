@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The redlamp.me zone, its mail policy records, and the DNSSEC key with its alarms. The stack is in us-east-1.
+
+Parameters:
+  # The repository is public, so the address is a stack parameter.
+  AlarmEmail:
+    Type: String
+    NoEcho: true
+    Description: The email address that gets the alarms of the stack.
+
+Resources:
+  # Retain: the domain registration names the name servers of this zone, and a new zone gets other ones.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-deletionpolicy.html
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-updatereplacepolicy.html
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: redlamp.me
+
+  # The domain sends no mail: SPF names no sender, and DMARC tells a receiver to reject a message that fails.
+  # The DNSSEC guide recommends a maximum TTL of 1 hour in a zone before signing is turned on.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable-signing-step-1
+  MailRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      RecordSets:
+        - Name: redlamp.me
+          Type: TXT
+          TTL: '3600'
+          ResourceRecords:
+            - '"v=spf1 -all"'
+        - Name: _dmarc.redlamp.me
+          Type: TXT
+          TTL: '3600'
+          ResourceRecords:
+            - '"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"'
+
+  # Route 53 takes the key of a key-signing key only from us-east-1, as an asymmetric ECC_NIST_P256 key for signing.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html
+  # The first statement is the default key policy: the IAM policies of the account control the key.
+  # https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#key-policy-default-allow-root-enable-iam
+  # The two statements for dnssec-route53.amazonaws.com are the ones that Route 53 needs. The conditions limit the use of the key to this zone.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
+  DnssecKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: The key of the DNSSEC key-signing key of the zone redlamp.me.
+      KeySpec: ECC_NIST_P256
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow Route 53 DNSSEC Service
+            Effect: Allow
+            Principal:
+              Service: dnssec-route53.amazonaws.com
+            Action:
+              - kms:DescribeKey
+              - kms:GetPublicKey
+              - kms:Sign
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !Sub 'arn:aws:route53:::hostedzone/${HostedZone}'
+          - Sid: Allow Route 53 DNSSEC to CreateGrant
+            Effect: Allow
+            Principal:
+              Service: dnssec-route53.amazonaws.com
+            Action: kms:CreateGrant
+            Resource: '*'
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: true
+
+  # The resource AWS::Route53::DNSSEC turns signing on for a zone, and it needs a key-signing key with the status ACTIVE.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-route53-dnssec.html
+  # https://docs.aws.amazon.com/Route53/latest/APIReference/API_EnableHostedZoneDNSSEC.html#API_EnableHostedZoneDNSSEC_Errors
+  # A change of Name, HostedZoneId or KeyManagementServiceArn replaces the key-signing key.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-route53-keysigningkey.html
+  KeySigningKey:
+    Type: AWS::Route53::KeySigningKey
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      KeyManagementServiceArn: !GetAtt DnssecKey.Arn
+      Name: redlamp_me
+      Status: ACTIVE
+
+  # SNS sends the alarms to the address only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours.
+  # https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: redlamp-dns-alarms
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+
+  # Route 53 recommends an alarm on each of the two metrics below. It publishes them in us-east-1, one value in 4 hours for each zone, so the period is 4 hours.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec.html
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/monitoring-hosted-zones-with-cloudwatch.html#cloudwatch-metrics-route-53-hosted-zones
+  # A period with no value counts as good, so an alarm is in the OK state before its first value comes.
+  # https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html
+  # The value is 1 while an object of the zone is in the INTERNAL_FAILURE state. The zone then accepts no other change.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-troubleshoot.html
+  DnssecInternalFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: redlamp-dnssec-internal-failure
+      AlarmDescription: An object of the zone redlamp.me is in the INTERNAL_FAILURE state.
+      Namespace: AWS/Route53
+      MetricName: DNSSECInternalFailure
+      Dimensions:
+        - Name: HostedZoneId
+          Value: !Ref HostedZone
+      Statistic: Sum
+      Period: 14400
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  # The value is the number of key-signing keys in the ACTION_NEEDED state: Route 53 lost access to the KMS key. A signed zone then fails for validating resolvers after its last signature expires.
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-troubleshoot.html
+  DnssecKeyActionNeededAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: redlamp-dnssec-key-action-needed
+      AlarmDescription: Route 53 cannot use the KMS key of the key-signing key of the zone redlamp.me.
+      Namespace: AWS/Route53
+      MetricName: DNSSECKeySigningKeysNeedingAction
+      Dimensions:
+        - Name: HostedZoneId
+          Value: !Ref HostedZone
+      Statistic: Sum
+      Period: 14400
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+Outputs:
+  HostedZoneId:
+    Value: !Ref HostedZone
+  NameServers:
+    Value: !Join [',', !GetAtt HostedZone.NameServers]
