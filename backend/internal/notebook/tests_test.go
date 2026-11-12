@@ -356,6 +356,8 @@ func TestTestsUnknownProblemAndMethods(t *testing.T) {
 		{name: "change of the standard tests", path: "tests", method: http.MethodPut, wantStatus: 405},
 		{name: "statement of an unknown problem", path: "statement", method: http.MethodGet, wantStatus: 404},
 		{name: "change of the statement", path: "statement", method: http.MethodPut, wantStatus: 405},
+		{name: "expected answers of an unknown problem", path: "tests/expected", method: http.MethodPost, wantStatus: 404},
+		{name: "read of the expected answers", path: "tests/expected", method: http.MethodGet, wantStatus: 405},
 	}
 	s := newServerWithLeetCode(t, database(t), &fakeLeetCode{})
 	cookie := loginAs(t, s, "student")
@@ -430,6 +432,49 @@ func TestTestsOwn(t *testing.T) {
 			}](t, request(t, s, "/problems/"+id+"/tests", http.MethodGet, nil, cookie)).Own
 			if len(own) == 0 || !reflect.DeepEqual(own[len(own)-1], created) {
 				t.Errorf("last own test = %v, want the created test %v", own, created)
+			}
+		})
+	}
+}
+
+// The cases of test/tests.test.ts for POST /problems/{id}/tests/expected without a reference of a learning set.
+// 20 inputs of 10,000 Cyrillic characters are the largest request: two bytes for each character.
+func TestTestsExpected(t *testing.T) {
+	tests := []struct {
+		name         string
+		slug         string
+		role         string
+		inputs       any
+		wantStatus   int
+		wantExpected []any
+		wantCode     string
+	}{
+		{name: "expected answers without a reference", slug: "two-sum", role: "student", inputs: []string{"[[3, 3], 6]", "1"}, wantStatus: 200, wantExpected: []any{nil, nil}},
+		{name: "expected answers for the parent", slug: "two-sum", role: "parent", inputs: []string{"1"}, wantStatus: 200, wantExpected: []any{nil}},
+		{name: "twenty inputs at 10,000 characters", slug: "two-sum", role: "student", inputs: slices.Repeat([]string{strings.Repeat("ж", 10_000)}, 20), wantStatus: 200, wantExpected: slices.Repeat([]any{nil}, 20)},
+		{name: "twenty-one inputs", slug: "two-sum", role: "student", inputs: slices.Repeat([]string{"1"}, 21), wantStatus: 400, wantCode: "invalid_input"},
+		{name: "input over 10,000 characters", slug: "two-sum", role: "student", inputs: []string{strings.Repeat("1", 10_001)}, wantStatus: 400, wantCode: "invalid_input"},
+		{name: "input of a number", slug: "two-sum", role: "student", inputs: []any{1}, wantStatus: 400, wantCode: "invalid_input"},
+		{name: "inputs of a string", slug: "two-sum", role: "student", inputs: "1", wantStatus: 400, wantCode: "invalid_input"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool := database(t)
+			s := newServerWithLeetCode(t, pool, &fakeLeetCode{})
+			id := newID()
+			exec(t, pool, testsInsertProblem, id, tt.slug)
+			w := request(t, s, "/problems/"+id+"/tests/expected", http.MethodPost, map[string]any{"inputs": tt.inputs}, loginAs(t, s, tt.role))
+			if w.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body %s", w.Code, tt.wantStatus, w.Body.String())
+			}
+			if tt.wantCode != "" {
+				if got := errorCode(w); got != tt.wantCode {
+					t.Errorf("error code = %q, want %q", got, tt.wantCode)
+				}
+				return
+			}
+			if got := decode[map[string]any](t, w)["expected"]; !reflect.DeepEqual(got, tt.wantExpected) {
+				t.Errorf("expected = %v, want %v", got, tt.wantExpected)
 			}
 		})
 	}
