@@ -169,6 +169,8 @@ Resources:
       FunctionUrlConfig:
         AuthType: AWS_IAM
         InvokeMode: RESPONSE_STREAM
+      # The policy of the stack redlamp-pipeline. The CloudFormation role of the pipeline changes a role only with this boundary.
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/redlamp-boundary
       Policies:
         - Statement:
             # The database role app maps to this role (cmd/migrate); dsql:DbConnect allows no admin connection.
