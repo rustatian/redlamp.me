@@ -20,6 +20,7 @@ type Server struct {
 	// accounts is nil when the secret is not valid. Each request that needs an account then gets the 503 setup_required error.
 	accounts map[string]account
 	logins   limiter
+	leetcode LeetCode
 }
 
 // Config is the setup of a Server.
@@ -30,6 +31,8 @@ type Config struct {
 	PublicOrigin string
 	// Accounts is the LEETCODE_ACCOUNTS secret: the JSON of the two accounts.
 	Accounts string
+	// LeetCode gives the data of the problems of leetcode.com.
+	LeetCode LeetCode
 }
 
 const (
@@ -44,7 +47,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -104,6 +107,12 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, path string, user
 	if strings.HasPrefix(path, "/leetcode/api/") {
 		if user == nil {
 			return &HTTPError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "Войдите, чтобы продолжить."}
+		}
+		// The first handler that knows the path answers the request.
+		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleTests, s.handleStatement, s.handleRuns} {
+			if handled, err := handle(w, r, user); handled || err != nil {
+				return err
+			}
 		}
 		return &HTTPError{Status: http.StatusNotFound, Code: "not_found", Message: "Такого запроса к тетради нет."}
 	}

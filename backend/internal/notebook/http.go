@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -189,6 +190,18 @@ func readJSON(r *http.Request, maxBytes int64) (any, error) {
 	return value, nil
 }
 
+// stringify encodes a value as JSON without the escapes of <, > and &, as JSON.stringify does.
+// The line separators U+2028 and U+2029 become \u2028 and \u2029, which JSON.stringify writes as they are.
+func stringify(value any) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
+}
+
 // send writes the status and the body. A HEAD response has no body.
 func send(w http.ResponseWriter, r *http.Request, status int, body []byte) {
 	w.WriteHeader(status)
@@ -218,8 +231,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	_ = writeJSON(w, r, failure.Status, map[string]body{"error": {Code: failure.Code, Message: message, Fields: failure.Fields}})
 }
 
+// writeJSON writes a JSON response without the escapes of <, > and &, so a stored document comes back with its stored bytes.
 func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) error {
-	data, err := json.Marshal(value)
+	data, err := stringify(value)
 	if err != nil {
 		return err
 	}

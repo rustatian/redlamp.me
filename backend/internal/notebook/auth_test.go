@@ -49,7 +49,7 @@ func database(t *testing.T) *pgxpool.Pool {
 
 func serverWith(t *testing.T, pool *pgxpool.Pool, origin, accounts string) *Server {
 	t.Helper()
-	s, err := New(Config{DB: pool, PublicOrigin: origin, Accounts: accounts})
+	s, err := New(Config{DB: pool, PublicOrigin: origin, Accounts: accounts, LeetCode: &fakeLeetCode{}})
 	if err != nil {
 		t.Fatal(err)
 	}
