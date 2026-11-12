@@ -65,6 +65,31 @@ func TestConcurrentRequestsOfProblemsAndAttempts(t *testing.T) {
 			count:        "SELECT count(*) FROM problem_tests",
 			wantCount:    20,
 		},
+		{
+			name: "a problem gets one recall from two requests with one progress version",
+			setup: func(t *testing.T, _ *pgxpool.Pool, s *Server, cookie string) (string, []any, func() *httptest.ResponseRecorder) {
+				id := addProblem(t, s, cookie, raceProblem)
+				return "UPDATE problems SET version=version WHERE id=$1", []any{id},
+					func() *httptest.ResponseRecorder {
+						return call(s, http.MethodPost, "/leetcode/api/problems/"+id+"/reviews", `{"version":1,"result":"with_help","note":"","reviewedOn":"2026-10-07","nextReviewDate":null}`, cookie)
+					}
+			},
+			wantStatuses: []int{201, 409},
+			count:        "SELECT count(*) FROM reviews",
+			wantCount:    1,
+		},
+		{
+			name: "two reads of the game on one day record one visit",
+			setup: func(_ *testing.T, _ *pgxpool.Pool, s *Server, cookie string) (string, []any, func() *httptest.ResponseRecorder) {
+				return "INSERT INTO visits (day) VALUES ($1)", []any{time.Now().UTC().Format(time.DateOnly)},
+					func() *httptest.ResponseRecorder {
+						return call(s, http.MethodGet, "/leetcode/api/game", "", cookie)
+					}
+			},
+			wantStatuses: []int{200, 200},
+			count:        "SELECT count(*) FROM visits",
+			wantCount:    1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

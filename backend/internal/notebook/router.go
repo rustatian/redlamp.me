@@ -4,10 +4,12 @@ package notebook
 import (
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,6 +24,10 @@ type Server struct {
 	logins   limiter
 	leetcode LeetCode
 	sets     []LearningSet
+	// now is the clock of the rules that depend on the current day.
+	now func() time.Time
+	// random returns a random number from 0 to count-1. It chooses the recall days.
+	random func(count int) int
 }
 
 // Config is the setup of a Server.
@@ -50,7 +56,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, now: time.Now, random: rand.IntN}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -112,7 +118,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, path string, user
 			return &HTTPError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "Войдите, чтобы продолжить."}
 		}
 		// The first handler that knows the path answers the request.
-		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleTests, s.handleStatement, s.handleRuns} {
+		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleTests, s.handleStatement, s.handleRuns} {
 			if handled, err := handle(w, r, user); handled || err != nil {
 				return err
 			}
