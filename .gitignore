@@ -9,3 +9,6 @@ wrangler.toml.local
 
 # Build
 dist/
+
+# AWS SAM build output
+.aws-sam/
