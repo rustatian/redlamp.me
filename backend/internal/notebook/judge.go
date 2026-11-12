@@ -46,13 +46,21 @@ func units(value string) int {
 	return len(utf16.Encode([]rune(value)))
 }
 
-// cut keeps the first 2000 UTF-16 code units of a long text.
-func cut(value string) string {
+// head returns the first max UTF-16 code units of a text, and true when the text is longer.
+func head(value string, max int) (string, bool) {
 	encoded := utf16.Encode([]rune(value))
-	if len(encoded) <= 2000 {
-		return value
+	if len(encoded) <= max {
+		return value, false
 	}
-	return string(utf16.Decode(encoded[:2000])) + "…"
+	return string(utf16.Decode(encoded[:max])), true
+}
+
+// cut keeps the first 2000 characters of a long text.
+func cut(value string) string {
+	if start, long := head(value, 2000); long {
+		return start + "…"
+	}
+	return value
 }
 
 var errInput = errors.New("the input is not a list of the arguments")

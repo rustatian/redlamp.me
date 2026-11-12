@@ -280,18 +280,23 @@ func (s *Server) handleStatement(w http.ResponseWriter, r *http.Request, _ *Sess
 	if task, ok := s.setTask(problem.Slug); ok && task.Statement != "" {
 		statement.HTML = &task.Statement
 	} else if !strings.HasPrefix(problem.Slug, "cf-") {
-		// A failed lookup gives no text.
-		if raw, err := s.leetcode.Question(r.Context(), problem.Slug, "content"); err == nil && raw != nil {
-			var question struct {
-				Content string `json:"content"`
-			}
-			if json.Unmarshal(raw, &question) == nil && question.Content != "" {
-				plain := htmlText(question.Content)
-				statement.Text = &plain
-			}
+		if content := s.leetcodeContent(r.Context(), problem.Slug); content != "" {
+			plain := htmlText(content)
+			statement.Text = &plain
 		}
 	}
 	return true, writeJSON(w, r, http.StatusOK, statement)
+}
+
+// leetcodeContent returns the statement HTML of a LeetCode problem. A failed lookup and a problem without content give no text.
+func (s *Server) leetcodeContent(ctx context.Context, slug string) string {
+	var question struct {
+		Content string `json:"content"`
+	}
+	if raw, err := s.leetcode.Question(ctx, slug, "content"); err == nil && raw != nil {
+		_ = json.Unmarshal(raw, &question)
+	}
+	return question.Content
 }
 
 func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request, user *SessionUser) (bool, error) {

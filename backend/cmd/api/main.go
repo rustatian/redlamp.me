@@ -9,8 +9,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/anthropics/anthropic-sdk-go/v2"
+	"github.com/anthropics/anthropic-sdk-go/v2/option"
 	"github.com/aws/aws-lambda-go/lambdaurl"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rustatian/redlamp.me/backend/internal/db"
@@ -38,7 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets})
+	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, Anthropic: tutorClient(ctx)})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}
@@ -53,4 +57,27 @@ func main() {
 	}
 	log.Printf("listening on %s", *listen)
 	log.Fatal(http.ListenAndServe(*listen, srv))
+}
+
+// tutorClient returns the client of the Anthropic API, or nil when the server has no API key.
+// The key is the value of ANTHROPIC_API_KEY, or the SecureString parameter of SSM Parameter Store that ANTHROPIC_API_KEY_PARAMETER names.
+func tutorClient(ctx context.Context) *anthropic.Client {
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if name := os.Getenv("ANTHROPIC_API_KEY_PARAMETER"); key == "" && name != "" {
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err == nil {
+			var parameter *ssm.GetParameterOutput
+			if parameter, err = ssm.NewFromConfig(cfg).GetParameter(ctx, &ssm.GetParameterInput{Name: &name, WithDecryption: aws.Bool(true)}); err == nil {
+				key = aws.ToString(parameter.Parameter.Value)
+			}
+		}
+		if err != nil {
+			log.Printf("the API key of the tutor is not available: %v", err)
+		}
+	}
+	if key == "" {
+		return nil
+	}
+	client := anthropic.NewClient(option.WithAPIKey(key))
+	return &client
 }
