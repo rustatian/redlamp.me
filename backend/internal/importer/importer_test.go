@@ -97,6 +97,7 @@ func names(text, name string) bool {
 
 func TestRunImportsTheFixture(t *testing.T) {
 	// The row counts of the fixture files, in the order of the rule: parents before children.
+	// The file of postponements has no rows, so the import of an empty table has a test.
 	counts := []struct {
 		name string
 		rows int64
@@ -113,7 +114,7 @@ func TestRunImportsTheFixture(t *testing.T) {
 		{name: "problem_sets", rows: 3},
 		{name: "problem_tests", rows: 2},
 		{name: "test_runs", rows: 2},
-		{name: "postponements", rows: 2},
+		{name: "postponements", rows: 0},
 		{name: "tutor_messages", rows: 3},
 		{name: "card_answers", rows: 3},
 		{name: "quiz_attempts", rows: 2},
@@ -271,6 +272,8 @@ func TestVerifyFindsDifferences(t *testing.T) {
 		{name: "an empty string in place of a NULL", sql: "UPDATE tutor_messages SET quote = '' WHERE id = 'message-1'", tables: []string{"tutor_messages"}},
 		{name: "a whole number differs", sql: "UPDATE problems SET number = 2147483649 WHERE id = 'problem-2'", tables: []string{"problems"}},
 		{name: "a current submission differs", sql: "UPDATE homework_tasks SET current_submission_id = 'submission-1' WHERE id = 'task-1'", tables: []string{"homework_tasks"}},
+		{name: "the key of a one-column table differs", sql: "UPDATE visits SET day = '2026-10-08' WHERE day = '2026-10-05'", tables: []string{"visits"}},
+		{name: "the last column of the widest table differs", sql: "UPDATE problems SET progress_version = 3 WHERE id = 'problem-1'", tables: []string{"problems"}},
 		{name: "two tables differ", sql: "WITH gone AS (DELETE FROM visits WHERE day = '2026-10-06') INSERT INTO earned_badges (id) VALUES ('streak-30')", tables: []string{"visits", "earned_badges"}},
 	}
 	for _, tt := range tests {

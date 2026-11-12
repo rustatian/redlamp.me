@@ -1,8 +1,13 @@
 // Command import moves the notebook data from files of the D1 database into Aurora DSQL or PostgreSQL. It runs one time, at the cutover.
 //
-// Make one file for each table of importer.Tables in one folder, for example problems.json:
+// Make one file for each table of importer.Tables in a new and empty folder outside the repository, for example problems.json:
 //
-//	wrangler d1 execute redlamp-leetcode --remote --json --command "SELECT * FROM problems" > problems.json
+//	umask 077
+//	mkdir -p ~/redlamp-d1-export
+//	mkdir ~/redlamp-d1-export/<date>
+//	wrangler d1 execute redlamp-leetcode --remote --json --command "SELECT * FROM problems" > ~/redlamp-d1-export/<date>/problems.json
+//
+// Use a new folder for each export, because the check compares the database with the files and does not read D1.
 //
 // The database must have the schema of cmd/migrate and no rows. After the import the command compares each table with its file.
 package main

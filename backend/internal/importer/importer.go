@@ -29,12 +29,7 @@ var Tables = []string{
 }
 
 // One transaction of Aurora DSQL changes 3,000 rows and 10 MiB at most: https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html
-// A statement of PostgreSQL has 65,535 parameters at most: https://www.postgresql.org/docs/16/limits.html
-const (
-	maxRows       = 3000
-	maxBytes      = 8 << 20
-	maxParameters = 65535
-)
+const maxRows = 3000
 
 type column struct {
 	name    string
@@ -134,21 +129,11 @@ func load(ctx context.Context, pool *pgxpool.Pool, dir string) ([]table, error) 
 
 // insert stores the rows of a table in batches. Each batch is one statement in one transaction.
 func insert(ctx context.Context, pool *pgxpool.Pool, t table) error {
-	limit := min(maxRows, maxParameters/len(t.columns))
 	for start := 0; start < len(t.rows); {
 		var values []string
 		var args []any
-		size := 0
-		for end := start; end < len(t.rows) && end-start < limit; end++ {
+		for end := start; end < len(t.rows) && end-start < maxRows; end++ {
 			row := t.rows[end]
-			for _, value := range row {
-				if text, ok := value.(string); ok {
-					size += len(text)
-				}
-			}
-			if end > start && size > maxBytes {
-				break
-			}
 			marks := make([]string, len(row))
 			for i, value := range row {
 				// A task row gets its submission in the second step, because the submission row points to the task row.
