@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
-import { splitTerms } from '../shared/glossary';
+import { glossary, splitTerms } from '../shared/glossary';
+import content from '../backend/internal/sets/settest/sets.json';
 
 // Shows each term as [word]. The texts are the text nodes of one page and share seen, so a word marked in an earlier text stays plain in a later one.
 function marked(texts: string[]) {
@@ -59,4 +60,28 @@ it.each([
 	{ name: 'empty text', texts: [''], expected: [''] },
 ])('$name', ({ texts, expected }) => {
 	expect(marked(texts)).toEqual(expected);
+});
+
+// The learning sets are Go code. The file sets.json has their text for the checks of this file.
+const sets = content as unknown as { slug: string; summary: string; chapters: { summary: string; lesson: string; tasks: { title: string; statement?: string; note: string }[]; cards: { id: string; prompt: string; explain: string }[] }[] }[];
+
+// The hard words that need a tip in shared/glossary.ts. The list also has words that no set uses yet, so a new set with such a word fails until the word gets a tip.
+// An English name of a data structure is a word of its own: heapq, dequeue, collections.deque, deque(...) and deque.popleft are code.
+const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination)s?|monotonic|priority|hash\s+table|two\s+pointers|linear\s+scan|binary\s+search|sliding\s+window|dynamic\s+programming|brute\s+force|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|граф|бинарн)/giu;
+// The hard words of the text that no match of the patterns covers.
+const untipped = (text: string, patterns: RegExp[]) => [...text.matchAll(hardWord)].filter(word => !patterns.some(pattern => [...text.matchAll(pattern)].some(match => match.index <= word.index && word.index < match.index + match[0].length))).map(word => word[0]);
+// Code is not prose. The text of the other tags stays.
+const prose = (html: string) => html.replace(/<(pre|code)\b[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, '');
+it.each(sets.map(item => ({ name: item.slug, item })))('$name hard words have a tip', ({ item }) => {
+	const patterns = glossary.map(entry => entry.pattern);
+	const texts = [['summary', item.summary], ...item.chapters.flatMap((chapter, index) => [
+		[`chapter ${index + 1} summary`, chapter.summary], [`chapter ${index + 1} lesson`, prose(chapter.lesson)],
+		...chapter.tasks.flatMap(task => [[`${task.title} statement`, prose(task.statement ?? '')], [`${task.title} note`, task.note]]),
+		...chapter.cards.flatMap(card => [[`${card.id} prompt`, card.prompt], [`${card.id} explain`, card.explain]]),
+	])];
+	expect(texts.flatMap(([place, text]) => untipped(text, patterns).map(word => `${place}: ${word}`))).toEqual([]);
+});
+
+it('each tip is plain', () => {
+	expect(glossary.filter(entry => /[–—]/.test(entry.tip) || untipped(entry.tip, [entry.pattern]).length).map(entry => entry.tip)).toEqual([]);
 });

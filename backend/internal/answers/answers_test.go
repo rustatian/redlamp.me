@@ -10,7 +10,7 @@ import (
 )
 
 // caseFile is shared/answers.cases.json. The web test of shared/answers.ts reads the same file, so the two copies of the code stay equal.
-// The one-time script scripts/golden-answers.ts wrote the file from the TypeScript code.
+// A one-time script wrote the file from the TypeScript code in shared/answers.ts.
 type caseFile struct {
 	Parse []struct {
 		Name  string          `json:"name"`

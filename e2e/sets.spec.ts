@@ -1,9 +1,12 @@
 import { test, expect, signIn, addTask } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
-import type { Figure, Homework, LearningSetDetails, Problem } from '../shared/leetcode';
-import twoPointers1 from '../src/leetcode/sets/two-pointers/chapter1';
-import twoPointers2 from '../src/leetcode/sets/two-pointers/chapter2';
-import permutations2 from '../src/leetcode/sets/permutations-and-combinations/chapter2';
+import type { Figure, Homework, LearningSet, LearningSetDetails, Problem } from '../shared/leetcode';
+import { readFileSync } from 'node:fs';
+
+// The learning sets are Go code. The file sets.json has their text.
+const content = JSON.parse(readFileSync('backend/internal/sets/settest/sets.json', 'utf8')) as LearningSet[];
+const chapter = (slug: string, number: number) => content.find(set => set.slug === slug)!.chapters[number - 1];
+const twoPointers1 = chapter('two-pointers', 1), twoPointers2 = chapter('two-pointers', 2), permutations2 = chapter('permutations-and-combinations', 2);
 
 const setPath = '/leetcode/sets/permutations-and-combinations', chapterPath = `${setPath}/2`;
 

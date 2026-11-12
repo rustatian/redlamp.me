@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// goldenGame is testdata/game.json. The one-time generator in testdata/golden ran the Worker on the rows of each scenario
+// goldenGame is testdata/game.json. A one-time generator ran the Worker on the rows of each scenario
 // and stored its answer of GET /leetcode/api/game. Now is the moment of that run: the dates of the rows are relative to it.
 type goldenGame struct {
 	Now       time.Time `json:"now"`

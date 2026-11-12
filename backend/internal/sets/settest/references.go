@@ -14,7 +14,7 @@ import (
 )
 
 // references.json has the hidden test inputs and the reference answers of the Worker for each learning set task.
-// The one-time generator in internal/notebook/testdata/golden wrote it before the port of the references.
+// A one-time generator wrote it from the TypeScript code before the port of the references.
 //
 //go:embed references.json
 var references []byte
@@ -92,9 +92,10 @@ func short(text string) string {
 	return text
 }
 
-// Compare checks the references and the generators of one learning set against the tests of the Worker.
-// Each task has a reference and a generator. A reference gives the answers of the Worker to the standard tests of the task.
-// For each seed the generator gives the hidden test inputs of the Worker, and the reference gives the answers of the Worker to them.
+// Compare checks the references and the generators of one learning set against the recorded tests of the Worker.
+// Each task has a reference and a generator. A reference gives the recorded answers to the standard tests of the task.
+// For each seed the generator gives the recorded hidden test inputs, and the reference gives the recorded answers to them.
+// A task that came after the Worker has no recorded tests, and this check leaves it out.
 func Compare(t *testing.T, set sets.LearningSet, references map[string]sets.Reference, generators map[string]sets.Generator) {
 	t.Helper()
 	golden := References(t)
@@ -106,7 +107,7 @@ func Compare(t *testing.T, set sets.LearningSet, references map[string]sets.Refe
 		t.Run(task.Slug(), func(t *testing.T) {
 			want, ok := golden[task.Slug()]
 			if !ok {
-				t.Fatal("the Worker has no tests of this task")
+				t.Skip("the file has no recorded tests of this task")
 			}
 			reference, ok := references[task.Slug()]
 			if !ok {

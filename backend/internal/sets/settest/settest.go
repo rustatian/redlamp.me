@@ -10,12 +10,12 @@ import (
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
-// sets.json is the whole content of the learning sets of the Worker. The one-time generator in internal/notebook/testdata/golden wrote it.
+// sets.json is the JSON copy of the learning sets. The test TestSetsEqualTheFile of package content keeps it equal to the Go content and writes it with -update.
 //
 //go:embed sets.json
 var golden []byte
 
-// Golden returns the learning sets of the Worker. A test uses them as the content of a server, or compares the Go content with them.
+// Golden returns the learning sets of the file sets.json. A test uses them as the content of a server.
 func Golden(t testing.TB) []sets.LearningSet {
 	t.Helper()
 	var content []sets.LearningSet
