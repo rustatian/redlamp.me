@@ -1,0 +1,10 @@
+[
+  {
+    "results": [
+      {"id": "review-1", "problem_id": "problem-1", "result": "with_help", "note": "Нужна подсказка про хеш-таблицу.", "reviewed_on": "2026-10-06", "next_review_date": "2026-10-20", "created_at": "2026-10-06T17:45:12.345Z"},
+      {"id": "review-2", "problem_id": "problem-3", "result": "independent", "note": "", "reviewed_on": "2026-09-30", "next_review_date": null, "created_at": "2026-09-30T18:00:00.000Z"}
+    ],
+    "success": true,
+    "meta": {"duration": 0}
+  }
+]
