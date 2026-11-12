@@ -20,6 +20,7 @@ import (
 	"github.com/rustatian/redlamp.me/backend/internal/db"
 	"github.com/rustatian/redlamp.me/backend/internal/notebook"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
+	"github.com/rustatian/redlamp.me/backend/internal/transcribe"
 )
 
 func main() {
@@ -29,6 +30,8 @@ func main() {
 
 	ctx := context.Background()
 	var pool *pgxpool.Pool
+	// A server with -database-url has no speech service, so its dictation is not available.
+	var speech notebook.Transcriber
 	var err error
 	if *url != "" {
 		pool, err = db.OpenURL(ctx, *url)
@@ -38,11 +41,12 @@ func main() {
 			log.Fatal(cfgErr)
 		}
 		pool, err = db.Open(ctx, db.Config{Endpoint: os.Getenv("DSQL_ENDPOINT"), Region: cfg.Region, User: "app", Credentials: cfg.Credentials})
+		speech = transcribe.New(cfg)
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, Anthropic: tutorClient(ctx)})
+	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, Anthropic: tutorClient(ctx), Transcriber: speech})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}

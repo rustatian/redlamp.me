@@ -39,6 +39,8 @@ type Server struct {
 	tutor *anthropic.Client
 	// thinkingEvery is the longest time without an event in the answer stream of the tutor.
 	thinkingEvery time.Duration
+	// transcriber is nil when the server has no speech service. A dictation then gets the 503 dictation_unavailable error.
+	transcriber Transcriber
 }
 
 // Config is the setup of a Server.
@@ -59,6 +61,8 @@ type Config struct {
 	Generators map[string]sets.Generator
 	// Anthropic is the client of the Anthropic API for the tutor, or nil when the server has no API key.
 	Anthropic *anthropic.Client
+	// Transcriber is the speech service of the dictation, or nil when the server has none.
+	Transcriber Transcriber
 }
 
 const (
@@ -73,7 +77,7 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second, transcriber: cfg.Transcriber}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -135,7 +139,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, path string, user
 			return &HTTPError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "Войдите, чтобы продолжить."}
 		}
 		// The first handler that knows the path answers the request.
-		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleSets, s.handleQuiz, s.handleJudge, s.handleTests, s.handleStatement, s.handleRuns, s.handleTutor} {
+		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleSets, s.handleQuiz, s.handleJudge, s.handleTests, s.handleStatement, s.handleRuns, s.handleTutor, s.handleDictation} {
 			if handled, err := handle(w, r, user); handled || err != nil {
 				return err
 			}
