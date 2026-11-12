@@ -114,6 +114,7 @@ Resources:
           DSQL_ENDPOINT: !Ref ClusterEndpoint
           PUBLIC_ORIGIN: https://redlamp.me
           ANTHROPIC_API_KEY_PARAMETER: /redlamp/anthropic-api-key
+          LEETCODE_ACCOUNTS_PARAMETER: /redlamp/leetcode-accounts
       FunctionUrlConfig:
         AuthType: AWS_IAM
         InvokeMode: RESPONSE_STREAM
