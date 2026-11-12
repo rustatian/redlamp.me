@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - backend/**
+      - shared/answers.cases.json
       - .github/workflows/backend.yml
   pull_request:
     paths:
       - backend/**
+      - shared/answers.cases.json
       - .github/workflows/backend.yml
 
 permissions:

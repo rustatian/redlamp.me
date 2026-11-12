@@ -6,12 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
+	"github.com/rustatian/redlamp.me/backend/internal/sets/settest"
 )
 
 // request sends an API request from the public origin, as request() of test/client.ts.
@@ -112,9 +114,9 @@ func newServerWithLeetCode(t *testing.T, pool *pgxpool.Pool, leetcode LeetCode) 
 }
 
 // newServerWithSets returns a Server with the test accounts and the content of learning sets.
-func newServerWithSets(t *testing.T, pool *pgxpool.Pool, sets []LearningSet) *Server {
+func newServerWithSets(t *testing.T, pool *pgxpool.Pool, content []sets.LearningSet) *Server {
 	t.Helper()
-	s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Sets: sets})
+	s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Sets: content})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,40 +169,8 @@ func race(t *testing.T, pool *pgxpool.Pool, hold string, args []any, requests ..
 	return results
 }
 
-// goldenSets returns the learning sets of testdata/sets.json: the chapters and the problems of the TypeScript content.
-func goldenSets(t *testing.T) []LearningSet {
+// goldenSets returns the learning sets of the Worker, as the content of a test server.
+func goldenSets(t *testing.T) []sets.LearningSet {
 	t.Helper()
-	data, err := os.ReadFile("testdata/sets.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var stored []struct {
-		Slug     string `json:"slug"`
-		Title    string `json:"title"`
-		Chapters []struct {
-			Title string `json:"title"`
-			Tasks []struct {
-				URL        string   `json:"url"`
-				Number     *int64   `json:"number"`
-				Title      string   `json:"title"`
-				Difficulty string   `json:"difficulty"`
-				Topics     []string `json:"topics"`
-				Note       string   `json:"note"`
-			} `json:"tasks"`
-		} `json:"chapters"`
-	}
-	if err := json.Unmarshal(data, &stored); err != nil {
-		t.Fatal(err)
-	}
-	sets := make([]LearningSet, len(stored))
-	for i, set := range stored {
-		sets[i] = LearningSet{Slug: set.Slug, Title: set.Title, Chapters: make([]Chapter, len(set.Chapters))}
-		for j, chapter := range set.Chapters {
-			sets[i].Chapters[j].Title = chapter.Title
-			for _, task := range chapter.Tasks {
-				sets[i].Chapters[j].Tasks = append(sets[i].Chapters[j].Tasks, SetTask{URL: task.URL, Number: task.Number, Title: task.Title, Difficulty: task.Difficulty, Topics: task.Topics, Note: task.Note})
-			}
-		}
-	}
-	return sets
+	return settest.Golden(t)
 }

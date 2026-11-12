@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/rustatian/redlamp.me/backend/internal/db"
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // querier is the read and write interface of a pool and of a transaction.
@@ -98,9 +99,6 @@ func getProblem(ctx context.Context, q querier, id string) (Problem, error) {
 }
 
 var (
-	leetcodePath     = regexp.MustCompile(`^/problems/([a-z0-9]+(?:-[a-z0-9]+)*)(?:/|$)`)
-	codeforcesPath   = regexp.MustCompile(`^/(?:problemset/problem/(\d{1,6})|contest/(\d{1,6})/problem)/([A-Za-z]\d?)(?:/|$)`)
-	codeforcesSlug   = regexp.MustCompile(`^cf-(\d+)-([a-z]\d?)$`)
 	problemsPath     = regexp.MustCompile(`^/leetcode/api/problems(?:/([^/]+)(?:/(archive|restore))?)?$`)
 	frontendIDDigits = regexp.MustCompile(`^\d+$`)
 )
@@ -117,22 +115,13 @@ func problemSlug(value any) (string, error) {
 	if err != nil || u.Scheme != "https" || u.User != nil || (u.Port() != "" && u.Port() != "443") {
 		return "", invalidURL
 	}
-	host, path := strings.ToLower(u.Hostname()), u.EscapedPath()
-	if match := leetcodePath.FindStringSubmatch(path); host == "leetcode.com" && match != nil {
-		return match[1], nil
-	}
-	if match := codeforcesPath.FindStringSubmatch(path); host == "codeforces.com" && match != nil {
-		return "cf-" + match[1] + match[2] + "-" + strings.ToLower(match[3]), nil
+	if slug, ok := sets.Slug(strings.ToLower(u.Hostname()), u.EscapedPath()); ok {
+		return slug, nil
 	}
 	return "", invalidURL
 }
 
-func problemURL(slug string) string {
-	if match := codeforcesSlug.FindStringSubmatch(slug); match != nil {
-		return "https://codeforces.com/problemset/problem/" + match[1] + "/" + strings.ToUpper(match[2])
-	}
-	return "https://leetcode.com/problems/" + slug + "/"
-}
+func problemURL(slug string) string { return sets.URL(slug) }
 
 // problemInput is the checked data of a request that adds or changes a problem.
 type problemInput struct {

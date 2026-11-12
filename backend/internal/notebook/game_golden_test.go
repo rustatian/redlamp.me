@@ -45,7 +45,7 @@ func TestGameEqualsTheGoldenFile(t *testing.T) {
 	if len(golden.Scenarios) == 0 {
 		t.Fatal("testdata/game.json has no scenario")
 	}
-	sets := goldenSets(t)
+	content := goldenSets(t)
 	for _, tt := range golden.Scenarios {
 		t.Run(tt.Name, func(t *testing.T) {
 			pool := database(t)
@@ -70,7 +70,7 @@ func TestGameEqualsTheGoldenFile(t *testing.T) {
 				}
 				exec(t, pool, "INSERT INTO "+row.Table+" ("+strings.Join(columns, ",")+") VALUES ("+strings.Join(placeholders, ",")+")", values...)
 			}
-			s := newServerWithSets(t, pool, sets)
+			s := newServerWithSets(t, pool, content)
 			s.now = func() time.Time { return golden.Now }
 			w := request(t, s, "/game", http.MethodGet, nil, loginAs(t, s, tt.Role))
 			if w.Code != http.StatusOK {
