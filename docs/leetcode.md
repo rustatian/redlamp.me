@@ -351,7 +351,7 @@ Then run the tests:
 bun run test:browser
 ```
 
-`bun run test:browser` builds the site, builds the Go commands `api` and `migrate` to `.playwright/bin/`, and runs the Playwright tests in Chromium. Each test starts its own Go server with a new schema in the database of `TEST_DATABASE_URL`. These servers have no tutor key and no speech service, and they cannot reach leetcode.com. The cases "homework navigation with Noto Sans" need the system font Noto Sans. The report is in `.playwright/report/`. The results, with the screenshots of failed tests, are in `.playwright/results/`.
+`bun run test:browser` builds the site, builds the Go commands `api` and `migrate` to `.playwright/bin/`, and runs the Playwright tests in Chromium. Each test starts its own Go server with a new schema in the database of `TEST_DATABASE_URL`. These servers have no tutor key and no speech service, and they cannot reach leetcode.com. The report is in `.playwright/report/`. The results, with the screenshots of failed tests, are in `.playwright/results/`.
 
 The workflow `Checks` runs the web checks in the job `checks` and the browser tests in the job `browser`, for each push and pull request. The workflow `Backend` runs the Go checks in the job `go` when a change touches `backend/`, `shared/answers.cases.json` or the workflow file.
 
