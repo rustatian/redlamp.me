@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// maxDocumentBytes is MAX_DOCUMENT_BYTES of shared/leetcode.ts.
+// maxDocumentBytes is the size limit of the document of an attempt.
 const maxDocumentBytes = 256_000
 
 const attemptColumns = "id,problem_id,state,acceptance,understanding,version,created_at,updated_at,saved_at"

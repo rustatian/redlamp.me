@@ -52,7 +52,6 @@ export interface Attempt extends DraftValue {
 	savedAt: string | null;
 }
 export type AttemptSummary = Omit<Attempt, 'document'>;
-export const MAX_DOCUMENT_BYTES = 256_000;
 export type TaskState = 'assigned' | 'in_progress' | 'submitted' | 'changes_requested' | 'completed' | 'cancelled';
 export interface Homework { id: string; title: string; instructions: string; dueDate: string | null; postponedTo: string | null; version: number; createdAt: string; updatedAt: string }
 export interface HomeworkSummary extends Homework { taskCount: number; completedCount: number; submittedCount: number; requestedCount: number; unread: boolean }

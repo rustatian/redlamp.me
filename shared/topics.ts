@@ -47,13 +47,3 @@ export function normalizeTopic(value: string, slug?: string): string {
 	if (key === 'сортировка подсчётом' && slug === 'top-k-frequent-words') return 'Bucket Sort';
 	return names.get(key) ?? name;
 }
-
-export function normalizeTopics(values: string[], slug?: string): string[] {
-	const seen = new Set<string>();
-	return values.map(value => normalizeTopic(value, slug)).filter(value => {
-		const key = value.toLowerCase();
-		if (seen.has(key)) return false;
-		seen.add(key);
-		return true;
-	});
-}
