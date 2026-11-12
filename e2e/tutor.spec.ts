@@ -1,6 +1,6 @@
-import { test, expect, signIn, addMessages, type TestEnv } from './fixtures';
+import { createHash } from 'node:crypto';
+import { test, expect, signIn, addMessages } from './fixtures';
 import type { Page, Route } from '@playwright/test';
-import type { D1Database } from '@cloudflare/workers-types';
 import type { TutorEvent } from '../shared/leetcode';
 
 const setPath = '/leetcode/sets/permutations-and-combinations', chapterPath = `${setPath}/2`;
@@ -13,18 +13,19 @@ const answer = [
 	fence({ type: 'grid', cells: [[1, 0], [0, 1]], rows: ['r0', 'r1'], cols: ['c0', 'c1'], hl: [[1, 1]] }),
 	'<img src=x onerror=alert(1)>',
 ].join('\n\n');
-// The POST goes to this handler. The GET goes to the Worker.
+// The POST goes to this handler. The GET goes to the server.
 const onSend = (page: Page, handler: (route: Route) => Promise<void>) => page.route(url => url.pathname === '/leetcode/api/tutor/messages', route => route.request().method() === 'POST' ? handler(route) : route.fallback());
 const messages = (page: Page) => page.getByRole('dialog', { name: 'ИИ-репетитор' }).getByRole('list', { name: 'Сообщения' }).locator(':scope > li');
 
-test('streams an answer, then shows the stored turn', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	let body: unknown, sent = false, release!: () => void;
+test('streams an answer, then shows the stored turn', async ({ page, notebook, db }) => {
+	let body: unknown, hash: string | undefined, bodyHash: string | undefined, sent = false, release!: () => void;
 	const held = new Promise<void>(resolve => { release = resolve; });
 	await page.route(url => url.pathname === '/leetcode/api/tutor/messages', async route => {
 		if (route.request().method() !== 'POST') { if (sent) await held; return route.fallback(); }
 		body = route.request().postDataJSON(); sent = true;
-		await addMessages(DB, 'problem', notebook.problem.id, [{ author: 'student', body: 'Where do I start?' }, { author: 'assistant', body: 'Look at the smallest input.' }]);
+		hash = await route.request().headerValue('x-amz-content-sha256') ?? undefined;
+		bodyHash = createHash('sha256').update(route.request().postDataBuffer()!).digest('hex');
+		await addMessages(db, 'problem', notebook.problem.id, [{ author: 'student', body: 'Where do I start?' }, { author: 'assistant', body: 'Look at the smallest input.' }]);
 		await route.fulfill({ contentType: 'text/event-stream', body: sse({ delta: 'Look at the ' }, { delta: 'smallest input.' }, { done: true }) });
 	});
 	const trigger = page.getByRole('button', { name: 'Спросить ИИ', exact: true });
@@ -34,7 +35,7 @@ test('streams an answer, then shows the stored turn', async ({ page, notebook, s
 	await expect(trigger).toHaveAttribute('aria-expanded', 'true');
 	await expect(input).toBeFocused();
 	await expect(panel.getByText('Спросите об этой странице. Репетитор даёт подсказки, а не полные решения.', { exact: true })).toBeVisible();
-	await expect(panel.getByText('Работает через подписку ChatGPT. Родитель не может читать этот чат.', { exact: true })).toBeVisible();
+	await expect(panel.getByText('Отвечает Claude от Anthropic. Родитель не может читать этот чат.', { exact: true })).toBeVisible();
 	await input.fill('Where do I start?');
 	await panel.getByRole('button', { name: 'Отправить', exact: true }).click();
 	await expect(panel.locator('[aria-busy="true"]')).toContainText('Look at the smallest input.');
@@ -50,6 +51,7 @@ test('streams an answer, then shows the stored turn', async ({ page, notebook, s
 	await expect(input).toHaveValue('');
 	await expect(input).toBeFocused();
 	expect(body).toEqual({ kind: 'problem', id: notebook.problem.id, message: 'Where do I start?', quote: null });
+	expect(hash).toBe(bodyHash);
 });
 
 const flushes = [
@@ -57,12 +59,11 @@ const flushes = [
 	{ name: 'sends when the draft save fails', saveStatus: 500, idea: '', draftErrors: 1 },
 ];
 for (const row of flushes) {
-	test(row.name, async ({ page, notebook, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
+	test(row.name, async ({ page, notebook, db }) => {
 		let idea: string | undefined;
 		if (row.saveStatus) await page.route(`**/attempts/${notebook.attempt.id}`, route => route.request().method() === 'PUT' ? route.fulfill({ status: row.saveStatus }) : route.fallback());
 		await onSend(page, async route => {
-			idea = JSON.parse((await DB.prepare('SELECT document FROM attempts WHERE id=?').bind(notebook.attempt.id).first<{ document: string }>())!.document).approaches[0].idea;
+			idea = JSON.parse((await db.query<{ document: string }>('SELECT document FROM attempts WHERE id=$1', [notebook.attempt.id])).rows[0].document).approaches[0].idea;
 			await route.fulfill({ contentType: 'text/event-stream', body: sse({ done: true }) });
 		});
 		await page.getByLabel('Основная идея', { exact: true }).fill('Use a hash map.');
@@ -76,13 +77,12 @@ for (const row of flushes) {
 	});
 }
 
-test('evaluates the saved code with the evaluate flag', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
+test('evaluates the saved code with the evaluate flag', async ({ page, notebook, db }) => {
 	let body: unknown, code: string | undefined;
 	await onSend(page, async route => {
 		body = route.request().postDataJSON();
-		code = JSON.parse((await DB.prepare('SELECT document FROM attempts WHERE id=?').bind(notebook.attempt.id).first<{ document: string }>())!.document).approaches[0].code;
-		await addMessages(DB, 'problem', notebook.problem.id, [{ author: 'student', body: 'Оцените моё решение.' }, { author: 'assistant', body: 'Оценка: 2/10.' }]);
+		code = JSON.parse((await db.query<{ document: string }>('SELECT document FROM attempts WHERE id=$1', [notebook.attempt.id])).rows[0].document).approaches[0].code;
+		await addMessages(db, 'problem', notebook.problem.id, [{ author: 'student', body: 'Оцените моё решение.' }, { author: 'assistant', body: 'Оценка: 2/10.' }]);
 		await route.fulfill({ contentType: 'text/event-stream', body: sse({ delta: 'Оценка: 2/10.' }, { done: true }) });
 	});
 	const evaluate = page.getByRole('button', { name: 'Оценить решение с ИИ', exact: true });
@@ -95,7 +95,8 @@ test('evaluates the saved code with the evaluate flag', async ({ page, notebook,
 	expect(code).toBe('print(1)\n');
 });
 
-test('shows each part of the answer as it arrives', async ({ page, notebook }) => {
+// The answer of the tutor is a stream that the test writes with the returned function.
+async function heldAnswer(page: Page) {
 	await page.addInitScript(() => {
 		const fetch = window.fetch, encoder = new TextEncoder();
 		let stream!: ReadableStreamDefaultController<Uint8Array>;
@@ -105,8 +106,12 @@ test('shows each part of the answer as it arrives', async ({ page, notebook }) =
 			fetch: (input: RequestInfo | URL, init?: RequestInit) => input === '/leetcode/api/tutor/messages' && init?.method === 'POST' ? Promise.resolve(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })) : fetch(input, init),
 		});
 	});
+	return (text: string) => page.evaluate(text => (window as unknown as { send(text: string): void }).send(text), text);
+}
+
+test('shows each part of the answer as it arrives', async ({ page, notebook }) => {
+	const send = await heldAnswer(page);
 	await page.goto(`/leetcode/problems/${notebook.problem.id}`);
-	const send = (text: string) => page.evaluate(text => (window as unknown as { send(text: string): void }).send(text), text);
 	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
 	const panel = page.getByRole('dialog', { name: 'ИИ-репетитор' }), busy = panel.locator('[aria-busy="true"]');
 	await panel.getByRole('textbox', { name: 'Сообщение' }).fill('Where do I start?');
@@ -121,13 +126,31 @@ test('shows each part of the answer as it arrives', async ({ page, notebook }) =
 	await expect(panel.getByRole('status')).toHaveText('Репетитор ответил.');
 });
 
-test('draws three diagrams and keeps HTML as text', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), alerts: string[] = [];
+test('shows that the tutor thinks while the answer has no text', async ({ page, notebook }) => {
+	const send = await heldAnswer(page);
+	await page.goto(`/leetcode/problems/${notebook.problem.id}`);
+	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
+	const panel = page.getByRole('dialog', { name: 'ИИ-репетитор' }), busy = panel.locator('[aria-busy="true"]'), thinking = busy.getByText('Репетитор думает.', { exact: true });
+	await panel.getByRole('textbox', { name: 'Сообщение' }).fill('Where do I start?');
+	await panel.getByRole('button', { name: 'Отправить', exact: true }).click();
+	await expect(busy).toBeVisible();
+	await expect(thinking).toHaveCount(0);
+	await send(sse({ thinking: true }));
+	await expect(thinking).toBeVisible();
+	await send(sse({ delta: 'Look at the smallest input.' }));
+	await expect(busy).toContainText('Look at the smallest input.');
+	await expect(thinking).toHaveCount(0);
+	await send(sse({ done: true }));
+	await expect(panel.getByRole('status')).toHaveText('Репетитор ответил.');
+});
+
+test('draws three diagrams and keeps HTML as text', async ({ page, notebook, db }) => {
+	const alerts: string[] = [];
 	await page.addInitScript(() => { Object.assign(window, { violations: 0 }); document.addEventListener('securitypolicyviolation', () => { Object.assign(window, { violations: (window as unknown as { violations: number }).violations + 1 }); }); });
 	page.on('dialog', dialog => { alerts.push(dialog.message()); void dialog.dismiss(); });
 	await page.reload();
 	await onSend(page, async route => {
-		await addMessages(DB, 'problem', notebook.problem.id, [{ author: 'student', body: 'Draw it.' }, { author: 'assistant', body: answer }]);
+		await addMessages(db, 'problem', notebook.problem.id, [{ author: 'student', body: 'Draw it.' }, { author: 'assistant', body: answer }]);
 		await route.fulfill({ contentType: 'text/event-stream', body: sse(...answer.match(/[\s\S]{1,40}/g)!.map(delta => ({ delta })), { done: true }) });
 	});
 	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
@@ -146,8 +169,8 @@ test('draws three diagrams and keeps HTML as text', async ({ page, notebook, ser
 });
 
 const failures = [
-	{ name: 'keeps the text after an error event', status: 200, contentType: 'text/event-stream', body: sse({ delta: 'Look' }, { error: { code: 'ai_usage_limit', message: 'The ChatGPT plan has no AI usage left now. Try again later.' } }), alert: 'The ChatGPT plan has no AI usage left now. Try again later.' },
-	{ name: 'keeps the text after a JSON error before the stream', status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'ai_disconnected', message: 'The AI tutor is not connected. Ask your parent to connect ChatGPT.' } }), alert: 'The AI tutor is not connected. Ask your parent to connect ChatGPT.' },
+	{ name: 'keeps the text after an error event', status: 200, contentType: 'text/event-stream', body: sse({ delta: 'Look' }, { error: { code: 'ai_usage_limit', message: 'Лимит запросов к ИИ-репетитору исчерпан. Попробуйте позже.' } }), alert: 'Лимит запросов к ИИ-репетитору исчерпан. Попробуйте позже.' },
+	{ name: 'keeps the text after a JSON error before the stream', status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'setup_required', message: 'ИИ-репетитор не настроен. Попросите родителя проверить ключ API.' } }), alert: 'ИИ-репетитор не настроен. Попросите родителя проверить ключ API.' },
 	{ name: 'keeps the text after a stream that ends with no done event', status: 200, contentType: 'text/event-stream', body: sse({ delta: 'Look' }), alert: 'Ответ прервался. Отправьте сообщение ещё раз.' },
 ];
 for (const row of failures) {
@@ -215,9 +238,8 @@ test('closes the docked panel when the window becomes narrower', async ({ page }
 	await expect(page.locator('.app')).toHaveCSS('margin-right', '0px');
 });
 
-test('loads older messages above the newest page', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	await addMessages(DB, 'problem', notebook.problem.id, Array.from({ length: 51 }, (_, i) => ({ author: 'student' as const, body: `Message ${i + 1}` })));
+test('loads older messages above the newest page', async ({ page, notebook, db }) => {
+	await addMessages(db, 'problem', notebook.problem.id, Array.from({ length: 51 }, (_, i) => ({ author: 'student' as const, body: `Message ${i + 1}` })));
 	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
 	const older = page.getByRole('dialog', { name: 'ИИ-репетитор' }).getByRole('button', { name: 'Более ранние сообщения', exact: true });
 	await expect(messages(page)).toHaveCount(50);
@@ -231,16 +253,16 @@ test('loads older messages above the newest page', async ({ page, notebook, serv
 
 const ai = /^(Спросить ИИ|Оценить решение с ИИ)$/;
 const placements = [
-	{ name: 'shows no AI button to the parent on the problem page', role: 'parent', path: async (_DB: D1Database, problemId: string) => `/leetcode/problems/${problemId}`, heading: 'Two Sum' },
-	{ name: 'shows no AI button to the parent on the set page', role: 'parent', path: async () => setPath, heading: 'Permutations и Combinations' },
-	{ name: 'shows no AI button to the parent on the chapter page', role: 'parent', path: async () => chapterPath, heading: 'Глава 2. Backtracking: Subsets, Permutations, Combinations' },
-	{ name: 'shows no AI button on Today', role: 'student', path: async () => '/leetcode', heading: 'Стройте понимание, задача за задачей.' },
-	{ name: 'shows no AI button on the problem list', role: 'student', path: async () => '/leetcode/problems', heading: 'Задачи' },
-	{ name: 'shows no AI button on the recall page', role: 'student', path: async (_DB: D1Database, problemId: string) => `/leetcode/problems/${problemId}/review`, heading: 'Two Sum' },
+	{ name: 'shows no AI button to the parent on the problem page', role: 'parent', path: (problemId: string) => `/leetcode/problems/${problemId}`, heading: 'Two Sum' },
+	{ name: 'shows no AI button to the parent on the set page', role: 'parent', path: () => setPath, heading: 'Permutations и Combinations' },
+	{ name: 'shows no AI button to the parent on the chapter page', role: 'parent', path: () => chapterPath, heading: 'Глава 2. Backtracking: Subsets, Permutations, Combinations' },
+	{ name: 'shows no AI button on Today', role: 'student', path: () => '/leetcode', heading: 'Стройте понимание, задача за задачей.' },
+	{ name: 'shows no AI button on the problem list', role: 'student', path: () => '/leetcode/problems', heading: 'Задачи' },
+	{ name: 'shows no AI button on the recall page', role: 'student', path: (problemId: string) => `/leetcode/problems/${problemId}/review`, heading: 'Two Sum' },
 ] as const;
 for (const row of placements) {
-	test(row.name, async ({ page, notebook, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv(), path = await row.path(DB, notebook.problem.id);
+	test(row.name, async ({ page, notebook }) => {
+		const path = row.path(notebook.problem.id);
 		if (row.role === 'parent') await signIn(page, 'parent');
 		await page.goto(path);
 		await expect(page.getByRole('heading', { level: 1, name: row.heading, exact: true })).toBeVisible();
@@ -248,33 +270,23 @@ for (const row of placements) {
 	});
 }
 
-test('tells the student that the tutor page is for the parent', async ({ page }) => {
-	await signIn(page);
-	await page.goto('/leetcode/tutor');
-	await expect(page.getByText('Эта страница для родителя.', { exact: true })).toBeVisible();
+test('shows no tutor entry in the menu of the parent', async ({ page }) => {
+	await signIn(page, 'parent');
+	await expect(page.getByRole('navigation', { name: 'Тетрадь' }).getByRole('link')).toHaveText(['Сегодня', 'Задачи', 'Домашняя работа', 'Бомжарня', 'Квиз']);
 });
 
-test('shows only the ChatGPT connection on the tutor page of the parent', async ({ page }) => {
-	await signIn(page, 'parent');
-	await page.goto('/leetcode/tutor');
-	await expect(page.getByText('Подключите ChatGPT для репетитора, который даёт подсказки ученику.', { exact: true })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Продолжить с ChatGPT', exact: true })).toBeVisible();
-	await expect(page.getByRole('region', { name: 'Чаты' })).toHaveCount(0);
-});
-
-test('shows the address error under the address field', async ({ page }) => {
-	await signIn(page, 'parent');
-	await page.route('**/leetcode/api/tutor/account/start', route => route.fulfill({ json: { url: 'https://auth.openai.com/oauth/authorize?state=test' } }));
-	await page.route('**/leetcode/api/tutor/account/finish', route => route.fulfill({ status: 400, json: { error: { code: 'invalid_address', message: 'Paste the full address that starts with http://127.0.0.1:47319/auth/callback.' } } }));
-	await page.goto('/leetcode/tutor');
-	await page.getByRole('button', { name: 'Продолжить с ChatGPT', exact: true }).click();
-	const field = page.getByLabel('Адрес со страницы ошибки');
-	await field.fill('http://127.0.0.1:1455/auth/callback?code=test');
-	await page.getByRole('button', { name: 'Подключить', exact: true }).click();
-	const alert = page.getByRole('alert');
-	await expect(alert).toHaveText('Paste the full address that starts with http://127.0.0.1:47319/auth/callback.');
-	expect((await alert.boundingBox())!.y).toBeGreaterThan((await field.boundingBox())!.y);
-});
+const oldTutorPage = [
+	{ name: 'shows the unknown page error to the student at the old tutor address', role: 'student' },
+	{ name: 'shows the unknown page error to the parent at the old tutor address', role: 'parent' },
+] as const;
+for (const row of oldTutorPage) {
+	test(row.name, async ({ page }) => {
+		await signIn(page, row.role);
+		const response = await page.goto('/leetcode/tutor');
+		expect(response!.status()).toBe(404);
+		expect(await response!.json()).toEqual({ error: { code: 'not_found', message: 'Такой страницы тетради нет.' } });
+	});
+}
 
 const undo = 'Третий шаг нужен, чтобы вернуть path в то состояние, какое было до выбора. Тогда следующий шаг цикла начинает с чистого места.';
 const bridgeLesson = (page: Page) => page.route('**/leetcode/api/sets/permutations-and-combinations/lesson/2', route => route.fulfill({ json: { html: '<h2>Backtracking</h2><p>Третий шаг нужен, чтобы вернуть <code>path</code> в то состояние, какое было до выбора. Тогда следующий шаг цикла начинает с чистого места.</p>', figures: [] } }));
@@ -303,15 +315,14 @@ const explains = [
 	} },
 ];
 for (const row of explains) {
-	test(row.name, async ({ page, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
+	test(row.name, async ({ page, db }) => {
 		const bodies: { quote: string }[] = [];
 		await signIn(page);
 		await bridgeLesson(page);
 		await onSend(page, async route => {
 			const body = route.request().postDataJSON() as { quote: string };
 			bodies.push(body);
-			await addMessages(DB, 'set', 'permutations-and-combinations', [{ author: 'student', body: 'Объясните эту часть.', quote: body.quote }, { author: 'assistant', body: 'Each call adds one value.' }]);
+			await addMessages(db, 'set', 'permutations-and-combinations', [{ author: 'student', body: 'Объясните эту часть.', quote: body.quote }, { author: 'assistant', body: 'Each call adds one value.' }]);
 			await route.fulfill({ contentType: 'text/event-stream', body: sse({ done: true }) });
 		});
 		await page.goto(chapterPath);
@@ -356,9 +367,8 @@ const highlights = [
 	{ name: 'ignores a highlight message that the page posts', from: 'page', quotes: ['Третий шаг нужен, чтобы вернуть path в то состояние, какое было до выбора.'], marks: [], status: '' },
 ] as const;
 for (const row of highlights) {
-	test(row.name, async ({ page, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		if (row.from === 'tutor') await addMessages(DB, 'set', 'permutations-and-combinations', row.quotes.map(quote => ({ author: 'assistant' as const, body: `\`\`\`lesson\n${quote}\n\`\`\`` })));
+	test(row.name, async ({ page, db }) => {
+		if (row.from === 'tutor') await addMessages(db, 'set', 'permutations-and-combinations', row.quotes.map(quote => ({ author: 'assistant' as const, body: `\`\`\`lesson\n${quote}\n\`\`\`` })));
 		await signIn(page);
 		await bridgeLesson(page);
 		await page.goto(chapterPath);
@@ -381,9 +391,8 @@ const shows = [
 	{ name: 'closes the modal panel before it marks the lesson passage', width: 1024, panelOpen: false },
 ];
 for (const row of shows) {
-	test(row.name, async ({ page, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		await addMessages(DB, 'set', 'permutations-and-combinations', [{ author: 'student', body: 'What is a circle?' }, { author: 'assistant', body: 'Read this part:\n\n```lesson\nТретий шаг нужен, чтобы вернуть path в то состояние, какое было до выбора.\n```' }]);
+	test(row.name, async ({ page, db }) => {
+		await addMessages(db, 'set', 'permutations-and-combinations', [{ author: 'student', body: 'What is a circle?' }, { author: 'assistant', body: 'Read this part:\n\n```lesson\nТретий шаг нужен, чтобы вернуть path в то состояние, какое было до выбора.\n```' }]);
 		await page.setViewportSize({ width: row.width, height: 900 });
 		await signIn(page);
 		await bridgeLesson(page);

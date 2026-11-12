@@ -186,3 +186,38 @@ func TestRoutesWithSession(t *testing.T) {
 		})
 	}
 }
+
+// CloudFront sends the asset paths and the public site to S3. A local server answers them with its assets handler.
+func TestAssets(t *testing.T) {
+	assets := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("file " + r.URL.Path)) })
+	tests := []struct {
+		name string
+		path string
+		// assets is true for a server with an assets handler.
+		assets     bool
+		wantStatus int
+		wantBody   string
+	}{
+		{name: "notebook asset with an assets handler", path: "/leetcode/assets/app.js", assets: true, wantStatus: 200, wantBody: "file /leetcode/assets/app.js"},
+		{name: "public page with an assets handler", path: "/examples.html", assets: true, wantStatus: 200, wantBody: "file /examples.html"},
+		{name: "notebook asset without an assets handler", path: "/leetcode/assets/app.js", wantStatus: 404, wantBody: "404 page not found\n"},
+		{name: "public page without an assets handler", path: "/examples.html", wantStatus: 404, wantBody: "404 page not found\n"},
+		{name: "notebook path with an assets handler", path: "/leetcode", assets: true, wantStatus: 302, wantBody: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}}
+			if tt.assets {
+				cfg.Assets = assets
+			}
+			s, err := New(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w := call(s, http.MethodGet, tt.path, "", "")
+			if w.Code != tt.wantStatus || w.Body.String() != tt.wantBody {
+				t.Errorf("status %d with the body %q, want %d with %q", w.Code, w.Body.String(), tt.wantStatus, tt.wantBody)
+			}
+		})
+	}
+}

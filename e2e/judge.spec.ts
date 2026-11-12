@@ -1,4 +1,4 @@
-import { test, expect, addTask, signIn, type TestEnv } from './fixtures';
+import { test, expect, addTask, signIn } from './fixtures';
 import type { Problem } from '../shared/leetcode';
 
 // The server judges Container With Most Water on its hidden tests: 8 edge cases, 4 random inputs, then 2 inputs of 100,000 heights.
@@ -9,10 +9,10 @@ const hidden: { name: string; code: string; verdict: string; section: string }[]
 	{ name: 'shows a runtime error above the code buttons', code: `${container}        raise ValueError('bad')\n`, verdict: 'Ошибка выполнения на тесте 1: Строка 4: ValueError: bad', section: 'В процессе' },
 	{ name: 'stops a quadratic solution on the maximum input', code: `${container}        for i in range(len(height)):\n            for j in range(i + 1, len(height)):\n                best = max(best, min(height[i], height[j]) * (j - i))\n        return best\n`, verdict: 'Превышено время на тесте 13', section: 'В процессе' },
 ];
-test('shows Принято beside Отправить on a library problem', async ({ page, server }) => {
+test('shows Принято beside Отправить on a library problem', async ({ page, db }) => {
 	test.slow();
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), problemId = crypto.randomUUID();
-	await DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES (?,'container-with-most-water','Container With Most Water','medium','[]','','','now','now')").bind(problemId).run();
+	const problemId = crypto.randomUUID();
+	await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,'container-with-most-water','Container With Most Water','medium','[]','','','now','now')", [problemId]);
 	await page.route('**/leetcode/api/problems/*/tests', route => route.fulfill({ json: { spec: { mode: 'call', method: 'maxArea' }, source: 'set', standard: [], own: [], skeleton: '' } }));
 	await signIn(page);
 	await page.goto(`/leetcode/problems/${problemId}`);
@@ -22,11 +22,11 @@ test('shows Принято beside Отправить on a library problem', asyn
 });
 
 for (const row of hidden) {
-	test(row.name, async ({ page, server }) => {
+	test(row.name, async ({ page, db }) => {
 		test.slow();
-		const { DB } = await server.getWorker<TestEnv>().getEnv(), problemId = crypto.randomUUID();
-		await DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES (?,'container-with-most-water','Container With Most Water','medium','[]','','','now','now')").bind(problemId).run();
-		await addTask(DB, problemId, 'in_progress');
+		const problemId = crypto.randomUUID();
+		await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,'container-with-most-water','Container With Most Water','medium','[]','','','now','now')", [problemId]);
+		await addTask(db, problemId, 'in_progress');
 		// The real tests route asks leetcode.com for the starter code.
 		await page.route('**/leetcode/api/problems/*/tests', route => route.fulfill({ json: { spec: { mode: 'call', method: 'maxArea' }, source: 'set', standard: [], own: [], skeleton: '' } }));
 		await signIn(page);

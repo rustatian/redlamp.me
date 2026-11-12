@@ -1,7 +1,6 @@
-import { test, expect, addTask, signIn, type TestEnv } from './fixtures';
+import { test, expect, addTask, signIn } from './fixtures';
 
-test('counts each solved problem once across legacy Hash Table topics', async ({ page, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
+test('counts each solved problem once across legacy Hash Table topics', async ({ page, db }) => {
 	const problems = [
 		{ name: 'canonical', topics: ['Hash Table'], understanding: 'independent', archived: 0, accepted: 1 },
 		{ name: 'joined alias', topics: ['HashTable'], understanding: 'independent', archived: 0, accepted: 2 },
@@ -12,10 +11,10 @@ test('counts each solved problem once across legacy Hash Table topics', async ({
 	];
 	for (const row of problems) {
 		const id = crypto.randomUUID();
-		await DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,understanding,archived_at,created_at,updated_at) VALUES (?,?,?,'easy',?,'','',?,?,'now','now')").bind(id, id, row.name, JSON.stringify(row.topics), row.understanding, row.archived ? 'now' : null).run();
-		for (let i = 0; i < row.accepted; i++) await DB.prepare("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,saved_at,created_at,updated_at) VALUES (?,?,'saved','{}','','accepted',?,'now','now','now')").bind(crypto.randomUUID(), id, row.understanding).run();
+		await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,understanding,archived_at,created_at,updated_at) VALUES ($1,$2,$3,'easy',$4,'','',$5,$6,'now','now')", [id, id, row.name, JSON.stringify(row.topics), row.understanding, row.archived ? 'now' : null]);
+		for (let i = 0; i < row.accepted; i++) await db.query("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,saved_at,created_at,updated_at) VALUES ($1,$2,'saved','{}','','accepted',$3,'now','now','now')", [crypto.randomUUID(), id, row.understanding]);
 	}
-	const stored = await DB.prepare('SELECT id,problem_id,document,acceptance,understanding FROM attempts ORDER BY id').all();
+	const stored = await db.query('SELECT id,problem_id,document,acceptance,understanding FROM attempts ORDER BY id');
 	await signIn(page);
 	const progress = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Понимание тем', exact: true }) });
 	await expect(progress.getByRole('progressbar')).toHaveCount(1);
@@ -23,7 +22,7 @@ test('counts each solved problem once across legacy Hash Table topics', async ({
 	await expect(hashTable).toHaveAttribute('value', '3');
 	await expect(hashTable).toHaveAttribute('max', '4');
 	await expect(progress.getByText('3 / 4', { exact: true })).toBeVisible();
-	expect((await DB.prepare('SELECT id,problem_id,document,acceptance,understanding FROM attempts ORDER BY id').all()).results).toEqual(stored.results);
+	expect((await db.query('SELECT id,problem_id,document,acceptance,understanding FROM attempts ORDER BY id')).rows).toEqual(stored.rows);
 });
 
 const dueDates = [
@@ -31,9 +30,8 @@ const dueDates = [
 	{ name: 'assigned homework past its due date is overdue', state: 'assigned', due: 'Срок 2020-01-01 - Просрочено' },
 ];
 for (const row of dueDates) {
-	test(row.name, async ({ page, server, notebook }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		await addTask(DB, notebook.problem.id, row.state, '2020-01-01');
+	test(row.name, async ({ page, db, notebook }) => {
+		await addTask(db, notebook.problem.id, row.state, '2020-01-01');
 		await page.goto('/leetcode');
 		await expect(page.getByText(row.due, { exact: true })).toBeVisible();
 		await expect(page.getByRole('heading', { level: 3, name: notebook.problem.title }).getByRole('link')).toHaveAttribute('href', `/leetcode/problems/${notebook.problem.id}`);
@@ -46,10 +44,9 @@ const nextSteps = [
 	{ name: 'student with only submitted homework sees the problem library', homework: 'submitted' },
 ];
 for (const row of nextSteps) {
-	test(row.name, async ({ page, server, notebook }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		await DB.prepare("UPDATE attempts SET state='saved',saved_at='now' WHERE id=?").bind(notebook.attempt.id).run();
-		await addTask(DB, notebook.problem.id, row.homework, '2020-01-01');
+	test(row.name, async ({ page, db, notebook }) => {
+		await db.query("UPDATE attempts SET state='saved',saved_at='now' WHERE id=$1", [notebook.attempt.id]);
+		await addTask(db, notebook.problem.id, row.homework, '2020-01-01');
 		await page.goto('/leetcode');
 		await expect(page.getByRole('heading', { name: 'Выберите следующую задачу.' })).toBeVisible();
 		await expect(page.getByRole('link', { name: 'Открыть библиотеку задач' })).toHaveAttribute('href', '/leetcode/problems');
@@ -63,17 +60,15 @@ const focus = [
 	{ name: 'draft beside a submitted task opens the problem window', task: 'submitted' },
 ];
 for (const row of focus) {
-	test(row.name, async ({ page, server, notebook }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		if (row.task) await addTask(DB, notebook.problem.id, row.task);
+	test(row.name, async ({ page, db, notebook }) => {
+		if (row.task) await addTask(db, notebook.problem.id, row.task);
 		await page.goto('/leetcode');
 		await expect(page.getByRole('link', { name: 'Продолжить работу', exact: true })).toHaveAttribute('href', `/leetcode/problems/${notebook.problem.id}`);
 	});
 }
 
-test('student sees the level and the earned badge after an accepted attempt', async ({ page, server, notebook }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	await DB.prepare("UPDATE attempts SET state='saved',saved_at='now',acceptance='accepted',understanding='with_help' WHERE id=?").bind(notebook.attempt.id).run();
+test('student sees the level and the earned badge after an accepted attempt', async ({ page, db, notebook }) => {
+	await db.query("UPDATE attempts SET state='saved',saved_at='now',acceptance='accepted',understanding='with_help' WHERE id=$1", [notebook.attempt.id]);
 	await page.goto('/leetcode');
 	await expect(page.getByRole('heading', { name: 'Уровень 1', exact: true })).toBeVisible();
 	const bar = page.getByRole('main').getByRole('progressbar', { name: 'Прогресс до уровня 2', exact: true });
@@ -90,19 +85,17 @@ test('student sees the level and the earned badge after an accepted attempt', as
 	expect((await chip.boundingBox())!.width).toBe(96);
 });
 
-test('shows the late tasks in the level card', async ({ page, server, notebook }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	const { taskId } = await addTask(DB, notebook.problem.id, 'assigned', '2020-01-01');
-	await DB.prepare("UPDATE homework_tasks SET created_at='2019-12-01T00:00:00.000Z' WHERE id=?").bind(taskId).run();
+test('shows the late tasks in the level card', async ({ page, db, notebook }) => {
+	const { taskId } = await addTask(db, notebook.problem.id, 'assigned', '2020-01-01');
+	await db.query("UPDATE homework_tasks SET created_at='2019-12-01T00:00:00.000Z' WHERE id=$1", [taskId]);
 	await page.goto('/leetcode');
 	await expect(page.getByText('Просрочено: 1 (−15 XP каждое)', { exact: true })).toBeVisible();
 });
 
-test('shows the missed days in the level card', async ({ page, server, notebook }) => {
+test('shows the missed days in the level card', async ({ page, db, notebook }) => {
 	void notebook;
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	// The first visit was 3 days ago. The page load records today, so the 2 days between are missed.
-	await DB.prepare("INSERT INTO visits (day) VALUES (date('now','-3 day'))").run();
+	// The first visit was 3 UTC days ago. The page load records today, so the 2 days between are missed.
+	await db.query("INSERT INTO visits (day) VALUES (to_char((now() AT TIME ZONE 'UTC')::date - 3, 'YYYY-MM-DD'))");
 	await page.goto('/leetcode');
 	await expect(page.getByText('Пропущено дней: 2 (−5 XP каждый)', { exact: true })).toBeVisible();
 });
@@ -113,15 +106,15 @@ const picks = [
 	{ name: 'set task pick adds the problem and starts a new attempt', control: 'button' as const, draft: false, states: ['draft'] },
 ];
 for (const row of picks) {
-	test(row.name, async ({ page, server }) => {
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
+	test(row.name, async ({ page, db }) => {
 		const work = (code: string) => JSON.stringify({ notes: '', approaches: [{ id: crypto.randomUUID(), label: '', idea: '', correctness: '', timeComplexity: '', spaceComplexity: '', edgeCases: '', mistakes: '', language: 'python', code }] });
-		const attempt = DB.prepare("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,saved_at,created_at,updated_at) VALUES (?,?,?,?,'','accepted','with_help',?,'now','now')");
-		await DB.batch(['sum-of-all-subset-xor-totals', 'letter-case-permutation', 'letter-combinations-of-a-phone-number'].flatMap(slug => {
+		const attempt = (problemId: string, state: string, code: string, savedAt: string | null) => db.query("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,saved_at,created_at,updated_at) VALUES ($1,$2,$3,$4,'','accepted','with_help',$5,'now','now')", [crypto.randomUUID(), problemId, state, work(code), savedAt]);
+		for (const slug of ['sum-of-all-subset-xor-totals', 'letter-case-permutation', 'letter-combinations-of-a-phone-number']) {
 			const id = crypto.randomUUID();
-			return [DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES (?,?,?,'easy','[]','Saved idea.','','now','now')").bind(id, slug, slug),
-				attempt.bind(crypto.randomUUID(), id, 'saved', work('return saved_solution'), 'now'), ...row.draft ? [attempt.bind(crypto.randomUUID(), id, 'draft', work('return draft_solution'), null)] : []];
-		}));
+			await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,$2,$3,'easy','[]','Saved idea.','','now','now')", [id, slug, slug]);
+			await attempt(id, 'saved', 'return saved_solution', 'now');
+			if (row.draft) await attempt(id, 'draft', 'return draft_solution', null);
+		}
 		await signIn(page);
 		await page.route('**/leetcode/api/problems/*/tests', route => route.fulfill({ json: { spec: null, source: 'none', standard: [], own: [], skeleton: '' } }));
 		const recall = page.getByRole('region', { name: 'Случайное повторение' });

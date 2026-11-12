@@ -1,5 +1,5 @@
 // Command api serves the notebook. Without -listen it is the Lambda function behind the function URL.
-// With -listen it is a local HTTP server.
+// With -listen it is a local HTTP server. With -assets the local server also serves the built site.
 package main
 
 import (
@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go/v2"
 	"github.com/anthropics/anthropic-sdk-go/v2/option"
@@ -26,6 +28,7 @@ import (
 func main() {
 	listen := flag.String("listen", "", "address of a local HTTP server, for example localhost:8787")
 	url := flag.String("database-url", "", "PostgreSQL connection string, instead of the DSQL cluster of DSQL_ENDPOINT")
+	assets := flag.String("assets", "", "folder of the built site for a local server, for example ../dist")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -46,7 +49,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Anthropic: tutorClient(ctx), Transcriber: speech})
+	var files http.Handler
+	if *assets != "" {
+		files = site(*assets)
+	}
+	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: os.Getenv("LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Anthropic: tutorClient(ctx), Transcriber: speech})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}
@@ -84,4 +91,17 @@ func tutorClient(ctx context.Context) *anthropic.Client {
 	}
 	client := anthropic.NewClient(option.WithAPIKey(key))
 	return &client
+}
+
+// site serves the built site for a local server. An address without a file suffix is the HTML file with that name,
+// so the public addresses work as behind CloudFront, for example /examples and /mathtools/primefactorization.
+func site(dir string) http.Handler {
+	files := http.FileServer(http.Dir(dir))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/") && path.Ext(r.URL.Path) == "" {
+			r = r.Clone(r.Context())
+			r.URL.Path += ".html"
+		}
+		files.ServeHTTP(w, r)
+	})
 }

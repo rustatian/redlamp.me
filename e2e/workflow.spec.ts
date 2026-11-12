@@ -1,4 +1,4 @@
-import { test, expect, signIn, addMessages, type TestEnv } from './fixtures';
+import { test, expect, signIn, addMessages } from './fixtures';
 import type { AttemptSummary, Page } from '../shared/leetcode';
 
 test('completes learning with two accounts and a linked set', async ({ page: parent, browser, baseURL }, testInfo) => {
@@ -104,10 +104,10 @@ test('opens and closes the problem dialog with the keyboard', async ({ page }) =
 	await expect(page.getByRole('button', { name: 'Добавить задачу', exact: true })).toBeFocused();
 });
 
-test('shows the tutor panel full screen on a phone', async ({ page, notebook, server }, testInfo) => {
+test('shows the tutor panel full screen on a phone', async ({ page, notebook, db }, testInfo) => {
 	test.skip(testInfo.project.name !== 'mobile', 'Only the mobile project has a phone viewport.');
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), cells = Array.from({ length: 24 }, (_, i) => `cell_${i}`);
-	await addMessages(DB, 'problem', notebook.problem.id, [{ author: 'student', body: 'Show the array.' }, { author: 'assistant', body: `\`\`\`diagram\n${JSON.stringify({ type: 'array', cells })}\n\`\`\`\n\n\`\`\`python\nreturn ${'long_code_line_'.repeat(20)}\n\`\`\`` }]);
+	const cells = Array.from({ length: 24 }, (_, i) => `cell_${i}`);
+	await addMessages(db, 'problem', notebook.problem.id, [{ author: 'student', body: 'Show the array.' }, { author: 'assistant', body: `\`\`\`diagram\n${JSON.stringify({ type: 'array', cells })}\n\`\`\`\n\n\`\`\`python\nreturn ${'long_code_line_'.repeat(20)}\n\`\`\`` }]);
 	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
 	const panel = page.getByRole('dialog', { name: 'ИИ-репетитор' });
 	await expect(panel.getByRole('img', { name: /^Array:/ })).toBeVisible();

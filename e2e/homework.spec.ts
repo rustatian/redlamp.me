@@ -1,4 +1,4 @@
-import { test, expect, signIn, addTask, type TestEnv } from './fixtures';
+import { test, expect, signIn, addTask } from './fixtures';
 import type { Homework, Problem } from '../shared/leetcode';
 import { addCalendarDays, localDate } from '../shared/dates';
 
@@ -40,7 +40,7 @@ test('cancels a quiz from homework without cancelling the chapter', async ({ pag
 	await expect(assignments.getByRole('article').filter({ has: page.locator('a[href="/leetcode/sets/complexity/1"]') }).getByText('Назначено', { exact: true })).toBeVisible();
 });
 
-test('reopens empty homework from a later page and adds its first task', async ({ page, notebook, server }) => {
+test('reopens empty homework from a later page and adds its first task', async ({ page, notebook, db }) => {
 	await signIn(page, 'parent');
 	await page.getByRole('link', { name: 'Домашняя работа', exact: true }).click();
 	await page.getByLabel('Название', { exact: true }).fill('Continue later');
@@ -48,12 +48,11 @@ test('reopens empty homework from a later page and adds its first task', async (
 	await page.getByLabel('Срок', { exact: true }).fill('2026-12-31');
 	await page.getByRole('button', { name: 'Создать домашнюю работу', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Continue later', level: 1 })).toBeVisible();
-	const homeworkPath = new URL(page.url()).pathname, { DB } = await server.getWorker<TestEnv>().getEnv();
-	const insert = DB.prepare("INSERT INTO homework (id,title,instructions,created_at,updated_at) VALUES (?,?,'',?,?)");
-	await DB.batch(Array.from({ length: 50 }, (_, i) => {
+	const homeworkPath = new URL(page.url()).pathname;
+	for (let i = 0; i < 50; i++) {
 		const at = new Date(Date.now() + 1000 + i).toISOString();
-		return insert.bind(crypto.randomUUID(), `Newer homework ${i}`, at, at);
-	}));
+		await db.query("INSERT INTO homework (id,title,instructions,created_at,updated_at) VALUES ($1,$2,'',$3,$4)", [crypto.randomUUID(), `Newer homework ${i}`, at, at]);
+	}
 	await page.getByRole('link', { name: 'Задачи', exact: true }).click();
 	await page.getByRole('link', { name: 'Домашняя работа', exact: true }).click();
 	await page.getByText('Все домашние работы', { exact: true }).click();
@@ -135,13 +134,11 @@ const parentWork = [
 	{ name: 'shows the submitted attempt while a newer draft exists', state: 'submitted', section: 'В процессе', status: 'Отправлено', notes: 'Правило произведения.' },
 	{ name: 'shows the newest notes of a completed task from the homework page', state: 'completed', section: 'Принятое', status: 'Завершено', notes: 'Правило суммы.' },
 ];
-for (const row of parentWork) test(row.name, async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), { taskId } = await addTask(DB, notebook.problem.id, row.state), submissionId = crypto.randomUUID();
-	await DB.batch([
-		DB.prepare("UPDATE attempts SET state='saved',acceptance='accepted',saved_at='now',document=? WHERE id=?").bind(JSON.stringify({ ...notebook.attempt.document, notes: 'Правило произведения.' }), notebook.attempt.id),
-		DB.prepare("INSERT INTO submissions (id,task_id,attempt_id,task_version,created_at) VALUES (?,?,?,1,'now')").bind(submissionId, taskId, notebook.attempt.id),
-		DB.prepare('UPDATE homework_tasks SET current_submission_id=? WHERE id=?').bind(submissionId, taskId),
-	]);
+for (const row of parentWork) test(row.name, async ({ page, notebook, db }) => {
+	const { taskId } = await addTask(db, notebook.problem.id, row.state), submissionId = crypto.randomUUID();
+	await db.query("UPDATE attempts SET state='saved',acceptance='accepted',saved_at='now',document=$1 WHERE id=$2", [JSON.stringify({ ...notebook.attempt.document, notes: 'Правило произведения.' }), notebook.attempt.id]);
+	await db.query("INSERT INTO submissions (id,task_id,attempt_id,task_version,created_at) VALUES ($1,$2,$3,1,'now')", [submissionId, taskId, notebook.attempt.id]);
+	await db.query('UPDATE homework_tasks SET current_submission_id=$1 WHERE id=$2', [submissionId, taskId]);
 	await page.goto(`/leetcode/problems/${notebook.problem.id}`);
 	await page.getByLabel('Общие заметки', { exact: true }).fill('Правило суммы.');
 	await expect(page.getByRole('status', { name: 'Состояние сохранения' })).toHaveText('Сохранено');
@@ -159,12 +156,11 @@ for (const row of parentWork) test(row.name, async ({ page, notebook, server }) 
 	}
 });
 
-test('shows the tasks in three sections and spreads the accepted tasks over 30 days', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), [started, waiting, dropped] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
-	const insert = DB.prepare("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES (?,?,?,'easy','[]','','','now','now')");
-	await DB.batch([insert.bind(started, 'started', 'Started'), insert.bind(waiting, 'waiting', 'Waiting'), insert.bind(dropped, 'dropped', 'Dropped')]);
+test('shows the tasks in three sections and spreads the accepted tasks over 30 days', async ({ page, notebook, db }) => {
+	const [started, waiting, dropped] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+	for (const [id, slug, title] of [[started, 'started', 'Started'], [waiting, 'waiting', 'Waiting'], [dropped, 'dropped', 'Dropped']]) await db.query("INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,$2,$3,'easy','[]','','','now','now')", [id, slug, title]);
 	// The started homework is due first, so its task is in progress and the assigned task of the later homework is in the future.
-	for (const row of [{ id: notebook.problem.id, state: 'completed', due: null }, { id: started, state: 'in_progress', due: '2026-10-11' }, { id: waiting, state: 'assigned', due: '2026-10-12' }, { id: dropped, state: 'cancelled', due: null }]) await addTask(DB, row.id, row.state, row.due);
+	for (const row of [{ id: notebook.problem.id, state: 'completed', due: null }, { id: started, state: 'in_progress', due: '2026-10-11' }, { id: waiting, state: 'assigned', due: '2026-10-12' }, { id: dropped, state: 'cancelled', due: null }]) await addTask(db, row.id, row.state, row.due);
 	await page.getByRole('link', { name: 'Домашняя работа', exact: true }).click();
 	const section = (name: string) => page.getByRole('region', { name, exact: true }), accepted = section('Принятое');
 	await expect(section('В процессе').getByRole('heading', { level: 3 })).toHaveText(['Started']);
@@ -177,14 +173,14 @@ test('shows the tasks in three sections and spreads the accepted tasks over 30 d
 	await expect(accepted.getByRole('status')).toHaveText(/^1 задача распределена с (\d\d\.\d\d) по \1\.$/);
 	await spread.click();
 	await expect(accepted.getByRole('status')).toHaveText('Новые даты повторения не назначены.');
-	await DB.prepare('UPDATE problems SET next_review_date=? WHERE id=?').bind(localDate(), notebook.problem.id).run();
+	await db.query('UPDATE problems SET next_review_date=$1 WHERE id=$2', [localDate(), notebook.problem.id]);
 	await page.getByRole('link', { name: 'Сегодня', exact: true }).click();
 	await expect(page.getByRole('heading', { level: 3, name: notebook.problem.title }).getByRole('link')).toHaveAttribute('href', `/leetcode/problems/${notebook.problem.id}/review?pick=1`);
 });
 
 // The due date is tomorrow, so the server UTC date and the local date are not after it in any time zone.
-test('moves the due date by one day once with Сила Бомжа', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), due = addCalendarDays(localDate(), 1), next = addCalendarDays(due, 1), { homeworkId } = await addTask(DB, notebook.problem.id, 'assigned', due);
+test('moves the due date by one day once with Сила Бомжа', async ({ page, notebook, db }) => {
+	const due = addCalendarDays(localDate(), 1), next = addCalendarDays(due, 1), { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', due);
 	await page.goto(`/leetcode/homework/${homeworkId}`);
 	const power = page.getByRole('button', { name: 'Сила Бомжа', exact: true });
 	await power.click();
@@ -196,9 +192,9 @@ test('moves the due date by one day once with Сила Бомжа', async ({ pag
 	await expect(page.getByRole('button', { name: 'Изменить срок', exact: true })).toHaveCount(0);
 });
 
-test('parent changes the due date from the homework header', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), { homeworkId } = await addTask(DB, notebook.problem.id, 'assigned', '2026-10-20');
-	await DB.prepare("INSERT INTO postponements VALUES (?,'2026-10-19','2026-10-20','now')").bind(homeworkId).run();
+test('parent changes the due date from the homework header', async ({ page, notebook, db }) => {
+	const { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', '2026-10-20');
+	await db.query("INSERT INTO postponements VALUES ($1,'2026-10-19','2026-10-20','now')", [homeworkId]);
 	await signIn(page, 'parent');
 	await page.goto(`/leetcode/homework/${homeworkId}`);
 	await expect(page.getByText('Сила Бомжа: срок перенесён на 20.10.', { exact: true })).toBeVisible();
@@ -208,12 +204,11 @@ test('parent changes the due date from the homework header', async ({ page, note
 	await expect(page.getByText('Срок: 2026-10-25', { exact: true })).toBeVisible();
 	await expect(page.getByLabel('Новый срок', { exact: true })).toHaveCount(0);
 	await expect(page.getByText('Сила Бомжа: срок перенесён на 20.10.', { exact: true })).toHaveCount(0);
-	expect(await DB.prepare('SELECT title,instructions,due_date FROM homework WHERE id=?').bind(homeworkId).first()).toEqual({ title: 'Week 41', instructions: 'Explain', due_date: '2026-10-25' });
+	expect((await db.query('SELECT title,instructions,due_date FROM homework WHERE id=$1', [homeworkId])).rows).toEqual([{ title: 'Week 41', instructions: 'Explain', due_date: '2026-10-25' }]);
 });
 
-test('cancels the task from the work window', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	await addTask(DB, notebook.problem.id);
+test('cancels the task from the work window', async ({ page, notebook, db }) => {
+	await addTask(db, notebook.problem.id);
 	await signIn(page, 'parent');
 	await page.goto(`/leetcode/problems/${notebook.problem.id}`);
 	await expect(page.getByText('Назначено', { exact: true })).toBeVisible();
@@ -261,9 +256,9 @@ test('shows the topics and the colored level at the right side of each problem i
 	expect(rowBox!.x + rowBox!.width - levelBox!.x - levelBox!.width).toBeLessThan(32);
 });
 
-test('shows a new review until the student opens the task', async ({ page, notebook, server }) => {
-	const { DB } = await server.getWorker<TestEnv>().getEnv(), { taskId } = await addTask(DB, notebook.problem.id, 'changes_requested');
-	await DB.prepare("INSERT INTO feedback (id,problem_id,task_id,author,kind,body,created_at) VALUES (?,?,?,'parent','changes_requested','Explain the invariant.',?)").bind(crypto.randomUUID(), notebook.problem.id, taskId, new Date().toISOString()).run();
+test('shows a new review until the student opens the task', async ({ page, notebook, db }) => {
+	const { taskId } = await addTask(db, notebook.problem.id, 'changes_requested');
+	await db.query("INSERT INTO feedback (id,problem_id,task_id,author,kind,body,created_at) VALUES ($1,$2,$3,'parent','changes_requested','Explain the invariant.',$4)", [crypto.randomUUID(), notebook.problem.id, taskId, new Date().toISOString()]);
 	await page.getByRole('link', { name: 'Домашняя работа', exact: true }).click();
 	const dot = page.getByRole('img', { name: 'Новое сообщение', exact: true });
 	await expect(page.getByRole('article').filter({ hasText: 'Week 41' }).getByRole('img', { name: 'Новое сообщение', exact: true })).toBeVisible();

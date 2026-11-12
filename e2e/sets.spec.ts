@@ -1,4 +1,4 @@
-import { test, expect, signIn, addTask, type TestEnv } from './fixtures';
+import { test, expect, signIn, addTask } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 import type { Figure, Homework, LearningSetDetails, Problem } from '../shared/leetcode';
 import twoPointers1 from '../src/leetcode/sets/two-pointers/chapter1';
@@ -61,7 +61,7 @@ const chapters = [
 	{ name: 'heaps and queues 4', slug: 'heaps-and-queues', number: 4, count: 5 },
 ];
 for (const item of chapters) {
-	test(`opens every problem internally from ${item.name}`, async ({ page, server }) => {
+	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {
 		test.slow();
 		await signIn(page);
 		const set = await (await page.request.get(`/leetcode/api/sets/${item.slug}`)).json() as LearningSetDetails;
@@ -84,9 +84,8 @@ for (const item of chapters) {
 			await expect(page).toHaveURL(path);
 			await expect(title).toHaveAttribute('href', workspace);
 		}
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		expect(await DB.prepare('SELECT count(*) AS count FROM problems').first()).toEqual({ count: item.count });
-		expect(await DB.prepare('SELECT count(*) AS count FROM homework_tasks').first()).toEqual({ count: 0 });
+		expect((await db.query('SELECT count(*)::int AS count FROM problems')).rows).toEqual([{ count: item.count }]);
+		expect((await db.query('SELECT count(*)::int AS count FROM homework_tasks')).rows).toEqual([{ count: 0 }]);
 	});
 }
 
@@ -99,7 +98,7 @@ test('shows the chapter lesson to a parent before student work exists', async ({
 	await expect(page.locator('article.lesson')).toHaveCount(2);
 });
 
-test('opens a direct catalog link and keeps its source separate', async ({ page, context, server }) => {
+test('opens a direct catalog link and keeps its source separate', async ({ page, context, db }) => {
 	await signIn(page, 'parent');
 	const path = '/leetcode/sets/permutations-and-combinations/problems/cf-1821-a';
 	await page.goto(path);
@@ -115,9 +114,8 @@ test('opens a direct catalog link and keeps its source separate', async ({ page,
 	await expect(tab).toHaveURL('https://codeforces.com/problemset/problem/1821/A');
 	await tab.close();
 	await expect(page).toHaveURL(workspace);
-	const { DB } = await server.getWorker<TestEnv>().getEnv();
-	expect(await DB.prepare('SELECT count(*) AS count FROM problems').first()).toEqual({ count: 1 });
-	expect(await DB.prepare('SELECT count(*) AS count FROM attempts').first()).toEqual({ count: 0 });
+	expect((await db.query('SELECT count(*)::int AS count FROM problems')).rows).toEqual([{ count: 1 }]);
+	expect((await db.query('SELECT count(*)::int AS count FROM attempts')).rows).toEqual([{ count: 0 }]);
 });
 
 const openFailures = [
@@ -125,13 +123,12 @@ const openFailures = [
 	{ name: 'failed library insert', slug: 'subsets', fail: true, message: 'Тетрадь недоступна.' },
 ];
 for (const item of openFailures) {
-	test(`shows an error for ${item.name}`, async ({ page, server }) => {
+	test(`shows an error for ${item.name}`, async ({ page, db }) => {
 		await signIn(page);
 		if (item.fail) await page.route('**/leetcode/api/problems', route => route.fulfill({ status: 503, json: { error: { code: 'unavailable', message: item.message } } }));
 		await page.goto(`/leetcode/sets/permutations-and-combinations/problems/${item.slug}`);
 		await expect(page.getByRole('alert')).toHaveText(item.message);
-		const { DB } = await server.getWorker<TestEnv>().getEnv();
-		expect(await DB.prepare('SELECT count(*) AS count FROM problems').first()).toEqual({ count: 0 });
+		expect((await db.query('SELECT count(*)::int AS count FROM problems')).rows).toEqual([{ count: 0 }]);
 	});
 }
 
@@ -228,12 +225,12 @@ const availability = [
 	{ name: 'cancelled unsolved homework', state: 'cancelled', accepted: false, available: true },
 ];
 for (const item of availability) {
-	test(`keeps ${item.name} availability consistent`, async ({ page, baseURL, server }) => {
+	test(`keeps ${item.name} availability consistent`, async ({ page, baseURL, db }) => {
 		await signIn(page, 'parent');
-		const headers = { Origin: new URL(baseURL!).origin }, { DB } = await server.getWorker<TestEnv>().getEnv();
+		const headers = { Origin: new URL(baseURL!).origin };
 		const problem = await (await page.request.post('/leetcode/api/problems', { headers, data: { url: 'https://leetcode.com/problems/subsets/', number: 78, title: 'Subsets', difficulty: 'medium', topics: [], summary: '' } })).json() as Problem;
-		if (item.state) await addTask(DB, problem.id, item.state);
-		if (item.accepted) await DB.prepare("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,created_at,updated_at) VALUES (?,?,'saved','{}','','accepted','independent','now','now')").bind(crypto.randomUUID(), problem.id).run();
+		if (item.state) await addTask(db, problem.id, item.state);
+		if (item.accepted) await db.query("INSERT INTO attempts (id,problem_id,state,document,search_text,acceptance,understanding,created_at,updated_at) VALUES ($1,$2,'saved','{}','','accepted','independent','now','now')", [crypto.randomUUID(), problem.id]);
 		await page.goto(chapterPath);
 		await expect(row(page, 'Subsets')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Добавить главу в домашнюю работу', exact: true })).toHaveCount(1);

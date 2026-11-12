@@ -9,3 +9,6 @@ wrangler.toml.local
 
 # Build
 dist/
+
+# Browser tests: the Go commands, the results and the report
+.playwright/
