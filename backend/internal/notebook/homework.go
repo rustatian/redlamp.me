@@ -758,6 +758,12 @@ func (s *Server) review(r *http.Request, task HomeworkTask, now string) error {
 		condition = "state IN ('submitted','completed') AND EXISTS(SELECT 1 FROM problems WHERE id=homework_tasks.problem_id AND archived_at IS NULL)"
 	}
 	return s.tx(ctx, func(tx pgx.Tx) error {
+		if decision == "changes_requested" {
+			// The return of a completed task makes the task active again. The write of the problem row makes it conflict with an archive of the problem.
+			if err := touchProblem(ctx, tx, *task.ProblemID); err != nil {
+				return err
+			}
+		}
 		tag, err := tx.Exec(ctx, "INSERT INTO feedback (id,problem_id,task_id,submission_id,author,kind,body,created_at) SELECT $1,problem_id,id,current_submission_id,'parent',$2,$3,$4 FROM homework_tasks WHERE id=$5 AND version=$6 AND current_submission_id=$7 AND "+condition,
 			newID(), decision, body, now, task.ID, version, submissionID)
 		if err != nil {

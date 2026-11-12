@@ -83,6 +83,38 @@ func TestJudgeConcurrentRequests(t *testing.T) {
 			count:        "SELECT count(*) FROM homework_tasks WHERE state NOT IN ('completed','cancelled')",
 			wantCount:    0,
 		},
+		{
+			// A check that comes first uses the seed. Expected answers that come first make the seed stale.
+			name: "the expected answers and an acceptance check of one seed",
+			setup: func(_ *testing.T, f judgeFixture) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				return "UPDATE judge_runs SET created_at=created_at WHERE problem_id=$1", []any{f.problemID},
+					func() *httptest.ResponseRecorder {
+						return call(f.s, http.MethodPost, "/leetcode/api/problems/"+f.problemID+"/tests/expected", `{"inputs":["[7]"]}`, f.student)
+					},
+					acceptancePost(f, "1", acceptanceWrong)
+			},
+			wantStatuses: [][]int{{200, 200}, {200, 409}},
+			wantCode:     "stale_seed",
+			count:        "SELECT count(*) FROM judge_runs",
+			wantCount:    0,
+		},
+		{
+			// A cancel that comes first leaves no active task for the acceptance. An acceptance that comes first completes the task, so the cancel fails.
+			name: "an acceptance and a cancel of the task",
+			setup: func(t *testing.T, f judgeFixture) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
+				problemsAddTask(t, f.pool, f.problemID, "assigned")
+				task := queryValue[string](t, f.pool, "SELECT id FROM homework_tasks")
+				parent := loginAs(t, f.s, "parent")
+				return "UPDATE homework_tasks SET version=version WHERE problem_id=$1", []any{f.problemID}, acceptancePost(f, "1", acceptanceRight),
+					func() *httptest.ResponseRecorder {
+						return call(f.s, http.MethodPost, "/leetcode/api/tasks/"+task+"/cancel", `{"version":1}`, parent)
+					}
+			},
+			wantStatuses: [][]int{{200, 200}, {200, 409}},
+			wantCode:     "conflict",
+			count:        "SELECT count(*) FROM homework_tasks t WHERE (t.state='completed') <> EXISTS(SELECT 1 FROM submissions s WHERE s.task_id=t.id)",
+			wantCount:    0,
+		},
 	}
 	content := acceptanceContent(t)
 	for _, tt := range tests {
