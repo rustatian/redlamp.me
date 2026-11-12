@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react';
 import { Bot, X } from 'lucide-react';
 import type { Page, TutorEvent, TutorKind, TutorMessage } from '../shared/leetcode';
-import { api, apiError, message } from './api';
+import { api, apiError, message, send } from './api';
 import { Answer } from './Answer';
 import { highlightIn, watchSelection } from './lessonTools';
 import { useResource } from './useResource';
@@ -19,7 +19,7 @@ export function Tutor({ context, title, flush, lesson, evaluate }: { context: { 
 	const bridge = lesson !== undefined, path = `/tutor/messages?kind=${context.kind}&id=${encodeURIComponent(context.id)}`;
 	const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null), input = useRef<HTMLTextAreaElement>(null), log = useRef<HTMLDivElement>(null);
 	const [open, setOpen] = useState(false), [text, setText] = useState(''), [error, setError] = useState(''), [status, setStatus] = useState(''), [marked, setMarked] = useState('');
-	const [pending, setPending] = useState<{ body: string; quote: string | null; answer: string } | null>(null);
+	const [pending, setPending] = useState<{ body: string; quote: string | null; answer: string; thinking?: boolean } | null>(null);
 	const busy = useRef(false); // Events from one burst run before React renders, so they see an old `pending`.
 	const [older, setOlder] = useState<TutorMessage[]>([]), [next, setNext] = useState<number | null>();
 	const messages = useResource<Page<TutorMessage>>(open ? path : null);
@@ -57,7 +57,7 @@ export function Tutor({ context, title, flush, lesson, evaluate }: { context: { 
 		setPending({ body, quote, answer: '' }); setError(''); setStatus('Репетитор пишет.');
 		try {
 			await flush?.(); // A failed flush still sends. The context then has the last saved draft, and the page shows the draft error.
-			const response = await fetch('/leetcode/api/tutor/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: context.kind, id: context.id, message: body, quote, evaluate }), cache: 'no-store' });
+			const response = await send('/tutor/messages', { method: 'POST', body: JSON.stringify({ kind: context.kind, id: context.id, message: body, quote, evaluate }) });
 			if (!response.ok) throw await apiError(response);
 			const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
 			let buffer = '', answer = '', end: TutorEvent | undefined;
@@ -69,7 +69,7 @@ export function Tutor({ context, title, flush, lesson, evaluate }: { context: { 
 				for (const line of frames.flatMap(frame => frame.split(/\r?\n/))) {
 					if (!line.startsWith('data:')) continue;
 					const event = JSON.parse(line.slice(5)) as TutorEvent;
-					if ('delta' in event) setPending({ body, quote, answer: answer += event.delta }); else end = event;
+					if ('delta' in event) setPending({ body, quote, answer: answer += event.delta }); else if ('thinking' in event) setPending({ body, quote, answer, thinking: true }); else end = event;
 				}
 			}
 			if (!end) throw new Error('Ответ прервался. Отправьте сообщение ещё раз.');
@@ -88,14 +88,14 @@ export function Tutor({ context, title, flush, lesson, evaluate }: { context: { 
 				{nextOffset != null && <button onClick={() => void loadOlder()} data-tip="Загрузить более ранние сообщения.">Более ранние сообщения</button>}
 				<ol className="messages" aria-label="Сообщения">
 					{items.map(m => <li key={m.id} className={m.author === 'student' ? 'feedback student' : undefined}><small>{m.author === 'assistant' ? 'Репетитор' : 'Вы'} - {new Date(m.createdAt).toLocaleString('ru-RU')}</small>{m.author === 'student' ? said(m.body, m.quote) : <Answer text={m.body} streaming={false} highlight={bridge ? highlight : undefined} />}</li>)}
-					{pending && <><li className="feedback student"><small>Вы</small>{said(pending.body, pending.quote)}</li><li aria-busy="true"><small>Репетитор</small><Answer text={pending.answer} streaming /></li></>}
+					{pending && <><li className="feedback student"><small>Вы</small>{said(pending.body, pending.quote)}</li><li aria-busy="true"><small>Репетитор</small>{pending.thinking && !pending.answer ? <p className="empty">Репетитор думает.</p> : <Answer text={pending.answer} streaming />}</li></>}
 				</ol>
 				{messages.data && !items.length && !pending && <p className="empty">Спросите об этой странице. Репетитор даёт подсказки, а не полные решения.</p>}
 				{(error || messages.error) && <p className="error" role="alert">{error || messages.error}</p>}
 			</div>
 			<form className="tutor-compose" onSubmit={event => { event.preventDefault(); input.current!.focus(); void ask(text, null); }}>
 				<label>Сообщение<textarea aria-label="Сообщение" ref={input} value={text} onChange={event => setText(event.target.value)} maxLength={4000} required onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); event.currentTarget.form!.requestSubmit(); } }} /><Dictation /></label>
-				<div className="row spread"><small>Работает через подписку ChatGPT. Родитель не может читать этот чат.</small><button className="primary" disabled={Boolean(pending)} data-tip="Отправить сообщение ИИ-репетитору.">Отправить</button></div>
+				<div className="row spread"><small>Отвечает Claude от Anthropic. Родитель не может читать этот чат.</small><button className="primary" disabled={Boolean(pending)} data-tip="Отправить сообщение ИИ-репетитору.">Отправить</button></div>
 			</form>
 			<p role="status" className="visually-hidden">{status}</p>
 		</dialog>

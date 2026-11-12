@@ -50,7 +50,7 @@ export function Runner({ problemId, code, tests, live, latest, record, before, a
 
 export function OwnTests({ problemId, tests, changed }: { problemId: string; tests: ProblemTests; changed: () => void }) {
 	const [input, setInput] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
-	async function send(path: string, init: RequestInit): Promise<boolean> {
+	async function send(path: string, init: Parameters<typeof api>[1]): Promise<boolean> {
 		setBusy(true); setError('');
 		try { await api(`/problems/${problemId}/tests${path}`, init); changed(); return true; } catch (error) { setError(message(error)); return false; } finally { setBusy(false); }
 	}

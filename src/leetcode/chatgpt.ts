@@ -1,6 +1,8 @@
 import { waitUntil } from 'cloudflare:workers';
 import type { Env } from '../index';
-import type { SessionUser, TutorAccount } from '../../shared/leetcode';
+import type { SessionUser } from '../../shared/leetcode';
+
+interface TutorAccount { connected: boolean; connectedAt: string | null; model: string | null; models: { slug: string; name: string }[]; pending: boolean }
 import { requireRole } from './auth';
 import { choice, HttpError, methods, object, readJson, text } from './http';
 
