@@ -1,0 +1,377 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The pipeline that builds, tests and deploys redlamp.me after a push to main. The stack is in eu-central-1.
+
+Parameters:
+  # The repository is public, so the address is a stack parameter.
+  AlarmEmail:
+    Type: String
+    NoEcho: true
+    Description: The email address that gets a message about a failed execution of the pipeline.
+
+Resources:
+  # A connection that CloudFormation makes has the status PENDING until a person completes it in the console.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-codeconnections-connection.html
+  # https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-update.html
+  Connection:
+    Type: AWS::CodeConnections::Connection
+    Properties:
+      ConnectionName: redlamp-github
+      ProviderType: GitHub
+
+  # The bucket has the artifacts of the pipeline and the function packages that sam deploy uploads.
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+
+  # SNS sends a message to the address only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours.
+  # https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: redlamp-pipeline-alarms
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+
+  # https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-use-resource-based.html#eb-sns-permissions
+  AlarmTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlarmTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlarmTopic
+
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/detect-state-changes-cloudwatch-events.html
+  FailureRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Sends a failed execution of the redlamp.me pipeline to the alarm topic.
+      EventPattern:
+        source:
+          - aws.codepipeline
+        detail-type:
+          - CodePipeline Pipeline Execution State Change
+        detail:
+          pipeline:
+            - !Ref Pipeline
+          state:
+            - FAILED
+      Targets:
+        - Id: alarm-topic
+          Arn: !Ref AlarmTopic
+
+  # CloudFormation changes the four stacks of the site with this role. The role allows the services of their resource types, and the IAM roles and the buckets of these stacks.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html
+  # The role can give each policy to an IAM role with the prefix redlamp-, so a commit on main has the rights of an administrator of the account.
+  CloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: stacks
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm:*
+                  - backup:*
+                  - backup-storage:*
+                  - budgets:*
+                  - cloudfront:*
+                  - cloudwatch:*
+                  - dsql:*
+                  - kms:*
+                  - lambda:*
+                  - logs:*
+                  - route53:*
+                  - sns:*
+                Resource: '*'
+              - Effect: Allow
+                Action: s3:*
+                Resource:
+                  - !Sub arn:aws:s3:::redlamp-site-${AWS::AccountId}
+                  - !Sub arn:aws:s3:::redlamp-site-${AWS::AccountId}/*
+              # Lambda reads the function package with the rights of this role.
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${ArtifactBucket.Arn}/sam/*'
+              - Effect: Allow
+                Action:
+                  - iam:AttachRolePolicy
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                  - iam:PutRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/redlamp-*
+
+  # The condition key limits the use of the connection to this repository.
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/troubleshooting.html#codebuild-role-connections
+  BuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: build
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/redlamp-build*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action: codeconnections:UseConnection
+                Resource: !GetAtt Connection.ConnectionArn
+                Condition:
+                  StringEquals:
+                    codeconnections:FullRepositoryId: rustatian/redlamp.me
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/redlamp-deploy*
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource: !GetAtt ArtifactBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                Resource:
+                  - !Sub arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/redlamp-dns/*
+                  - !Sub arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/redlamp-edge/*
+                  - !Sub arn:aws:cloudformation:eu-central-1:${AWS::AccountId}:stack/redlamp-data/*
+                  - !Sub arn:aws:cloudformation:eu-central-1:${AWS::AccountId}:stack/redlamp-api/*
+              # A change set of the function stack uses the SAM transform.
+              - Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: arn:aws:cloudformation:eu-central-1:aws:transform/Serverless-2016-10-31
+              - Effect: Allow
+                Action: cloudformation:GetTemplateSummary
+                Resource: '*'
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CloudFormationRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+              # cmd/migrate connects as the database role admin.
+              # https://docs.aws.amazon.com/service-authorization/latest/reference/list_dsql.html#list_dsql-action-DbConnectAdmin
+              - Effect: Allow
+                Action: dsql:DbConnectAdmin
+                Resource: !Sub arn:aws:dsql:eu-central-1:${AWS::AccountId}:cluster/*
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:aws:s3:::redlamp-site-${AWS::AccountId}
+              - Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::redlamp-site-${AWS::AccountId}/*
+              - Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/*
+
+  # The image has the runtimes Go 1.27 and Node.js 24. The Go compiler makes the arm64 binary of the function on this x86_64 image.
+  # https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html#linux-runtimes
+  # The Go tests run PostgreSQL in Docker, and a build can use the Docker daemon only in the privileged mode.
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-codebuild-project-environment.html#cfn-codebuild-project-environment-privilegedmode
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: redlamp-build
+      ServiceRole: !GetAtt BuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: infra/buildspec-build.yml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:8.0
+        PrivilegedMode: true
+
+  DeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: redlamp-deploy
+      ServiceRole: !GetAtt DeployRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: infra/buildspec-deploy.yml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:8.0
+        EnvironmentVariables:
+          - Name: CLOUDFORMATION_ROLE
+            Value: !GetAtt CloudFormationRole.Arn
+          - Name: ARTIFACT_BUCKET
+            Value: !Ref ArtifactBucket
+
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/how-to-custom-role.html#how-to-custom-role-policy
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: pipeline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:GetBucketVersioning
+                Resource: !GetAtt ArtifactBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt BuildProject.Arn
+                  - !GetAtt DeployProject.Arn
+              # The source action needs the action with each of the two prefixes.
+              # https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-CodestarConnectionSource.html#edit-role-connections
+              - Effect: Allow
+                Action:
+                  - codeconnections:UseConnection
+                  - codestar-connections:UseConnection
+                Resource: !GetAtt Connection.ConnectionArn
+
+  # In the QUEUED mode an execution does not overtake an earlier one, so two pushes deploy in their order.
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/concepts-how-it-works.html#concepts-how-it-works-executions-queued
+  # A source action without a trigger starts the pipeline on each push to its branch. With CODEBUILD_CLONE_REF the build gets a Git clone of the repository, which the release test needs.
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-CodestarConnectionSource.html#action-reference-CodestarConnectionSource-config
+  # The Deploy action changes the stacks in this order: zone, data, database migrations, function, edge. Then it uploads the site and clears the cache of CloudFront.
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: redlamp
+      PipelineType: V2
+      ExecutionMode: QUEUED
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !GetAtt Connection.ConnectionArn
+                FullRepositoryId: rustatian/redlamp.me
+                BranchName: main
+                OutputArtifactFormat: CODEBUILD_CLONE_REF
+              OutputArtifacts:
+                - Name: Source
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref BuildProject
+              InputArtifacts:
+                - Name: Source
+              OutputArtifacts:
+                - Name: Build
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref DeployProject
+              InputArtifacts:
+                - Name: Build
