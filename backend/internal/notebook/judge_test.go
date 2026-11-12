@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
+	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
 )
 
 // The cases of test/judge.test.ts and the expectedOf cases of test/tests.test.ts.
@@ -134,47 +135,13 @@ func judgeTestGenerator(random func() float64) []string {
 	return []string{"[[2, 7, 11, 15], 9]", "[[2, 3, 4], 6]", "[[0, " + strconv.Itoa(n) + "], " + strconv.Itoa(n) + "]"}
 }
 
-// judgeTwoSum is the reference of Two Sum II from src/leetcode/sets/two-pointers/solutions.ts.
-// Task #239 replaces it with the ported reference of the content.
-var judgeTwoSum = sets.Reference{Arity: 2, Call: func(args []any) any {
-	number := func(value any) float64 {
-		n, ok := value.(float64)
-		sets.Need(ok && n == math.Trunc(n) && n >= -1000 && n <= 1000)
-		return n
-	}
-	list, ok := args[0].([]any)
-	sets.Need(ok && len(list) >= 2 && len(list) <= 30_000)
-	a := make([]float64, len(list))
-	for i, value := range list {
-		a[i] = number(value)
-	}
-	sets.Need(slices.IsSorted(a))
-	target := number(args[1])
-	pairs, seen := 0, map[float64]int{}
-	for _, x := range a {
-		pairs += seen[target-x]
-		seen[x]++
-	}
-	// The input must have exactly one solution.
-	sets.Need(pairs == 1)
-	l, r := 0, len(a)-1
-	for a[l]+a[r] != target {
-		if a[l]+a[r] < target {
-			l++
-		} else {
-			r--
-		}
-	}
-	return []any{float64(l + 1), float64(r + 1)}
-}}
-
 // judgeAnswers are the right outputs for seed 1. With seed 1 the last input is [[0, 628], 628].
 var judgeAnswers = []map[string]any{{"value": "[1, 2]"}, {"value": "[1, 3]"}, {"value": "[1, 2]"}}
 
 // judgeContent is the mock of contentOf in beforeEach: the learning sets of the Worker, and Two Sum II with its reference and the test generator.
 func judgeContent(t *testing.T) Config {
 	t.Helper()
-	return Config{Sets: goldenSets(t), References: map[string]sets.Reference{judgeTwoSumII: judgeTwoSum}, Generators: map[string]sets.Generator{judgeTwoSumII: judgeTestGenerator}}
+	return Config{Sets: goldenSets(t), References: map[string]sets.Reference{judgeTwoSumII: content.References[judgeTwoSumII]}, Generators: map[string]sets.Generator{judgeTwoSumII: judgeTestGenerator}}
 }
 
 // judgeFixture is the state that beforeEach of test/judge.test.ts makes.

@@ -63,29 +63,10 @@ func cut(value string) string {
 	return value
 }
 
-var errInput = errors.New("the input is not a list of the arguments")
-
-// answer runs a reference on one input and returns the answer text. It panics when the reference does not accept the input.
-func answer(reference sets.Reference, input string) string {
-	if reference.Stdio != nil {
-		return reference.Stdio(input)
-	}
-	value, err := answers.Parse(input)
-	args, ok := value.([]any)
-	if err != nil || !ok || len(args) != reference.Arity {
-		panic(errInput)
-	}
-	text, err := answers.Repr(reference.Call(args))
-	if err != nil {
-		panic(err)
-	}
-	return text
-}
-
 // judge compares the outputs with the answers of the reference. The first failed test gives the verdict, so the reference answers only the tests up to it.
 func judge(reference sets.Reference, spec sets.TestSpec, inputs []string, outputs []judgeOutput) judgement {
 	for i, input := range inputs {
-		want, output := answer(reference, input), outputs[i]
+		want, output := reference.Answer(input), outputs[i]
 		if output.Value != nil && answers.Same(answers.Spec{Mode: spec.Mode, Order: spec.Order, IgnoreCase: spec.IgnoreCase}, want, *output.Value) {
 			continue
 		}
@@ -113,7 +94,7 @@ func expectedOf(reference sets.Reference, input string) (result expected) {
 			}
 		}
 	}()
-	text := answer(reference, input)
+	text := reference.Answer(input)
 	if units(text) > 100_000 {
 		return expected{Error: "size"}
 	}

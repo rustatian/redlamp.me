@@ -2,8 +2,8 @@
 // Run from the repository root:
 //   bun run build
 //   bunx vitest run --config backend/internal/notebook/testdata/golden/vitest.config.ts
-// It writes ../game.json and ../../../sets/settest/sets.json. The dates of game.json are relative to the day of the run, and the file records that moment.
-// To write only one file, add the name of its source to the command: sets.golden or game.golden.
+// It writes ../game.json, ../../../sets/settest/sets.json and ../../../sets/settest/references.json. The dates of game.json are relative to the day of the run, and the file records that moment.
+// To write only one file, add the name of its source to the command: sets.golden, references.golden or game.golden.
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
@@ -11,7 +11,7 @@ import { defineConfig } from 'vitest/config';
 import { testAccountSecret } from '../../../../../test/fixtures.ts';
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
-const targets: Record<string, string> = { game: '../game.json', sets: '../../../sets/settest/sets.json' };
+const targets: Record<string, string> = { game: '../game.json', sets: '../../../sets/settest/sets.json', references: '../../../sets/settest/references.json' };
 export default defineConfig({
 	root,
 	// The generator runs in the runtime of the Worker tests, with the D1 schema and the test accounts.

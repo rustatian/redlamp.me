@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
+	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
 )
 
 const (
@@ -472,6 +473,37 @@ func TestTestsExpected(t *testing.T) {
 					t.Errorf("error code = %q, want %q", got, tt.wantCode)
 				}
 				return
+			}
+			if got := decode[map[string]any](t, w)["expected"]; !reflect.DeepEqual(got, tt.wantExpected) {
+				t.Errorf("expected = %v, want %v", got, tt.wantExpected)
+			}
+		})
+	}
+}
+
+// The cases of test/tests.test.ts for POST /problems/{id}/tests/expected with a reference of a learning set.
+func TestTestsExpectedOfSetTasks(t *testing.T) {
+	tests := []struct {
+		name         string
+		slug         string
+		inputs       []string
+		wantExpected []any
+	}{
+		{name: "expected answers of a set call task", slug: "two-sum-ii-input-array-is-sorted", inputs: []string{"[[2, 7, 11, 15], 9]", "[[3, 1], 4]", "[[1, 2]]"}, wantExpected: []any{map[string]any{"value": "[1, 2]"}, map[string]any{"error": "constraints"}, map[string]any{"error": "input"}}},
+		{name: "expected answers of a set stdio task", slug: "cf-1821-a", inputs: []string{"2\n??\n0\n", "1\n123456\n"}, wantExpected: []any{map[string]any{"value": "90\n0\n"}, map[string]any{"error": "constraints"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool := database(t)
+			s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Sets: content.Sets, References: content.References})
+			if err != nil {
+				t.Fatal(err)
+			}
+			id := newID()
+			exec(t, pool, testsInsertProblem, id, tt.slug)
+			w := request(t, s, "/problems/"+id+"/tests/expected", http.MethodPost, map[string]any{"inputs": tt.inputs}, loginAs(t, s, "student"))
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200; body %s", w.Code, w.Body.String())
 			}
 			if got := decode[map[string]any](t, w)["expected"]; !reflect.DeepEqual(got, tt.wantExpected) {
 				t.Errorf("expected = %v, want %v", got, tt.wantExpected)

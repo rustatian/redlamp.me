@@ -77,8 +77,8 @@ var (
 	escapes = map[rune]rune{'\\': '\\', '\'': '\'', '"': '"', 'n': '\n', 'r': '\r', 't': '\t'}
 )
 
-// isSpace reports whether a character is white space of JavaScript, as in the class space.
-func isSpace(char rune) bool {
+// IsSpace reports whether a character is white space of JavaScript, as in the class space.
+func IsSpace(char rune) bool {
 	switch char {
 	case '\t', '\n', '\v', '\f', '\r', ' ', 0xa0, 0x1680, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff:
 		return true
@@ -236,7 +236,7 @@ func Parse(text string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimFunc(text[p.at:], isSpace) != "" {
+	if strings.TrimFunc(text[p.at:], IsSpace) != "" {
 		return nil, p.fail()
 	}
 	return value, nil
@@ -352,7 +352,7 @@ func sorted(items []string) string {
 // canonical returns a text that is equal for equal answers. Stdout compares token by token. Other answers compare Python literals with the list order of the spec.
 func canonical(spec Spec, answer string) (string, error) {
 	if spec.Mode == "stdio" {
-		tokens := strings.Join(strings.FieldsFunc(answer, isSpace), " ")
+		tokens := strings.Join(strings.FieldsFunc(answer, IsSpace), " ")
 		if spec.IgnoreCase {
 			// The lower case of Unicode without a language, as toLowerCase of JavaScript.
 			tokens = cases.Lower(language.Und).String(tokens)
