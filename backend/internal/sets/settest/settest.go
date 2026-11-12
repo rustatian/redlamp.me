@@ -1,4 +1,4 @@
-// Package settest gives tests the learning sets of the Worker.
+// Package settest gives tests the JSON copy of the learning sets and the recorded hidden tests.
 package settest
 
 import (
