@@ -242,7 +242,7 @@ The site runs in one AWS account. The templates are in `infra/`. Route 53 takes 
 - `redlamp-data` has the Aurora DSQL cluster with deletion protection and its daily backup. See [Backup and recovery](#backup-and-recovery).
 - `redlamp-api` is an AWS SAM template. It has the Lambda function of `backend/cmd/api` on arm64, with 512 MB of memory and a timeout of 600 seconds. Lambda runs at most 10 instances of the function at one time. The function URL uses IAM authentication and response streaming. The stack also has a log group with 30 days of retention, three alarms on the topic `redlamp-api-alarms`, and a monthly cost alert at 10 USD for AWS Lambda and Amazon CloudFront. The alarm `redlamp-api-errors` is for a function error of Lambda. The alarm `redlamp-api-failures` is for an internal failure, for which the server answers 503 with the code `unavailable`. The alarm `redlamp-data-backup` is for a missing backup.
 - `redlamp-edge` has the certificate of `redlamp.me` and `www.redlamp.me`, the site bucket `redlamp-site-<account ID>`, the CloudFront distribution with its viewer request function, and the alias records of the two names.
-- `redlamp-pipeline` has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, and the topic `redlamp-pipeline-alarms` for a failed execution.
+- `redlamp-pipeline` has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, the permissions boundary `redlamp-boundary` for the IAM roles of these stacks, and the topic `redlamp-pipeline-alarms` for a failed execution.
 
 CloudFront sends `/leetcode`, `/leetcode.html` and `/leetcode/*` to the function URL, except `/leetcode/assets/*`. It sends the other paths to the site bucket. On the public site, a path that ends with a slash gets `index.html`, and a path without a dot gets the extension `.html`. A request to `www.redlamp.me` gets a redirect to `https://redlamp.me` with the same path and query. CloudFront signs each request to the function URL, so the browser sends the SHA-256 of the body of each change request in the header `x-amz-content-sha256`.
 
@@ -276,15 +276,18 @@ The repository is public, so the alarm address is not in the templates. The stac
 The stacks take outputs of other stacks as parameters. For the first deploy, use this order:
 
 1. Deploy `redlamp-dns` with `AlarmEmail`. The domain registration of `redlamp.me` must name the name servers of the zone. The output `NameServers` gives them.
-2. Deploy `redlamp-data`.
-3. Write the two SecureString parameters, see [Secrets](#secrets).
-4. Deploy `redlamp-api` with `ClusterEndpoint` and `ClusterArn` from `redlamp-data`, and with `AlarmEmail`. Leave `DistributionId` empty. The distribution needs the function URL, so the first deploy of this stack has no distribution.
-5. Deploy `redlamp-edge` with `HostedZoneId` from `redlamp-dns` and `FunctionUrl` from `redlamp-api`. ACM adds the validation records of the certificate to the zone.
-6. Deploy the stack `redlamp-pipeline` with `AlarmEmail`, and with `ClusterArn` from `redlamp-data`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console. Before this step the pipeline does not exist, and a merge to `main` deploys nothing.
+2. Deploy the stack `redlamp-pipeline` with `AlarmEmail` and with the capability `CAPABILITY_NAMED_IAM`. Leave `ClusterArn` empty. The stack has the policy `redlamp-boundary`, and the roles of `redlamp-data` and `redlamp-api` name this policy as their permissions boundary. CloudFormation makes the connection `redlamp-github` with the status `PENDING`.
 
    ```bash
-   aws cloudformation deploy --region eu-central-1 --stack-name redlamp-pipeline --template-file infra/pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides AlarmEmail=<address> ClusterArn=<output ClusterArn of redlamp-data>
+   aws cloudformation deploy --region eu-central-1 --stack-name redlamp-pipeline --template-file infra/pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides AlarmEmail=<address>
    ```
+
+3. Deploy `redlamp-data`.
+4. Deploy the stack `redlamp-pipeline` again with the same command, and with `ClusterArn=<output ClusterArn of redlamp-data>` as its only parameter. The address stays.
+5. Write the two SecureString parameters, see [Secrets](#secrets).
+6. Deploy `redlamp-api` with `ClusterEndpoint` and `ClusterArn` from `redlamp-data`, and with `AlarmEmail`. Leave `DistributionId` empty. The distribution needs the function URL, so the first deploy of this stack has no distribution.
+7. Deploy `redlamp-edge` with `HostedZoneId` from `redlamp-dns` and `FunctionUrl` from `redlamp-api`. ACM adds the validation records of the certificate to the zone.
+8. A person completes the connection `redlamp-github` in the console. Before this step the connection cannot start the pipeline, and a merge to `main` deploys nothing.
 
 `infra/buildspec-deploy.yml` has the commands that the pipeline runs for the four stacks of the site, with the region and the parameters of each stack. For a deploy by hand, leave out `--role-arn`, and give `AlarmEmail` on the first deploy of a stack that has this parameter. After the first deploy, each execution of the pipeline applies the migrations and deploys `redlamp-api` again with `DistributionId` from `redlamp-edge`. See [Releases](#releases).
 
@@ -292,7 +295,7 @@ The stacks take outputs of other stacks as parameters. For the first deploy, use
 
 The sidebar shows the version from `package.json`. The versions follow [Semantic Versioning](https://semver.org/). Increase the version in `package.json` in the pull request that changes the notebook. A feature increases the minor version. A fix increases the patch version.
 
-The pipeline `redlamp` exists after the deploy of the stack `redlamp-pipeline`, see [First deploy](#first-deploy). A push to `main` then starts the pipeline in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
+The pipeline `redlamp` can start after the last step of [First deploy](#first-deploy), when its connection is complete. A push to `main` then starts the pipeline in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
 
 1. Source: the connection `redlamp-github` gives the files of `main`.
 2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.15 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
@@ -300,7 +303,7 @@ The pipeline `redlamp` exists after the deploy of the stack `redlamp-pipeline`, 
 
 The migrations run before the new code of the function. They are the files of `backend/migrations/`, with one SQL statement in each file. `cmd/migrate` applies the files that the table `schema_migrations` does not have, in the order of their names. On AWS, it connects as the database role `admin` and maps the database role `app` to the IAM role of the function.
 
-A failed execution sends a message to the topic `redlamp-pipeline-alarms`. CloudFormation changes the four stacks of the site with the role of the stack `redlamp-pipeline`. This role can give each policy to an IAM role with the prefix `redlamp-`, so a commit on `main` has the rights of an administrator of the account.
+A failed execution sends a message to the topic `redlamp-pipeline-alarms`. CloudFormation changes the four stacks of the site with the role of the stack `redlamp-pipeline`. This role can make and change only the IAM roles of `redlamp-data` and `redlamp-api`, and only a role with the permissions boundary `redlamp-boundary`. A role with this boundary has only the rights that are also in the boundary. To give such a role a new right, add the right to the boundary in `infra/pipeline.yaml` and deploy the stack `redlamp-pipeline` by hand before the merge. The role still has the full rights of its services in the account.
 
 After a deploy, check sign-in, sign-out, and a normal draft save on `https://redlamp.me/leetcode`. The logs of the function are in the log group of `redlamp-api`.
 

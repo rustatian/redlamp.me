@@ -37,6 +37,8 @@ Resources:
   BackupRole:
     Type: AWS::IAM::Role
     Properties:
+      # The policy of the stack redlamp-pipeline. The CloudFormation role of the pipeline changes a role only with this boundary.
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/redlamp-boundary
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
