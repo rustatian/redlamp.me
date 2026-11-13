@@ -96,6 +96,15 @@ Resources:
       Name: redlamp_me
       Status: ACTIVE
 
+  # Route 53 signs the answers of the zone. The resource has no reference to the key-signing key, so DependsOn gives the order.
+  # Route 53 turns signing on only when the registry names the name servers of this zone.
+  # https://docs.aws.amazon.com/Route53/latest/APIReference/API_EnableHostedZoneDNSSEC.html#API_EnableHostedZoneDNSSEC_Errors
+  Dnssec:
+    Type: AWS::Route53::DNSSEC
+    DependsOn: KeySigningKey
+    Properties:
+      HostedZoneId: !Ref HostedZone
+
   # SNS sends the alarms to the address only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours.
   # https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
   AlarmTopic:
