@@ -13,13 +13,11 @@ import (
 
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
-	"github.com/rustatian/redlamp.me/backend/internal/sets/settest"
 )
 
-// The content checks of test/sets.test.ts. Each check runs on the learning sets of the Worker and on the Go content.
-// A failure of a worker case is a mistake of the check. A failure of a go case is a mistake of the Go content.
+// The content checks of the learning sets.
 
-// checkSource is all learning sets of one source: "worker" or "go".
+// checkSource is all learning sets of one source: "go".
 type checkSource struct {
 	name string
 	all  []sets.LearningSet
@@ -27,10 +25,10 @@ type checkSource struct {
 
 func checkSources(t *testing.T) []checkSource {
 	t.Helper()
-	return []checkSource{{name: "worker", all: settest.Golden(t)}, {name: "go", all: content.Sets}}
+	return []checkSource{{name: "go", all: content.Sets}}
 }
 
-// checkSet is one learning set of a source. name is the source and the slug, for example worker/two-pointers.
+// checkSet is one learning set of a source. name is the source and the slug, for example go/two-pointers.
 type checkSet struct {
 	name string
 	all  []sets.LearningSet

@@ -144,6 +144,31 @@ test('shows that the tutor thinks while the answer has no text', async ({ page, 
 	await expect(panel.getByRole('status')).toHaveText('Репетитор ответил.');
 });
 
+test('keeps the scroll position of the chat while the tutor thinks', async ({ page, notebook, db }) => {
+	await addMessages(db, 'problem', notebook.problem.id, Array.from({ length: 30 }, (_, i) => ({ author: 'student' as const, body: `Message ${i + 1}` })));
+	const send = await heldAnswer(page);
+	await page.goto(`/leetcode/problems/${notebook.problem.id}`);
+	await page.getByRole('button', { name: 'Спросить ИИ', exact: true }).click();
+	const panel = page.getByRole('dialog', { name: 'ИИ-репетитор' }), log = panel.locator('.tutor-log');
+	const top = () => log.evaluate(element => element.scrollTop), below = () => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop);
+	await expect(messages(page)).toHaveCount(30);
+	await panel.getByRole('textbox', { name: 'Сообщение' }).fill('Where do I start?');
+	await panel.getByRole('button', { name: 'Отправить', exact: true }).click();
+	await send(sse({ thinking: true }));
+	await expect(panel.getByText('Репетитор думает.', { exact: true })).toBeVisible();
+	// The log is taller than the panel, and the page scrolled it to the last message.
+	await expect.poll(top).toBeGreaterThan(0);
+	await log.evaluate(element => element.scrollTo({ top: 0 }));
+	await send(sse({ thinking: true }));
+	// React renders the event before the second animation frame.
+	await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+	expect(await top()).toBe(0);
+	await send(sse({ delta: 'Look at the smallest input.' }));
+	await expect.poll(below).toBeLessThan(1);
+	await send(sse({ done: true }));
+	await expect(panel.getByRole('status')).toHaveText('Репетитор ответил.');
+});
+
 test('draws three diagrams and keeps HTML as text', async ({ page, notebook, db }) => {
 	const alerts: string[] = [];
 	await page.addInitScript(() => { Object.assign(window, { violations: 0 }); document.addEventListener('securitypolicyviolation', () => { Object.assign(window, { violations: (window as unknown as { violations: number }).violations + 1 }); }); });
