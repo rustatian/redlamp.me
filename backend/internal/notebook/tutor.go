@@ -484,7 +484,7 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) error {
 		}
 		_ = http.NewResponseController(w).Flush()
 	}
-	// CloudFront closes an origin response that is silent for 30 seconds, and the model can think longer before the first text.
+	// CloudFront closes an origin response that is silent for the time of OriginReadTimeout in infra/edge.yaml, and the model can think longer before the first text.
 	// https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html
 	timer := time.NewTimer(s.thinkingEvery)
 	defer timer.Stop()
