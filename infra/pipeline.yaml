@@ -12,20 +12,18 @@ Parameters:
     Type: String
     Default: ''
     Description: The ARN of the Aurora DSQL cluster of the stack redlamp-data.
+  # A person makes the connection in the console and gives it the installation of the GitHub app.
+  # https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-create-github.html
+  # A push starts the pipeline only when the connection was complete before the pipeline got its ARN.
+  # https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-CodestarConnectionSource.html#action-reference-CodestarConnectionSource-auth
+  ConnectionArn:
+    Type: String
+    Description: The ARN of the CodeConnections connection to GitHub.
 
 Conditions:
   HasCluster: !Not [!Equals [!Ref ClusterArn, '']]
 
 Resources:
-  # A connection that CloudFormation makes has the status PENDING until a person completes it in the console.
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-codeconnections-connection.html
-  # https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-update.html
-  Connection:
-    Type: AWS::CodeConnections::Connection
-    Properties:
-      ConnectionName: redlamp-github
-      ProviderType: GitHub
-
   # CodePipeline puts the artifacts of the pipeline in a folder that it names from the name of the pipeline. S3 deletes an object of this folder after 30 days.
   # https://docs.aws.amazon.com/codepipeline/latest/APIReference/API_ArtifactStore.html
   # sam deploy uploads the function packages below the prefix sam/. They have no rule, because the stack redlamp-api refers to its package.
@@ -401,7 +399,7 @@ Resources:
                 Action:
                   - codeconnections:UseConnection
                   - codestar-connections:UseConnection
-                Resource: !GetAtt Connection.ConnectionArn
+                Resource: !Ref ConnectionArn
 
   # In the QUEUED mode an execution does not overtake an earlier one, so two pushes deploy in their order.
   # https://docs.aws.amazon.com/codepipeline/latest/userguide/concepts-how-it-works.html#concepts-how-it-works-executions-queued
@@ -428,7 +426,7 @@ Resources:
                 Provider: CodeStarSourceConnection
                 Version: '1'
               Configuration:
-                ConnectionArn: !GetAtt Connection.ConnectionArn
+                ConnectionArn: !Ref ConnectionArn
                 FullRepositoryId: rustatian/redlamp.me
                 BranchName: main
               OutputArtifacts:
