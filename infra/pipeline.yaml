@@ -317,7 +317,7 @@ Resources:
                 Action: cloudfront:CreateInvalidation
                 Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/*
 
-  # The image has the runtimes Go 1.27 and Node.js 24. The Go compiler makes the arm64 binary of the function on this x86_64 image.
+  # The image has the runtimes Go 1.27 and Node.js 26. The Go compiler makes the arm64 binary of the function on this x86_64 image.
   # https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html#linux-runtimes
   # The Go tests run PostgreSQL in Docker, and a build can use the Docker daemon only in the privileged mode.
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-codebuild-project-environment.html#cfn-codebuild-project-environment-privilegedmode
