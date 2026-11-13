@@ -84,7 +84,7 @@ Resources:
 
   # CloudFormation changes the four stacks of the site with this role. The role allows the services of their resource types, and the IAM roles and the buckets of these stacks.
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html
-  # The role can make and change only the IAM roles of the data stack and of the function stack, and only a role that has RoleBoundary as its permissions boundary. It has no action that removes the boundary from a role or that changes the boundary policy.
+  # The role can make and change only the IAM roles whose names start with redlamp-api- or redlamp-data- (the roles of the stacks redlamp-api and redlamp-data), and only a role that has RoleBoundary as its permissions boundary. It has no action that removes the boundary from a role or that changes the boundary policy.
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html#access_policies_boundaries-delegate
   # The role still has the full rights of the listed services in the account.
   CloudFormationRole:
@@ -126,6 +126,11 @@ Resources:
               - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub '${ArtifactBucket.Arn}/sam/*'
+              # CloudFormation expands the SAM transform of the function template with the rights of this role.
+              # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/control-access-with-iam.html#resource-level-permissions
+              - Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: arn:aws:cloudformation:eu-central-1:aws:transform/Serverless-2016-10-31
               - Effect: Allow
                 Action:
                   - iam:GetRole
@@ -154,9 +159,23 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PermissionsBoundary: !Ref RoleBoundary
+              # CloudFormation reads the IAM quotas of the account when a change set adds a role.
+              # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/validate-stack-deployments.html
+              - Effect: Allow
+                Action: iam:GetAccountSummary
+                Resource: '*'
+              # CloudFormation reads the boundary policy when a change set gives a role the boundary.
+              - Effect: Allow
+                Action:
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+                  - iam:ListEntitiesForPolicy
+                Resource: !Ref RoleBoundary
 
-  # A role with this permissions boundary has only the rights that are in its own policies and also in this policy. The list has the rights of the function role and the rights that AWS Backup uses for a cluster.
+  # A role with this permissions boundary gets from its own policies only the rights that are also in this policy. The list has the rights of the function role and the rights that AWS Backup uses for a cluster.
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
+  # A grant on a key is possible only when an AWS service makes it for the role. This is the condition that the managed policy of AWS Backup has.
+  # https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-grant-is-for-aws-resource
   # The data stack and the function stack name the policy by its fixed name, so this stack must exist before them.
   RoleBoundary:
     Type: AWS::IAM::ManagedPolicy
@@ -177,15 +196,19 @@ Resources:
               - dsql:ListTagsForResource
               - dsql:StartBackupJob
               - dsql:StopBackupJob
-              - kms:CreateGrant
               - kms:Decrypt
               - kms:DescribeKey
-              - logs:CreateLogGroup
               - logs:CreateLogStream
               - logs:PutLogEvents
               - tag:GetResources
               - transcribe:StartStreamTranscription
             Resource: '*'
+          - Effect: Allow
+            Action: kms:CreateGrant
+            Resource: '*'
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: true
           - Effect: Allow
             Action: ssm:GetParameter
             Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/redlamp/*
