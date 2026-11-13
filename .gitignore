@@ -13,5 +13,6 @@ dist/
 # Browser tests: the Go commands, the results and the report
 .playwright/
 
-# AWS SAM build output
+# AWS SAM build output and local deploy settings
 .aws-sam/
+samconfig.toml

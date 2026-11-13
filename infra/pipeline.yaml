@@ -7,6 +7,9 @@ Parameters:
     Type: String
     NoEcho: true
     Description: The email address that gets a message about a failed execution of the pipeline.
+  ClusterArn:
+    Type: String
+    Description: The ARN of the Aurora DSQL cluster of the stack redlamp-data.
 
 Resources:
   # A connection that CloudFormation makes has the status PENDING until a person completes it in the console.
@@ -18,9 +21,17 @@ Resources:
       ConnectionName: redlamp-github
       ProviderType: GitHub
 
-  # The bucket has the artifacts of the pipeline and the function packages that sam deploy uploads.
+  # CodePipeline puts the artifacts of the pipeline in a folder that it names from the name of the pipeline. S3 deletes an object of this folder after 30 days.
+  # https://docs.aws.amazon.com/codepipeline/latest/APIReference/API_ArtifactStore.html
+  # sam deploy uploads the function packages below the prefix sam/. They have no rule, because the stack redlamp-api refers to its package.
   ArtifactBucket:
     Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Status: Enabled
+            Prefix: redlamp/
+            ExpirationInDays: 30
 
   # SNS sends a message to the address only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours.
   # https://docs.aws.amazon.com/sns/latest/dg/sns-email-notifications.html
@@ -117,6 +128,8 @@ Resources:
                   - iam:DetachRolePolicy
                   - iam:GetRole
                   - iam:GetRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRolePolicies
                   - iam:PassRole
                   - iam:PutRolePolicy
                   - iam:TagRole
@@ -124,8 +137,6 @@ Resources:
                   - iam:UpdateAssumeRolePolicy
                 Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/redlamp-*
 
-  # The condition key limits the use of the connection to this repository.
-  # https://docs.aws.amazon.com/codepipeline/latest/userguide/troubleshooting.html#codebuild-role-connections
   BuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -152,12 +163,6 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource: !Sub '${ArtifactBucket.Arn}/*'
-              - Effect: Allow
-                Action: codeconnections:UseConnection
-                Resource: !GetAtt Connection.ConnectionArn
-                Condition:
-                  StringEquals:
-                    codeconnections:FullRepositoryId: rustatian/redlamp.me
 
   DeployRole:
     Type: AWS::IAM::Role
@@ -199,6 +204,7 @@ Resources:
                   - cloudformation:DescribeStacks
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:GetTemplate
+                  - cloudformation:ListChangeSets
                 Resource:
                   - !Sub arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/redlamp-dns/*
                   - !Sub arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/redlamp-edge/*
@@ -221,7 +227,7 @@ Resources:
               # https://docs.aws.amazon.com/service-authorization/latest/reference/list_dsql.html#list_dsql-action-DbConnectAdmin
               - Effect: Allow
                 Action: dsql:DbConnectAdmin
-                Resource: !Sub arn:aws:dsql:eu-central-1:${AWS::AccountId}:cluster/*
+                Resource: !Ref ClusterArn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !Sub arn:aws:s3:::redlamp-site-${AWS::AccountId}
@@ -320,7 +326,7 @@ Resources:
 
   # In the QUEUED mode an execution does not overtake an earlier one, so two pushes deploy in their order.
   # https://docs.aws.amazon.com/codepipeline/latest/userguide/concepts-how-it-works.html#concepts-how-it-works-executions-queued
-  # A source action without a trigger starts the pipeline on each push to its branch. With CODEBUILD_CLONE_REF the build gets a Git clone of the repository, which the release test needs.
+  # A source action without a trigger starts the pipeline on each push to its branch.
   # https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-CodestarConnectionSource.html#action-reference-CodestarConnectionSource-config
   # The Deploy action changes the stacks in this order: zone, data, database migrations, function, edge. Then it uploads the site and clears the cache of CloudFront.
   Pipeline:
@@ -346,7 +352,6 @@ Resources:
                 ConnectionArn: !GetAtt Connection.ConnectionArn
                 FullRepositoryId: rustatian/redlamp.me
                 BranchName: main
-                OutputArtifactFormat: CODEBUILD_CLONE_REF
               OutputArtifacts:
                 - Name: Source
         - Name: Build

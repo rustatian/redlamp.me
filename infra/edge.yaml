@@ -107,13 +107,18 @@ Resources:
           return request;
         }
 
-  # CloudFront adds the header to the viewer response only. The header does not change the time that CloudFront keeps an asset.
+  # The policy is for each response from the bucket: the public site and the notebook assets.
+  # CloudFront adds the headers to the viewer response only. Cache-Control does not change the time that CloudFront keeps a file.
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/modifying-response-headers.html
   AssetsHeadersPolicy:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties:
       ResponseHeadersPolicyConfig:
         Name: redlamp-assets
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            Override: true
         CustomHeadersConfig:
           Items:
             - Header: Cache-Control
@@ -145,8 +150,14 @@ Resources:
           - Id: notebook
             DomainName: !Select [2, !Split ['/', !Ref FunctionUrl]]
             OriginAccessControlId: !GetAtt NotebookAccessControl.Id
+            # A dictation answers only after Amazon Transcribe has the full text, so the origin gets the longest response timeout of the default quota.
+            # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html#DownloadDistValuesOriginResponseTimeout
+            # TLS 1.2 is the minimum protocol that CloudFront uses for the connection to the origin.
+            # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html#DownloadDistValuesOriginSSLProtocols
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
+              OriginReadTimeout: 120
+              OriginSSLProtocols: [TLSv1.2]
         # The managed cache policy CachingOptimized.
         # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html#managed-cache-caching-optimized
         DefaultCacheBehavior:
@@ -154,6 +165,7 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
           Compress: true
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref AssetsHeadersPolicy
           FunctionAssociations:
             - EventType: viewer-request
               FunctionARN: !GetAtt ViewerRequestFunction.FunctionARN
@@ -176,12 +188,15 @@ Resources:
           # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html#managed-origin-request-policy-all-viewer-except-host-header
           # CloudFront-Viewer-Address is a viewer location header.
           # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/adding-cloudfront-headers.html#cloudfront-headers-viewer-location
+          # The managed response headers policy SecurityHeadersPolicy adds Strict-Transport-Security, X-Frame-Options and X-XSS-Protection. The headers of the server reach the browser with the same values.
+          # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html#managed-response-headers-policies-security
           - PathPattern: /leetcode*
             TargetOriginId: notebook
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
             FunctionAssociations:
               - EventType: viewer-request
                 FunctionARN: !GetAtt ViewerRequestFunction.FunctionARN

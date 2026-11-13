@@ -236,11 +236,11 @@ The site runs in one AWS account. The templates are in `infra/`. Route 53 takes 
 | `redlamp-data` | eu-central-1 | `infra/data.yaml` | none | `ClusterEndpoint`, `ClusterArn` |
 | `redlamp-api` | eu-central-1 | `infra/template.yaml` | `ClusterEndpoint`, `ClusterArn`, `DistributionId`, `AlarmEmail` | `FunctionUrl`, `FunctionRoleArn` |
 | `redlamp-edge` | us-east-1 | `infra/edge.yaml` | `HostedZoneId`, `FunctionUrl` | `BucketName`, `DistributionId`, `DistributionDomainName` |
-| `redlamp-pipeline` | eu-central-1 | `infra/pipeline.yaml` | `AlarmEmail` | none |
+| `redlamp-pipeline` | eu-central-1 | `infra/pipeline.yaml` | `AlarmEmail`, `ClusterArn` | none |
 
 - `redlamp-dns` has the zone `redlamp.me`, the SPF and DMARC records of a domain that sends no mail, the KMS key and the key-signing key of DNSSEC, and two DNSSEC alarms on the topic `redlamp-dns-alarms`. CloudFormation keeps the zone when it deletes the stack, because the domain registration names the name servers of this zone.
 - `redlamp-data` has the Aurora DSQL cluster with deletion protection and its daily backup. See [Backup and recovery](#backup-and-recovery).
-- `redlamp-api` is an AWS SAM template. It has the Lambda function of `backend/cmd/api` on arm64, with 512 MB of memory and a timeout of 600 seconds. Lambda runs at most 10 instances of the function at one time. The function URL uses IAM authentication and response streaming. The stack also has a log group with 30 days of retention, the alarm `redlamp-api-errors` on the topic `redlamp-api-alarms`, and a monthly cost alert at 10 USD for AWS Lambda and Amazon CloudFront.
+- `redlamp-api` is an AWS SAM template. It has the Lambda function of `backend/cmd/api` on arm64, with 512 MB of memory and a timeout of 600 seconds. Lambda runs at most 10 instances of the function at one time. The function URL uses IAM authentication and response streaming. The stack also has a log group with 30 days of retention, three alarms on the topic `redlamp-api-alarms`, and a monthly cost alert at 10 USD for AWS Lambda and Amazon CloudFront. The alarm `redlamp-api-errors` is for a function error of Lambda. The alarm `redlamp-api-failures` is for an internal failure, for which the server answers 503 with the code `unavailable`. The alarm `redlamp-data-backup` is for a missing backup.
 - `redlamp-edge` has the certificate of `redlamp.me` and `www.redlamp.me`, the site bucket `redlamp-site-<account ID>`, the CloudFront distribution with its viewer request function, and the alias records of the two names.
 - `redlamp-pipeline` has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, and the topic `redlamp-pipeline-alarms` for a failed execution.
 
@@ -280,10 +280,10 @@ The stacks take outputs of other stacks as parameters. For the first deploy, use
 3. Write the two SecureString parameters, see [Secrets](#secrets).
 4. Deploy `redlamp-api` with `ClusterEndpoint` and `ClusterArn` from `redlamp-data`, and with `AlarmEmail`. Leave `DistributionId` empty. The distribution needs the function URL, so the first deploy of this stack has no distribution.
 5. Deploy `redlamp-edge` with `HostedZoneId` from `redlamp-dns` and `FunctionUrl` from `redlamp-api`. ACM adds the validation records of the certificate to the zone.
-6. Deploy the stack `redlamp-pipeline` with `AlarmEmail`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console. Before this step the pipeline does not exist, and a merge to `main` deploys nothing.
+6. Deploy the stack `redlamp-pipeline` with `AlarmEmail`, and with `ClusterArn` from `redlamp-data`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console. Before this step the pipeline does not exist, and a merge to `main` deploys nothing.
 
    ```bash
-   aws cloudformation deploy --region eu-central-1 --stack-name redlamp-pipeline --template-file infra/pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides AlarmEmail=<address>
+   aws cloudformation deploy --region eu-central-1 --stack-name redlamp-pipeline --template-file infra/pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides AlarmEmail=<address> ClusterArn=<output ClusterArn of redlamp-data>
    ```
 
 `infra/buildspec-deploy.yml` has the commands that the pipeline runs for the four stacks of the site, with the region and the parameters of each stack. For a deploy by hand, leave out `--role-arn`, and give `AlarmEmail` on the first deploy of a stack that has this parameter. After the first deploy, each execution of the pipeline applies the migrations and deploys `redlamp-api` again with `DistributionId` from `redlamp-edge`. See [Releases](#releases).
@@ -292,9 +292,9 @@ The stacks take outputs of other stacks as parameters. For the first deploy, use
 
 The sidebar shows the version from `package.json`. The versions follow [Semantic Versioning](https://semver.org/). Increase the version in `package.json` in the pull request that changes the notebook. A feature increases the minor version. A fix increases the patch version.
 
-The pipeline `redlamp` exists after the deploy of the stack `redlamp-pipeline`, see [First deploy](#first-deploy). A push to `main` then starts the pipeline in eu-central-1. The pipeline runs one execution at a time, so two pushes deploy in their order. It has three stages:
+The pipeline `redlamp` exists after the deploy of the stack `redlamp-pipeline`, see [First deploy](#first-deploy). A push to `main` then starts the pipeline in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
 
-1. Source: the connection `redlamp-github` gives a Git clone of `main`.
+1. Source: the connection `redlamp-github` gives the files of `main`.
 2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.15 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
 3. Deploy: the CodeBuild project `redlamp-deploy` runs `infra/buildspec-deploy.yml`. It deploys the stacks in this order: `redlamp-dns`, `redlamp-data`, the database migrations, `redlamp-api`, `redlamp-edge`. Then it uploads `dist/` to the site bucket and clears the cache of CloudFront.
 
@@ -320,7 +320,7 @@ A function instance that already runs keeps the old accounts and the old key. Re
 
 ## Backup and recovery
 
-AWS Backup makes a backup of the cluster each day at 17:00 UTC and keeps it for 35 days, in the vault `redlamp-data`. Each backup is a full copy of the cluster. A backup needs a cluster in the Active state. A cluster without connections goes to the Idle state, and its backup fails. For this reason, the backup starts in the hours of normal use. Aurora DSQL refuses to delete the cluster while deletion protection is on.
+AWS Backup makes a backup of the cluster each day at 17:00 UTC and keeps it for 35 days, in the vault `redlamp-data`. Each backup is a full copy of the cluster. A backup needs a cluster in the Active state. A cluster without connections goes to the Idle state, and its backup fails. For this reason, the backup starts in the hours of normal use. The alarm `redlamp-data-backup` is on when no backup job completed in two days. Then open the notebook, which makes the cluster Active. The next job at 17:00 UTC makes a backup. Aurora DSQL refuses to delete the cluster while deletion protection is on.
 
 A restore makes a new cluster from a backup. Each pipeline execution gives `redlamp-api` the endpoint and the ARN of the cluster from the outputs of `redlamp-data`. The restored cluster has the session records of the backup. Rotate both accounts after recovery to invalidate these sessions. This document does not give the steps of a restore: do one restore test first, then write the steps here.
 
