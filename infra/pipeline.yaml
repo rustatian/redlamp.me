@@ -159,6 +159,18 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PermissionsBoundary: !Ref RoleBoundary
+              # CloudFormation reads the IAM quotas of the account when a change set adds a role.
+              # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/validate-stack-deployments.html
+              - Effect: Allow
+                Action: iam:GetAccountSummary
+                Resource: '*'
+              # CloudFormation reads the boundary policy when a change set gives a role the boundary.
+              - Effect: Allow
+                Action:
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+                  - iam:ListEntitiesForPolicy
+                Resource: !Ref RoleBoundary
 
   # A role with this permissions boundary gets from its own policies only the rights that are also in this policy. The list has the rights of the function role and the rights that AWS Backup uses for a cluster.
   # https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
