@@ -152,7 +152,7 @@ Resources:
             OriginAccessControlId: !GetAtt NotebookAccessControl.Id
             # A dictation answers only after Amazon Transcribe has the full text, so the origin gets the longest response timeout of the default quota.
             # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html#DownloadDistValuesOriginResponseTimeout
-            # CloudFront uses only TLS 1.2 for the connection to the origin.
+            # TLS 1.2 is the minimum protocol that CloudFront uses for the connection to the origin.
             # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html#DownloadDistValuesOriginSSLProtocols
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
