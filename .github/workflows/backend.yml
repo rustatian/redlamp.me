@@ -25,7 +25,7 @@ jobs:
     # The database tests run against PostgreSQL 16, the version that Aurora DSQL is compatible with.
     services:
       postgres:
-        image: postgres:16.15
+        image: postgres:16.16
         env:
           POSTGRES_PASSWORD: test
           # Aurora DSQL uses UTF-8 and the C collation only, so text sorts in the same order in the tests.

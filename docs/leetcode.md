@@ -22,7 +22,7 @@ bun install --frozen-lockfile
 Start PostgreSQL 16 in Docker. Aurora DSQL uses UTF-8 and the C collation only, so the local database uses them too. Text then sorts in the same order as on AWS.
 
 ```bash
-docker run -d --name redlamp-backend-test -e POSTGRES_PASSWORD=test -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --locale=C" -p 127.0.0.1:54329:5432 postgres:16.15
+docker run -d --name redlamp-backend-test -e POSTGRES_PASSWORD=test -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --locale=C" -p 127.0.0.1:54329:5432 postgres:16.16
 ```
 
 Set the connection string in each shell that runs the server or the checks:
@@ -302,7 +302,7 @@ The sidebar shows the version from `package.json`. The versions follow [Semantic
 After [First deploy](#first-deploy), a push to `main` starts the pipeline `redlamp` in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
 
 1. Source: the connection `redlamp-github` gives the files of `main`.
-2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.15 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
+2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.16 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
 3. Deploy: the CodeBuild project `redlamp-deploy` runs `infra/buildspec-deploy.yml`. It deploys the stacks in this order: `redlamp-dns`, `redlamp-data`, the database migrations, `redlamp-api`, `redlamp-edge`. Then it uploads `dist/` to the site bucket and clears the cache of CloudFront.
 
 The migrations run before the new code of the function. They are the files of `backend/migrations/`, with one SQL statement in each file. `cmd/migrate` applies the files that the table `schema_migrations` does not have, in the order of their names. On AWS, it connects as the database role `admin` and maps the database role `app` to the IAM role of the function.

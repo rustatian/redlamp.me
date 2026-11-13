@@ -8,7 +8,7 @@ phases:
   install:
     runtime-versions:
       golang: 1.27
-      nodejs: 24
+      nodejs: 26
     commands:
       - npm install --global bun@1.4.4
       - bun install --frozen-lockfile
@@ -16,7 +16,7 @@ phases:
     commands:
       # Aurora DSQL uses UTF-8 and the C collation only, so text sorts in the same order in the tests.
       # https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html
-      - docker run --detach --name postgres --publish 5432:5432 --env POSTGRES_PASSWORD=test --env POSTGRES_INITDB_ARGS='--encoding=UTF8 --locale=C' public.ecr.aws/docker/library/postgres:16.15
+      - docker run --detach --name postgres --publish 5432:5432 --env POSTGRES_PASSWORD=test --env POSTGRES_INITDB_ARGS='--encoding=UTF8 --locale=C' public.ecr.aws/docker/library/postgres:16.16
       - until docker exec postgres pg_isready --username postgres; do sleep 1; done
   build:
     commands:
