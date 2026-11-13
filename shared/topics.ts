@@ -38,12 +38,8 @@ const aliases: Record<string, string[]> = {
 	Enumeration: [], 'Brute Force': [],
 };
 const names = new Map(Object.entries(aliases).flatMap(([name, values]) => [name, ...values].map(value => [value.toLowerCase(), name])));
-const backtrackingProblems = new Set(['letter-case-permutation', 'subsets', 'permutations', 'combinations', 'letter-combinations-of-a-phone-number', 'subsets-ii', 'permutations-ii', 'combination-sum', 'generate-parentheses', 'cf-1097-b', 'n-queens']);
 
-export function normalizeTopic(value: string, slug?: string): string {
+export function normalizeTopic(value: string): string {
 	const name = value.normalize('NFC').trim().replace(/\s+/g, ' '), key = name.toLowerCase();
-	if (key === 'перебор' && backtrackingProblems.has(slug ?? '')) return 'Backtracking';
-	if (key === 'таблица' && slug === 'unique-paths') return 'Dynamic Programming';
-	if (key === 'сортировка подсчётом' && slug === 'top-k-frequent-words') return 'Bucket Sort';
 	return names.get(key) ?? name;
 }
