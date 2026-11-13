@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, Mic, Square } from 'lucide-react';
 import { api, message } from './api';
 
-const LIMIT = 120, RATE = 16_000;
+const LIMIT = 100, RATE = 16_000;
 
 // Puts the text at the cursor with a space on each side where a word touches it. setRangeText does not change the value that React remembers, so the input event makes React run onChange.
 function insertText(field: HTMLTextAreaElement, text: string) {

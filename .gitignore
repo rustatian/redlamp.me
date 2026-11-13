@@ -2,6 +2,11 @@
 node_modules/
 **/node_modules/
 
+# Local Cloudflare files of an old checkout: they can hold secrets
+.dev.vars
+.wrangler/
+wrangler.toml.local
+
 # Build
 dist/
 

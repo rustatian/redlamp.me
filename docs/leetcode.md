@@ -95,7 +95,7 @@ A local server has no speech service, so dictation answers "Распознава
 - Use **Recall this problem** to practise before revealing saved work. Record the result. Choose the next review date. When revealing saved work, use **Старые попытки** and **Новые попытки** to page through the saved attempts.
 - **Today** also shows random recall picks from the library: three problems of the Two Pointers set and two problems of the first permutations homework. The picks change every day. A pick that you recall today leaves the list. The recall page of a pick does not show the summary or the saved work. Use **Start a new attempt** to solve the problem again. If the problem has a draft, the button saves the draft as an attempt and starts a new empty draft. This save does not change the understanding of the problem.
 - **Archive problem** moves a problem to **Archived problems** in the library and blocks new homework tasks for it. **Restore problem** returns it. Restore the problem before returning a completed homework task for another attempt.
-- As the student, use **Голосовой ввод** (the microphone button) to dictate Russian text into a notes field, the review note, the tutor message, or the problem description. Select the button again to stop. A recording stops after 2 minutes. The notebook puts the text at the cursor, or at the end when you did not select a position in the field. The browser sends the audio as mono 16 kHz PCM. The server sends it to Amazon Transcribe streaming with the language Russian and does not store the audio.
+- As the student, use **Голосовой ввод** (the microphone button) to dictate Russian text into a notes field, the review note, the tutor message, or the problem description. Select the button again to stop. A recording stops after 100 seconds. The notebook puts the text at the cursor, or at the end when you did not select a position in the field. The browser sends the audio as mono 16 kHz PCM. The server sends it to Amazon Transcribe streaming with the language Russian and does not store the audio.
 - If a save fails, keep the page open. Use **Retry save** or **Copy unsaved work**. Reload recovery is available in the same tab when browser session storage works. Conflicting edits require an explicit choice of the server copy.
 
 ## Learning sets
@@ -126,8 +126,8 @@ A learning set is a Go package in `backend/internal/sets/<name>/`. The model of 
 2. Write `chapter<N>.html` for each chapter as an HTML fragment. The chapter page inserts it without changes. Start with `<p class="lead">` and one sentence. Then write sections that start with `<h2 id="sN">`. Use only these elements: `h2 h3 p ul ol li table caption thead tbody tr th td pre code strong em sup blockquote details summary a br figure`, and `<div class="rule">` for a rule. Put a picture as `<figure data-figure="<id>"></figure>` on its own line. Do not use scripts, styles, `style` attributes or event attributes. Write code blocks as `<pre><code class="language-python">`. Write a hint as `<details><summary>Подсказка 1</summary>...</details>`. Give external links `target="_blank" rel="noopener noreferrer"`.
 3. Write `set.go`. Embed each lesson with `//go:embed chapter<N>.html` in a `string` variable. Export `var Set = sets.LearningSet{...}` with the `Slug`, `Title`, `Summary`, `Topics` and `Chapters` of the set, with the chapters in reading order. Give each chapter a `Title`, a `Summary`, its `Lesson`, `Tasks`, `Cards`, `Links` and `Figures`. For each task, give the problem `URL` on LeetCode or Codeforces, its `Number`, `Title`, `Difficulty`, `Topics`, `Note` and `Statement`, and the standard tests in `Tests`. Do not change the slug of a published set. The quiz attempts keep the deck as `<set slug>-<chapter number>`.
 4. Describe each picture in `Figures` of its chapter, in the order of the placeholders in the lesson. A figure has an ID, a Russian title and one or more frames. A frame has a Russian caption and rows of cells. A row can have a label, marked cells, dimmed cells, pointers under the cells and a window bracket. A row with `Tree: true` draws its cells as a binary tree in `heapq` order: the children of place i are places 2i + 1 and 2i + 2. An empty string is an empty place. A tree row has no pointers and no window. A marked cell is a cell that the step works on. A dimmed cell holds a value that a move removed. Do not show a pointer that is past the end of its row. Say in the caption where that pointer is. Make each frame from a trace of the algorithm on the numbers of the picture.
-5. Write `solutions.go`. Export `var References = map[string]sets.Reference{...}` with a reference solution for each task, by task slug. A `call` reference has `Arity` and `Call`, and `Call` returns the value that the tests compare. A `stdio` reference has `Stdio`, and `Stdio` returns the standard output. First check the constraints of the statement with the helpers in `backend/internal/sets/constraints.go`, for example `sets.Int`, `sets.Ints` and `sets.NewReader`. A failed check panics with `sets.ErrConstraints` from `backend/internal/sets/reference.go`. The references stay on the server, so the student cannot read them.
-6. Write `generators.go`. Export `var Generators = map[string]sets.Generator{...}` with a generator of hidden tests for each task, by task slug. A generator gets a seeded random function and returns 10 to 16 inputs in the test format of the task. A set without tasks needs no `solutions.go` and no `generators.go`.
+5. Write `solutions.go`. Export `var References = map[string]sets.Reference{...}` with a reference solution for each task, by task slug. A `call` reference has `Arity` and `Call`, and `Call` returns the value that the tests compare. The arguments and the result of `Call` are Python values of the package `answers`: make the result from a Go number or a Go slice with `sets.Py`. A `stdio` reference has `Stdio`, and `Stdio` returns the standard output. First check the constraints of the statement with the helpers in `backend/internal/sets/constraints.go`, for example `sets.Int`, `sets.Ints` and `sets.NewReader`. A failed check panics with `sets.ErrConstraints` from `backend/internal/sets/reference.go`. The references stay on the server, so the student cannot read them.
+6. Write `generators.go`. Export `var Generators = map[string]sets.Generator{...}` with a generator of hidden tests for each task, by task slug. A generator gets a seeded random function and returns 10 to 16 inputs in the test format of the task. Make the input of a call task with `sets.Call`. A set without tasks needs no `solutions.go` and no `generators.go`.
 7. In `backend/internal/sets/content/content.go`, import the package. Add its `Set` to `Sets`. The order of `Sets` is the display order. Add its `References` to `References` and its `Generators` to `Generators`.
 8. Find the hard words in the student text: the summaries, the lessons, the statements, the notes and the cards. For each hard word that `shared/glossary.ts` does not have, add an entry. Give the entry a pattern for the word and its forms. Give it a plain Russian tip of one or two short sentences. Add the start of the word to `hardWord` in `web/glossary.test.ts`. Do not add a word that has two meanings in the sets. Use exact English names such as `Array`, `Hash Table`, `Two Pointers`, `Heap (Priority Queue)`, `Queue`, `Deque`, and `Stack`. Use precise names such as `Min-Heap` or `Monotonic Deque` when explaining an implementation. Keep Python API names such as `heapq` and `collections.deque` unchanged. Use "очередь" only for a real line of people.
 9. Write the JSON copy of the learning sets again. The web tests and the browser tests read this copy in `backend/internal/sets/settest/sets.json`. Run this command in `backend/`:
@@ -136,9 +136,10 @@ A learning set is a Go package in `backend/internal/sets/<name>/`. The model of 
    go test ./internal/sets/content/ -run TestSetsEqualTheFile -update
    ```
 
-10. Run the checks, see [Checks](#checks). In `backend/`, `go test ./...` runs the content checks of `backend/internal/notebook/content_checks_test.go` and `backend/internal/notebook/sets_references_test.go`. They check content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, English technical names, problem cost notes, and reference answers. `bun run test` checks the glossary coverage. `bun run test:browser` checks executable lesson outputs, figures, and navigation.
+10. Each chapter has one quiz deck. Add the decks of the new chapters to the expected list of `TestQuizDecks` in `backend/internal/notebook/quiz_test.go`. Increase the deck count in `e2e/quiz.spec.ts`.
+11. Run the checks, see [Checks](#checks). In `backend/`, `go test ./...` runs the content checks of `backend/internal/notebook/content_checks_test.go` and `backend/internal/notebook/sets_references_test.go`. They check content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, English technical names, problem cost notes, and reference answers. `bun run test` checks the glossary coverage. `bun run test:browser` checks executable lesson outputs, figures, and navigation.
 
-The file `backend/internal/sets/settest/references.json` has recorded hidden tests of earlier tasks. A task without recorded hidden tests needs no entry there.
+The file `backend/internal/sets/settest/references.json` has recorded hidden tests of earlier tasks. A task without recorded hidden tests needs no entry there. When you change the standard tests or the generator of a recorded task, change its entry in this file or remove the entry.
 
 To add a chapter to a published set:
 
@@ -235,13 +236,13 @@ The site runs in one AWS account. The templates are in `infra/`. Route 53 takes 
 | `redlamp-data` | eu-central-1 | `infra/data.yaml` | none | `ClusterEndpoint`, `ClusterArn` |
 | `redlamp-api` | eu-central-1 | `infra/template.yaml` | `ClusterEndpoint`, `ClusterArn`, `DistributionId`, `AlarmEmail` | `FunctionUrl`, `FunctionRoleArn` |
 | `redlamp-edge` | us-east-1 | `infra/edge.yaml` | `HostedZoneId`, `FunctionUrl` | `BucketName`, `DistributionId`, `DistributionDomainName` |
-| the pipeline stack | eu-central-1 | `infra/pipeline.yaml` | `AlarmEmail`, `ClusterArn` | none |
+| `redlamp-pipeline` | eu-central-1 | `infra/pipeline.yaml` | `AlarmEmail`, `ClusterArn` | none |
 
 - `redlamp-dns` has the zone `redlamp.me`, the SPF and DMARC records of a domain that sends no mail, the KMS key and the key-signing key of DNSSEC, and two DNSSEC alarms on the topic `redlamp-dns-alarms`. CloudFormation keeps the zone when it deletes the stack, because the domain registration names the name servers of this zone.
 - `redlamp-data` has the Aurora DSQL cluster with deletion protection and its daily backup. See [Backup and recovery](#backup-and-recovery).
 - `redlamp-api` is an AWS SAM template. It has the Lambda function of `backend/cmd/api` on arm64, with 512 MB of memory and a timeout of 600 seconds. Lambda runs at most 10 instances of the function at one time. The function URL uses IAM authentication and response streaming. The stack also has a log group with 30 days of retention, three alarms on the topic `redlamp-api-alarms`, and a monthly cost alert at 10 USD for AWS Lambda and Amazon CloudFront. The alarm `redlamp-api-errors` is for a function error of Lambda. The alarm `redlamp-api-failures` is for an internal failure, for which the server answers 503 with the code `unavailable`. The alarm `redlamp-data-backup` is for a missing backup.
 - `redlamp-edge` has the certificate of `redlamp.me` and `www.redlamp.me`, the site bucket `redlamp-site-<account ID>`, the CloudFront distribution with its viewer request function, and the alias records of the two names.
-- The pipeline stack has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, and the topic `redlamp-pipeline-alarms` for a failed execution.
+- `redlamp-pipeline` has the GitHub connection `redlamp-github`, the artifact bucket, the CodeBuild projects `redlamp-build` and `redlamp-deploy`, the pipeline `redlamp`, the role that CloudFormation uses for the four stacks of the site, and the topic `redlamp-pipeline-alarms` for a failed execution.
 
 CloudFront sends `/leetcode`, `/leetcode.html` and `/leetcode/*` to the function URL, except `/leetcode/assets/*`. It sends the other paths to the site bucket. On the public site, a path that ends with a slash gets `index.html`, and a path without a dot gets the extension `.html`. A request to `www.redlamp.me` gets a redirect to `https://redlamp.me` with the same path and query. CloudFront signs each request to the function URL, so the browser sends the SHA-256 of the body of each change request in the header `x-amz-content-sha256`.
 
@@ -249,12 +250,26 @@ The function has these environment variables: `DSQL_ENDPOINT` with the cluster e
 
 ### Secrets
 
-The secrets are SecureString parameters of SSM Parameter Store in eu-central-1. The owner writes both parameters. The function stack lets the function read them. The server reads each secret from the parameter that its variable names: `LEETCODE_ACCOUNTS_PARAMETER` and `ANTHROPIC_API_KEY_PARAMETER`. When `LEETCODE_ACCOUNTS` or `ANTHROPIC_API_KEY` has a value, the server uses that value and does not read the parameter. The server reads both secrets when it starts, so a function instance that already runs keeps the old values.
+The secrets are SecureString parameters of SSM Parameter Store in eu-central-1. The owner writes both parameters. Each parameter uses the default key `aws/ssm`. The policy of this key lets each principal of the account decrypt through Parameter Store. Another key needs the permission `kms:Decrypt` in the role of the function, and the role does not have it. The function stack lets the function read them. The server reads each secret from the parameter that its variable names: `LEETCODE_ACCOUNTS_PARAMETER` and `ANTHROPIC_API_KEY_PARAMETER`. When `LEETCODE_ACCOUNTS` or `ANTHROPIC_API_KEY` has a value, the server uses that value and does not read the parameter. The server reads both secrets one time, when a function instance starts, so an instance that already runs keeps the old values.
 
 - `/redlamp/leetcode-accounts`: the accounts secret, the standard output of `go run ./cmd/credentials`.
 - `/redlamp/anthropic-api-key`: the Anthropic API key of the parent.
 
-The repository is public, so the alarm address is not in the templates. The stacks `redlamp-dns` and `redlamp-api` and the pipeline stack take it as the parameter `AlarmEmail`. SNS sends a message only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours. The cost alert of `redlamp-api` also goes to this address.
+Write the accounts with this command. Run it in `backend/`, in an interactive terminal, with the intended usernames. The command shows the new passwords on the terminal, and only the JSON of the accounts goes into the parameter:
+
+```bash
+aws ssm put-parameter --region eu-central-1 --name /redlamp/leetcode-accounts --type SecureString --value "$(go run ./cmd/credentials parent-name student-name)"
+```
+
+Add `--overwrite` when the parameter exists. Write `/redlamp/anthropic-api-key` in the Parameter Store console. Do not type the API key in a command line, because the shell keeps the line in its history.
+
+To use a new value at once, change the configuration of the function, for example its description. After such an update, Lambda provisions the function again, so new instances serve the requests ([UpdateFunctionConfiguration](https://docs.aws.amazon.com/lambda/latest/api/API_UpdateFunctionConfiguration.html)):
+
+```bash
+aws lambda update-function-configuration --region eu-central-1 --function-name "$(aws cloudformation describe-stack-resource --region eu-central-1 --stack-name redlamp-api --logical-resource-id ApiFunction --query StackResourceDetail.PhysicalResourceId --output text)" --description "secrets <date>"
+```
+
+The repository is public, so the alarm address is not in the templates. The stacks `redlamp-dns`, `redlamp-api` and `redlamp-pipeline` take it as the parameter `AlarmEmail`. SNS sends a message only after the address confirms the subscription. SNS deletes a subscription that is not confirmed in 48 hours. The cost alert of `redlamp-api` also goes to this address.
 
 ### First deploy
 
@@ -262,18 +277,22 @@ The stacks take outputs of other stacks as parameters. For the first deploy, use
 
 1. Deploy `redlamp-dns` with `AlarmEmail`. The domain registration of `redlamp.me` must name the name servers of the zone. The output `NameServers` gives them.
 2. Deploy `redlamp-data`.
-3. Write the two SecureString parameters.
+3. Write the two SecureString parameters, see [Secrets](#secrets).
 4. Deploy `redlamp-api` with `ClusterEndpoint` and `ClusterArn` from `redlamp-data`, and with `AlarmEmail`. Leave `DistributionId` empty. The distribution needs the function URL, so the first deploy of this stack has no distribution.
 5. Deploy `redlamp-edge` with `HostedZoneId` from `redlamp-dns` and `FunctionUrl` from `redlamp-api`. ACM adds the validation records of the certificate to the zone.
-6. Deploy the pipeline stack with `AlarmEmail`, and with `ClusterArn` from `redlamp-data`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console.
+6. Deploy the stack `redlamp-pipeline` with `AlarmEmail`, and with `ClusterArn` from `redlamp-data`. CloudFormation makes the connection `redlamp-github` with the status `PENDING`. A person completes the connection in the console. Before this step the pipeline does not exist, and a merge to `main` deploys nothing.
 
-`infra/buildspec-deploy.yml` has the deploy command of each stack, with its region and its parameters. After the first deploy, each execution of the pipeline applies the migrations and deploys `redlamp-api` again with `DistributionId` from `redlamp-edge`. See [Releases](#releases).
+   ```bash
+   aws cloudformation deploy --region eu-central-1 --stack-name redlamp-pipeline --template-file infra/pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides AlarmEmail=<address> ClusterArn=<output ClusterArn of redlamp-data>
+   ```
+
+`infra/buildspec-deploy.yml` has the commands that the pipeline runs for the four stacks of the site, with the region and the parameters of each stack. For a deploy by hand, leave out `--role-arn`, and give `AlarmEmail` on the first deploy of a stack that has this parameter. After the first deploy, each execution of the pipeline applies the migrations and deploys `redlamp-api` again with `DistributionId` from `redlamp-edge`. See [Releases](#releases).
 
 ## Releases
 
 The sidebar shows the version from `package.json`. The versions follow [Semantic Versioning](https://semver.org/). Increase the version in `package.json` in the pull request that changes the notebook. A feature increases the minor version. A fix increases the patch version.
 
-A push to `main` starts the pipeline `redlamp` in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
+The pipeline `redlamp` exists after the deploy of the stack `redlamp-pipeline`, see [First deploy](#first-deploy). A push to `main` then starts the pipeline in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
 
 1. Source: the connection `redlamp-github` gives the files of `main`.
 2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.15 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
@@ -281,27 +300,29 @@ A push to `main` starts the pipeline `redlamp` in eu-central-1. An execution doe
 
 The migrations run before the new code of the function. They are the files of `backend/migrations/`, with one SQL statement in each file. `cmd/migrate` applies the files that the table `schema_migrations` does not have, in the order of their names. On AWS, it connects as the database role `admin` and maps the database role `app` to the IAM role of the function.
 
-A failed execution sends a message to the topic `redlamp-pipeline-alarms`. CloudFormation changes the four stacks of the site with the role of the pipeline stack. This role can give each policy to an IAM role with the prefix `redlamp-`, so a commit on `main` has the rights of an administrator of the account.
+A failed execution sends a message to the topic `redlamp-pipeline-alarms`. CloudFormation changes the four stacks of the site with the role of the stack `redlamp-pipeline`. This role can give each policy to an IAM role with the prefix `redlamp-`, so a commit on `main` has the rights of an administrator of the account.
 
 After a deploy, check sign-in, sign-out, and a normal draft save on `https://redlamp.me/leetcode`. The logs of the function are in the log group of `redlamp-api`.
 
 ## Credential rotation
 
-Run the account-generation command again with the intended usernames. Run it in `backend/`, in an interactive terminal:
+Make new credentials for both accounts and write them to the parameter. Run this command in `backend/`, in an interactive terminal, with the intended usernames:
 
 ```bash
-go run ./cmd/credentials parent-name student-name
+aws ssm put-parameter --region eu-central-1 --name /redlamp/leetcode-accounts --type SecureString --overwrite --value "$(go run ./cmd/credentials parent-name student-name)"
 ```
 
-Save the new passwords. Write the standard output to the parameter `/redlamp/leetcode-accounts`. The command generates new credentials for both accounts. Changing an account's username or password digest invalidates its existing sessions. For a local server, set `LEETCODE_ACCOUNTS` to the new output, as in [Local setup](#local-setup). Then restart the server.
+Save the new passwords that the command shows on the terminal. Changing an account's username or password digest invalidates its existing sessions. For a local server, set `LEETCODE_ACCOUNTS` to the standard output of `go run ./cmd/credentials parent-name student-name`, as in [Local setup](#local-setup). Then restart the server.
 
-To rotate the API key of the tutor, write the new key to the parameter `/redlamp/anthropic-api-key`. A function instance that already runs keeps the old accounts and the old key until it stops, see [Secrets](#secrets).
+To rotate the API key of the tutor, write the new key to the parameter `/redlamp/anthropic-api-key` in the Parameter Store console.
+
+A function instance that already runs keeps the old accounts and the old key. Replace the instances with the command in [Secrets](#secrets).
 
 ## Backup and recovery
 
 AWS Backup makes a backup of the cluster each day at 17:00 UTC and keeps it for 35 days, in the vault `redlamp-data`. Each backup is a full copy of the cluster. A backup needs a cluster in the Active state. A cluster without connections goes to the Idle state, and its backup fails. For this reason, the backup starts in the hours of normal use. The alarm `redlamp-data-backup` is on when no backup job completed in two days. Then open the notebook, which makes the cluster Active. The next job at 17:00 UTC makes a backup. Aurora DSQL refuses to delete the cluster while deletion protection is on.
 
-A restore makes a new cluster from a backup. Each pipeline execution gives `redlamp-api` the endpoint and the ARN of the cluster from the outputs of `redlamp-data`. The restored cluster has the session records of the backup. Rotate both accounts after recovery to invalidate these sessions.
+A restore makes a new cluster from a backup. Each pipeline execution gives `redlamp-api` the endpoint and the ARN of the cluster from the outputs of `redlamp-data`. The restored cluster has the session records of the backup. Rotate both accounts after recovery to invalidate these sessions. This document does not give the steps of a restore: do one restore test first, then write the steps here.
 
 ## Checks
 
@@ -321,7 +342,7 @@ bun run typecheck
 bun run test
 ```
 
-`bun run test` builds the site and then runs the Vitest tests in `web/`.
+`bun run test` builds the site, runs the test of the CloudFront function in `scripts/edge.test.ts`, and then runs the Vitest tests in `web/`.
 
 Run the Go checks in `backend/`:
 
