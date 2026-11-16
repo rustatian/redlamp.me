@@ -237,10 +237,11 @@ func TestHomeworkEditResetsPostponement(t *testing.T) {
 // The server takes today from its own UTC clock.
 func TestHomeworkPostpone(t *testing.T) {
 	now := time.Now().UTC()
-	today, tomorrow, yesterday := now.Format(time.DateOnly), now.AddDate(0, 0, 1).Format(time.DateOnly), now.AddDate(0, 0, -1).Format(time.DateOnly)
+	today, tomorrow, yesterday, inTwoDays := now.Format(time.DateOnly), now.AddDate(0, 0, 1).Format(time.DateOnly), now.AddDate(0, 0, -1).Format(time.DateOnly), now.AddDate(0, 0, 2).Format(time.DateOnly)
 	tests := []struct {
 		name        string
 		role        string
+		task        string
 		due         any
 		used        bool
 		version     int
@@ -249,17 +250,22 @@ func TestHomeworkPostpone(t *testing.T) {
 		dueAfter    any
 		postponedTo any
 	}{
-		{name: "student moves the due date by one day", role: "student", due: today, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
-		{name: "second use of Сила Бомжа", role: "student", due: today, used: true, version: 1, expected: 409, code: "postponed", dueAfter: today, postponedTo: "2026-10-10"},
-		{name: "parent cannot postpone", role: "parent", due: today, used: false, version: 1, expected: 403, code: "forbidden", dueAfter: today, postponedTo: nil},
-		{name: "postpone after the due date", role: "student", due: yesterday, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: yesterday, postponedTo: nil},
-		{name: "postpone without a due date", role: "student", due: nil, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: nil, postponedTo: nil},
-		{name: "stale postpone", role: "student", due: today, used: false, version: 2, expected: 409, code: "conflict", dueAfter: today, postponedTo: nil},
+		{name: "student moves the due date by one day", role: "student", task: "assigned", due: today, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
+		{name: "second use of Сила Бомжа", role: "student", task: "assigned", due: today, used: true, version: 1, expected: 409, code: "postponed", dueAfter: today, postponedTo: "2026-10-10"},
+		{name: "parent cannot postpone", role: "parent", task: "assigned", due: today, used: false, version: 1, expected: 403, code: "forbidden", dueAfter: today, postponedTo: nil},
+		{name: "due date after today moves by one day", role: "student", task: "assigned", due: tomorrow, used: false, version: 1, expected: 200, code: "", dueAfter: inTwoDays, postponedTo: inTwoDays},
+		{name: "due date before today moves to tomorrow", role: "student", task: "assigned", due: yesterday, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
+		{name: "task returned for changes is open", role: "student", task: "changes_requested", due: yesterday, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
+		{name: "completed task is not open", role: "student", task: "completed", due: yesterday, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: yesterday, postponedTo: nil},
+		{name: "task in review is not open", role: "student", task: "submitted", due: today, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: today, postponedTo: nil},
+		{name: "postpone without a due date", role: "student", task: "assigned", due: nil, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: nil, postponedTo: nil},
+		{name: "stale postpone", role: "student", task: "assigned", due: today, used: false, version: 2, expected: 409, code: "conflict", dueAfter: today, postponedTo: nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := homeworkSetup(t)
 			exec(t, f.pool, "UPDATE homework SET due_date=$1", tt.due)
+			exec(t, f.pool, "UPDATE homework_tasks SET state=$1", tt.task)
 			if tt.used {
 				exec(t, f.pool, homeworkInsertPostponement, f.homeworkID)
 			}

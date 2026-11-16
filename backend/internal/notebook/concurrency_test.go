@@ -261,6 +261,7 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 			name: "a homework gets one postponement from two requests of the student",
 			setup: func(t *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
 				exec(t, a.pool, "UPDATE homework SET due_date=$1 WHERE id=$2", time.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly), a.homework)
+				exec(t, a.pool, "INSERT INTO homework_tasks (id,homework_id,problem_id,state,created_at,updated_at) VALUES ($1,$2,$3,'assigned','t0','t0')", newID(), a.homework, a.problemID)
 				postpone := post(a, "/homework/"+a.homework+"/postpone", `{"version":1}`, a.student)
 				return "UPDATE homework SET version=version WHERE id=$1", []any{a.homework}, postpone, postpone
 			},
