@@ -192,6 +192,14 @@ test('moves the due date by one day once with Сила Бомжа', async ({ pag
 	await expect(page.getByRole('button', { name: 'Изменить срок', exact: true })).toHaveCount(0);
 });
 
+// The due date is two days before the server UTC date, so it is before the local date in any time zone.
+test('moves a late due date to tomorrow with Сила Бомжа', async ({ page, notebook, db }) => {
+	const today = new Date().toISOString().slice(0, 10), { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', addCalendarDays(today, -2));
+	await page.goto(`/leetcode/homework/${homeworkId}`);
+	await page.getByRole('button', { name: 'Сила Бомжа', exact: true }).click();
+	await expect(page.getByText(`Срок: ${addCalendarDays(today, 1)}`, { exact: true })).toBeVisible();
+});
+
 test('parent changes the due date from the homework header', async ({ page, notebook, db }) => {
 	const { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', '2026-10-20');
 	await db.query("INSERT INTO postponements VALUES ($1,'2026-10-19','2026-10-20','now')", [homeworkId]);

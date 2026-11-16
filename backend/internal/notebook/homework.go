@@ -358,7 +358,7 @@ func (s *Server) discussion(w http.ResponseWriter, r *http.Request, user *Sessio
 	return writeJSON(w, r, http.StatusOK, page(items, limit, offset))
 }
 
-// postpone moves the due date of a homework by one day. The student can do it one time for each homework, on or before the due date.
+// postpone moves the due date of a homework to one day after the later of the due date and today. The student can do it one time for each homework.
 func (s *Server) postpone(w http.ResponseWriter, r *http.Request, user *SessionUser, id string) error {
 	ctx := r.Context()
 	if err := methods(r, http.MethodPost); err != nil {
@@ -380,15 +380,15 @@ func (s *Server) postpone(w http.ResponseWriter, r *http.Request, user *SessionU
 		if homework.PostponedTo != nil {
 			return &HTTPError{Status: http.StatusConflict, Code: "postponed", Message: "Сила Бомжа уже использована для этой домашней работы."}
 		}
-		// The UTC date, as in the rule for late tasks.
-		if homework.DueDate == nil || now[:10] > *homework.DueDate {
-			return invalid("Перенести можно только срок, который ещё не прошёл.")
+		if homework.DueDate == nil {
+			return invalid("У этой домашней работы нет срока.")
 		}
-		due, err := time.Parse(time.DateOnly, *homework.DueDate)
+		// Today is the UTC date, as in the rule for late tasks.
+		from, err := time.Parse(time.DateOnly, max(*homework.DueDate, now[:10]))
 		if err != nil {
 			return err
 		}
-		next := due.AddDate(0, 0, 1).Format(time.DateOnly)
+		next := from.AddDate(0, 0, 1).Format(time.DateOnly)
 		// The primary key of postponements allows one row for each homework.
 		tag, err := tx.Exec(ctx, "INSERT INTO postponements SELECT id,due_date,$1,$2 FROM homework WHERE id=$3 AND version=$4 ON CONFLICT DO NOTHING", next, now, id, version)
 		if err != nil {
