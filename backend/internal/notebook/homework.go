@@ -358,7 +358,7 @@ func (s *Server) discussion(w http.ResponseWriter, r *http.Request, user *Sessio
 	return writeJSON(w, r, http.StatusOK, page(items, limit, offset))
 }
 
-// postpone moves the due date of a homework to one day after the later of the due date and today. The student can do it one time for each homework.
+// postpone moves the due date of a homework to one day after the later of the due date and today. The student can do it one time for each homework that has an open task.
 func (s *Server) postpone(w http.ResponseWriter, r *http.Request, user *SessionUser, id string) error {
 	ctx := r.Context()
 	if err := methods(r, http.MethodPost); err != nil {
@@ -382,6 +382,14 @@ func (s *Server) postpone(w http.ResponseWriter, r *http.Request, user *SessionU
 		}
 		if homework.DueDate == nil {
 			return invalid("У этой домашней работы нет срока.")
+		}
+		// A homework with no task for the student to do keeps its due date.
+		var open bool
+		if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM homework_tasks WHERE homework_id=$1 AND state IN ('assigned','in_progress','changes_requested'))", id).Scan(&open); err != nil {
+			return err
+		}
+		if !open {
+			return invalid("В этой домашней работе нет открытых заданий.")
 		}
 		// Today is the UTC date, as in the rule for late tasks.
 		from, err := time.Parse(time.DateOnly, max(*homework.DueDate, now[:10]))
