@@ -52,16 +52,6 @@ function HomeworkList({ user }: { user: SessionUser }) {
 	</div>;
 }
 
-// A decorative 💩 flies from the button to the middle of the screen and splats.
-function throwPoop(from: HTMLElement) {
-	const box = from.getBoundingClientRect(), poop = document.createElement('span');
-	poop.className = 'poop'; poop.textContent = '💩'; poop.dataset.poop = ''; poop.setAttribute('aria-hidden', 'true');
-	poop.style.setProperty('--x', `${box.left + box.width / 2 - innerWidth / 2}px`);
-	poop.style.setProperty('--y', `${box.top + box.height / 2 - innerHeight / 2}px`);
-	poop.addEventListener('animationend', () => poop.remove());
-	document.body.append(poop);
-}
-
 function BundleDetail({ id, user }: { id: string; user: SessionUser }) {
 	const details = useResource<HomeworkDetails>(`/homework/${id}`);
 	const h = details.data?.homework;
@@ -72,11 +62,6 @@ function BundleDetail({ id, user }: { id: string; user: SessionUser }) {
 		try { await api(`/homework/${id}`, { method: 'PATCH', body: JSON.stringify({ version: h!.version, title: form.get('title'), instructions: form.get('instructions'), dueDate: form.get('dueDate') || null }) }); setEditing(false); setDating(false); details.reload(); }
 		catch (error) { setError(message(error)); } finally { setBusy(false); }
 	}
-	async function postpone(button: HTMLElement) {
-		setBusy(true); setError('');
-		try { await api(`/homework/${id}/postpone`, { method: 'POST', body: JSON.stringify({ version: h!.version }) }); throwPoop(button); details.reload(); }
-		catch (error) { setError(message(error)); } finally { setBusy(false); }
-	}
 	async function cancel(task: HomeworkTask) {
 		setBusy(true); setError('');
 		try { await api(`/tasks/${task.id}/cancel`, { method: 'POST', body: JSON.stringify({ version: task.version }) }); details.reload(); }
@@ -84,8 +69,7 @@ function BundleDetail({ id, user }: { id: string; user: SessionUser }) {
 	}
 	if (!h) return <p role="status">{details.error || 'Открываем домашнюю работу...'}</p>;
 	const parent = user.role === 'parent', tasks = details.data!.tasks;
-	const power = !parent && h.dueDate && !h.postponedTo && tasks.some(t => ['assigned', 'in_progress', 'changes_requested'].includes(t.state));
-	return <div className="stack"><div className="heading"><div><h1>{h.title}</h1><div className="row"><p>{h.dueDate ? `Срок: ${h.dueDate}` : 'Без срока'}</p>{power && <button disabled={busy} onClick={event => postpone(event.currentTarget)} data-tip="Перенести срок этой домашней работы на один день. Если срок прошёл, новый срок: завтра. Только один раз.">Сила Бомжа</button>}{parent && <button onClick={() => setDating(!dating)} data-tip="Показать или скрыть поле нового срока.">Изменить срок</button>}</div>{dating && <form className="row" onSubmit={save}><input type="hidden" name="title" value={h.title} /><input type="hidden" name="instructions" value={h.instructions} /><input type="date" name="dueDate" aria-label="Новый срок" defaultValue={h.dueDate ?? ''} /><button disabled={busy} data-tip="Сохранить новый срок. Пустое поле убирает срок.">Сохранить срок</button></form>}{h.postponedTo && <p>Сила Бомжа: срок перенесён на {dayMonth(h.postponedTo)}.</p>}</div>{parent && <button onClick={() => setEditing(!editing)} data-tip="Показать или скрыть форму изменения домашней работы.">Изменить домашнюю работу</button>}</div><p className="prose">{h.instructions}</p>
+	return <div className="stack"><div className="heading"><div><h1>{h.title}</h1><div className="row"><p>{h.dueDate ? `Срок: ${h.dueDate}` : 'Без срока'}</p>{parent && <button onClick={() => setDating(!dating)} data-tip="Показать или скрыть поле нового срока.">Изменить срок</button>}</div>{dating && <form className="row" onSubmit={save}><input type="hidden" name="title" value={h.title} /><input type="hidden" name="instructions" value={h.instructions} /><input type="date" name="dueDate" aria-label="Новый срок" defaultValue={h.dueDate ?? ''} /><button disabled={busy} data-tip="Сохранить новый срок. Пустое поле убирает срок.">Сохранить срок</button></form>}</div>{parent && <button onClick={() => setEditing(!editing)} data-tip="Показать или скрыть форму изменения домашней работы.">Изменить домашнюю работу</button>}</div><p className="prose">{h.instructions}</p>
 		{(error || details.error) && <p className="error" role="alert">{error || details.error}</p>}
 		{editing && <form className="card card-pad stack" onSubmit={save}><label>Название<input name="title" defaultValue={h.title} required maxLength={200} /></label><label>Задание<textarea aria-label="Задание" name="instructions" defaultValue={h.instructions} maxLength={8000} /></label><label>Срок<input type="date" name="dueDate" defaultValue={h.dueDate ?? ''} /></label><button disabled={busy} data-tip="Сохранить новое название, задание и срок.">Сохранить домашнюю работу</button></form>}
 		<section className="card" aria-label="Задания">{tasks.map(t => <article key={t.id} className="list-row"><div className="grow"><h2>{t.unread && <span className="unread" role="img" aria-label="Новое сообщение" />}<a href={t.href}>{t.title}</a></h2></div>{t.difficulty && <span className={`tag ${t.difficulty}`}>{difficultyLabels[t.difficulty]}</span>}<span className="tag">{homeworkLabels[t.state]}</span>{parent && t.kind !== 'problem' && !['completed', 'cancelled'].includes(t.state) && <button disabled={busy} onClick={() => void cancel(t)} aria-label={`Отменить «${t.title}»`} data-tip="Отменить это задание домашней работы.">Отменить</button>}</article>)}{!tasks.length && <p className="empty">Заданий пока нет. {parent ? 'Добавьте задачу ниже.' : 'Родитель может добавить задание.'}</p>}</section>

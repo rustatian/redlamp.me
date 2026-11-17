@@ -1,6 +1,6 @@
 import { test, expect, signIn, addTask } from './fixtures';
 import type { Homework, Problem } from '../shared/leetcode';
-import { addCalendarDays, localDate } from '../shared/dates';
+import { localDate } from '../shared/dates';
 
 test('assigns a chapter without problems and records its reading separately from its quiz', async ({ page }) => {
 	await signIn(page, 'parent');
@@ -178,40 +178,15 @@ test('shows the tasks in three sections and spreads the accepted tasks over 30 d
 	await expect(page.getByRole('heading', { level: 3, name: notebook.problem.title }).getByRole('link')).toHaveAttribute('href', `/leetcode/problems/${notebook.problem.id}/review?pick=1`);
 });
 
-// The due date is tomorrow, so the server UTC date and the local date are not after it in any time zone.
-test('moves the due date by one day once with Сила Бомжа', async ({ page, notebook, db }) => {
-	const due = addCalendarDays(localDate(), 1), next = addCalendarDays(due, 1), { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', due);
-	await page.goto(`/leetcode/homework/${homeworkId}`);
-	const power = page.getByRole('button', { name: 'Сила Бомжа', exact: true });
-	await power.click();
-	await expect(page.locator('[data-poop]')).toHaveCount(1);
-	await expect(page.getByText(`Срок: ${next}`, { exact: true })).toBeVisible();
-	await expect(page.getByText(`Сила Бомжа: срок перенесён на ${next.slice(8)}.${next.slice(5, 7)}.`, { exact: true })).toBeVisible();
-	await expect(power).toHaveCount(0);
-	await expect(page.locator('[data-poop]')).toHaveCount(0);
-	await expect(page.getByRole('button', { name: 'Изменить срок', exact: true })).toHaveCount(0);
-});
-
-// The due date is two days before the server UTC date, so it is before the local date in any time zone.
-test('moves a late due date to tomorrow with Сила Бомжа', async ({ page, notebook, db }) => {
-	const today = new Date().toISOString().slice(0, 10), { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', addCalendarDays(today, -2));
-	await page.goto(`/leetcode/homework/${homeworkId}`);
-	await page.getByRole('button', { name: 'Сила Бомжа', exact: true }).click();
-	await expect(page.getByText(`Срок: ${addCalendarDays(today, 1)}`, { exact: true })).toBeVisible();
-});
-
 test('parent changes the due date from the homework header', async ({ page, notebook, db }) => {
 	const { homeworkId } = await addTask(db, notebook.problem.id, 'assigned', '2026-10-20');
-	await db.query("INSERT INTO postponements VALUES ($1,'2026-10-19','2026-10-20','now')", [homeworkId]);
 	await signIn(page, 'parent');
 	await page.goto(`/leetcode/homework/${homeworkId}`);
-	await expect(page.getByText('Сила Бомжа: срок перенесён на 20.10.', { exact: true })).toBeVisible();
 	await page.getByRole('button', { name: 'Изменить срок', exact: true }).click();
 	await page.getByLabel('Новый срок', { exact: true }).fill('2026-10-25');
 	await page.getByRole('button', { name: 'Сохранить срок', exact: true }).click();
 	await expect(page.getByText('Срок: 2026-10-25', { exact: true })).toBeVisible();
 	await expect(page.getByLabel('Новый срок', { exact: true })).toHaveCount(0);
-	await expect(page.getByText('Сила Бомжа: срок перенесён на 20.10.', { exact: true })).toHaveCount(0);
 	expect((await db.query('SELECT title,instructions,due_date FROM homework WHERE id=$1', [homeworkId])).rows).toEqual([{ title: 'Week 41', instructions: 'Explain', due_date: '2026-10-25' }]);
 });
 

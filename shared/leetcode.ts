@@ -53,10 +53,10 @@ export interface Attempt extends DraftValue {
 }
 export type AttemptSummary = Omit<Attempt, 'document'>;
 export type TaskState = 'assigned' | 'in_progress' | 'submitted' | 'changes_requested' | 'completed' | 'cancelled';
-export interface Homework { id: string; title: string; instructions: string; dueDate: string | null; postponedTo: string | null; version: number; createdAt: string; updatedAt: string }
+export interface Homework { id: string; title: string; instructions: string; dueDate: string | null; version: number; createdAt: string; updatedAt: string }
 export interface HomeworkSummary extends Homework { taskCount: number; completedCount: number; submittedCount: number; requestedCount: number; unread: boolean }
 export interface HomeworkTask {
-	id: string; homeworkId: string; homeworkTitle: string; instructions: string; dueDate: string | null; postponedTo: string | null; problemId: string | null; title: string; href: string; difficulty: Difficulty | null;
+	id: string; homeworkId: string; homeworkTitle: string; instructions: string; dueDate: string | null; problemId: string | null; title: string; href: string; difficulty: Difficulty | null;
 	kind: 'problem' | 'chapter' | 'quiz'; setSlug: string | null; chapter: number | null; completedAt: string | null;
 	state: TaskState; submissionId: string | null; submissionAttemptId: string | null; version: number; createdAt: string; updatedAt: string; unread: boolean;
 }
