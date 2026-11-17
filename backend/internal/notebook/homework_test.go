@@ -18,12 +18,11 @@ import (
 
 // The prepared statements of test/homework.test.ts.
 const (
-	homeworkInsertProblem      = "INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,$2,$3,'medium','[]','','','now','now')"
-	homeworkInsertBundle       = "INSERT INTO homework (id,title,instructions,due_date,created_at,updated_at) VALUES ($1,$2,'Explain the invariant',$3,$4,$5)"
-	homeworkInsertTask         = "INSERT INTO homework_tasks (id,homework_id,problem_id,state,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,'now')"
-	homeworkInsertFeedback     = "INSERT INTO feedback (id,problem_id,author,kind,body,created_at) VALUES ($1,$2,$3,$4,'Note',$5)"
-	homeworkInsertRead         = "INSERT INTO discussion_reads (role,problem_id,read_at) VALUES ($1,$2,$3)"
-	homeworkInsertPostponement = "INSERT INTO postponements VALUES ($1,'2026-10-09','2026-10-10','now')"
+	homeworkInsertProblem  = "INSERT INTO problems (id,slug,title,difficulty,topics,summary,search_text,created_at,updated_at) VALUES ($1,$2,$3,'medium','[]','','','now','now')"
+	homeworkInsertBundle   = "INSERT INTO homework (id,title,instructions,due_date,created_at,updated_at) VALUES ($1,$2,'Explain the invariant',$3,$4,$5)"
+	homeworkInsertTask     = "INSERT INTO homework_tasks (id,homework_id,problem_id,state,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,'now')"
+	homeworkInsertFeedback = "INSERT INTO feedback (id,problem_id,author,kind,body,created_at) VALUES ($1,$2,$3,$4,'Note',$5)"
+	homeworkInsertRead     = "INSERT INTO discussion_reads (role,problem_id,read_at) VALUES ($1,$2,$3)"
 )
 
 // homeworkFixture is the state that beforeEach of test/homework.test.ts makes.
@@ -202,84 +201,6 @@ func TestHomeworkEdit(t *testing.T) {
 			if got := homeworkRow(t, f.pool, "SELECT title,instructions,due_date,version FROM homework"); !reflect.DeepEqual(got, tt.row) {
 				t.Errorf("homework = %v, want %v", got, tt.row)
 			}
-		})
-	}
-}
-
-// The homework of homeworkSetup is due on 2026-10-10.
-func TestHomeworkEditResetsPostponement(t *testing.T) {
-	tests := []struct {
-		name        string
-		stored      int
-		dueDate     any
-		expected    int
-		postponedTo any
-	}{
-		{name: "new due date resets Сила Бомжа", stored: 1, dueDate: "2026-10-20", expected: 200, postponedTo: nil},
-		{name: "removed due date resets Сила Бомжа", stored: 1, dueDate: nil, expected: 200, postponedTo: nil},
-		{name: "same due date keeps Сила Бомжа", stored: 1, dueDate: "2026-10-10", expected: 200, postponedTo: "2026-10-10"},
-		{name: "stale edit keeps Сила Бомжа", stored: 2, dueDate: "2026-10-20", expected: 409, postponedTo: "2026-10-10"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := homeworkSetup(t)
-			exec(t, f.pool, "UPDATE homework SET version=$1", tt.stored)
-			exec(t, f.pool, homeworkInsertPostponement, f.homeworkID)
-			w := request(t, f.s, "/homework/"+f.homeworkID, http.MethodPatch, map[string]any{"version": 1, "title": "Two Sum practice", "instructions": "Explain the invariant", "dueDate": tt.dueDate}, f.parent)
-			if w.Code != tt.expected {
-				t.Errorf("status = %d, want %d; body %s", w.Code, tt.expected, w.Body.String())
-			}
-			problemsMatchBody(t, decode[any](t, request(t, f.s, "/homework/"+f.homeworkID, http.MethodGet, nil, f.parent)), map[string]any{"homework": map[string]any{"postponedTo": tt.postponedTo}})
-		})
-	}
-}
-
-// The server takes today from its own UTC clock.
-func TestHomeworkPostpone(t *testing.T) {
-	now := time.Now().UTC()
-	today, tomorrow, yesterday, inTwoDays := now.Format(time.DateOnly), now.AddDate(0, 0, 1).Format(time.DateOnly), now.AddDate(0, 0, -1).Format(time.DateOnly), now.AddDate(0, 0, 2).Format(time.DateOnly)
-	tests := []struct {
-		name        string
-		role        string
-		task        string
-		due         any
-		used        bool
-		version     int
-		expected    int
-		code        string
-		dueAfter    any
-		postponedTo any
-	}{
-		{name: "student moves the due date by one day", role: "student", task: "assigned", due: today, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
-		{name: "second use of Сила Бомжа", role: "student", task: "assigned", due: today, used: true, version: 1, expected: 409, code: "postponed", dueAfter: today, postponedTo: "2026-10-10"},
-		{name: "parent cannot postpone", role: "parent", task: "assigned", due: today, used: false, version: 1, expected: 403, code: "forbidden", dueAfter: today, postponedTo: nil},
-		{name: "due date after today moves by one day", role: "student", task: "assigned", due: tomorrow, used: false, version: 1, expected: 200, code: "", dueAfter: inTwoDays, postponedTo: inTwoDays},
-		{name: "due date before today moves to tomorrow", role: "student", task: "assigned", due: yesterday, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
-		{name: "task returned for changes is open", role: "student", task: "changes_requested", due: yesterday, used: false, version: 1, expected: 200, code: "", dueAfter: tomorrow, postponedTo: tomorrow},
-		{name: "completed task is not open", role: "student", task: "completed", due: yesterday, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: yesterday, postponedTo: nil},
-		{name: "task in review is not open", role: "student", task: "submitted", due: today, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: today, postponedTo: nil},
-		{name: "postpone without a due date", role: "student", task: "assigned", due: nil, used: false, version: 1, expected: 400, code: "invalid_input", dueAfter: nil, postponedTo: nil},
-		{name: "stale postpone", role: "student", task: "assigned", due: today, used: false, version: 2, expected: 409, code: "conflict", dueAfter: today, postponedTo: nil},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := homeworkSetup(t)
-			exec(t, f.pool, "UPDATE homework SET due_date=$1", tt.due)
-			exec(t, f.pool, "UPDATE homework_tasks SET state=$1", tt.task)
-			if tt.used {
-				exec(t, f.pool, homeworkInsertPostponement, f.homeworkID)
-			}
-			w := request(t, f.s, "/homework/"+f.homeworkID+"/postpone", http.MethodPost, map[string]any{"version": tt.version}, f.as(tt.role))
-			if w.Code != tt.expected {
-				t.Errorf("status = %d, want %d; body %s", w.Code, tt.expected, w.Body.String())
-			}
-			want := map[string]any{"dueDate": tt.dueAfter, "postponedTo": tt.postponedTo, "version": 2}
-			if tt.code != "" {
-				want = map[string]any{"error": map[string]any{"code": tt.code}}
-			}
-			problemsMatchBody(t, decode[any](t, w), want)
-			dates := map[string]any{"dueDate": tt.dueAfter, "postponedTo": tt.postponedTo}
-			problemsMatchBody(t, decode[any](t, request(t, f.s, "/homework/"+f.homeworkID, http.MethodGet, nil, f.parent)), map[string]any{"homework": dates, "tasks": []any{dates}})
 		})
 	}
 }

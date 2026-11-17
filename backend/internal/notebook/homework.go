@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -17,11 +16,10 @@ import (
 )
 
 const (
-	postponedSQL    = "(SELECT to_date FROM postponements WHERE homework_id=h.id)"
-	homeworkColumns = "h.id,h.title,h.instructions,h.due_date," + postponedSQL + ",h.version,h.created_at,h.updated_at"
+	homeworkColumns = "h.id,h.title,h.instructions,h.due_date,h.version,h.created_at,h.updated_at"
 	// unreadSQL is true for a task with feedback of the other role after the last read. $1 is the role of the viewer.
 	unreadSQL   = "EXISTS(SELECT 1 FROM feedback f WHERE f.problem_id=t.problem_id AND f.author<>$1 AND f.created_at>coalesce((SELECT read_at FROM discussion_reads r WHERE r.role=$1 AND r.problem_id=t.problem_id),''))"
-	taskColumns = "t.id,t.homework_id,h.title,h.instructions,h.due_date," + postponedSQL + ",t.problem_id,p.title,p.difficulty,t.kind,t.set_slug,t.chapter,t.completed_at,t.state,t.current_submission_id,s.attempt_id,t.version,t.created_at,t.updated_at," + unreadSQL
+	taskColumns = "t.id,t.homework_id,h.title,h.instructions,h.due_date,t.problem_id,p.title,p.difficulty,t.kind,t.set_slug,t.chapter,t.completed_at,t.state,t.current_submission_id,s.attempt_id,t.version,t.created_at,t.updated_at," + unreadSQL
 	taskTables  = "homework_tasks t JOIN homework h ON h.id=t.homework_id LEFT JOIN problems p ON p.id=t.problem_id LEFT JOIN submissions s ON s.id=t.current_submission_id"
 	// onTimeSQL counts the homework tasks that were completed or submitted on or before the due date. The first 10 characters of a timestamp are its UTC date.
 	onTimeSQL = "SELECT count(*) FROM homework_tasks t JOIN homework h ON h.id=t.homework_id WHERE t.state<>'cancelled' AND (substr(t.completed_at,1,10)<=h.due_date OR EXISTS(SELECT 1 FROM submissions s WHERE s.task_id=t.id AND substr(s.created_at,1,10)<=h.due_date))"
@@ -36,7 +34,6 @@ type Homework struct {
 	Title        string  `json:"title"`
 	Instructions string  `json:"instructions"`
 	DueDate      *string `json:"dueDate"`
-	PostponedTo  *string `json:"postponedTo"`
 	Version      int64   `json:"version"`
 	CreatedAt    string  `json:"createdAt"`
 	UpdatedAt    string  `json:"updatedAt"`
@@ -58,7 +55,6 @@ type HomeworkTask struct {
 	HomeworkTitle       string  `json:"homeworkTitle"`
 	Instructions        string  `json:"instructions"`
 	DueDate             *string `json:"dueDate"`
-	PostponedTo         *string `json:"postponedTo"`
 	ProblemID           *string `json:"problemId"`
 	Title               *string `json:"title"`
 	Difficulty          *string `json:"difficulty"`
@@ -88,7 +84,7 @@ type feedback struct {
 }
 
 func (h *Homework) fields() []any {
-	return []any{&h.ID, &h.Title, &h.Instructions, &h.DueDate, &h.PostponedTo, &h.Version, &h.CreatedAt, &h.UpdatedAt}
+	return []any{&h.ID, &h.Title, &h.Instructions, &h.DueDate, &h.Version, &h.CreatedAt, &h.UpdatedAt}
 }
 
 func getHomework(ctx context.Context, q querier, id string) (Homework, error) {
@@ -115,7 +111,7 @@ func contentTitle(kind string, number int64, chapter sets.Chapter) string {
 // scanTask reads the columns of taskColumns and adds the link of the task. A chapter task and a quiz task get their title from the learning set.
 func (s *Server) scanTask(row pgx.Row) (HomeworkTask, error) {
 	var t HomeworkTask
-	if err := row.Scan(&t.ID, &t.HomeworkID, &t.HomeworkTitle, &t.Instructions, &t.DueDate, &t.PostponedTo, &t.ProblemID, &t.Title, &t.Difficulty, &t.Kind, &t.SetSlug, &t.Chapter, &t.CompletedAt, &t.State, &t.SubmissionID, &t.SubmissionAttemptID, &t.Version, &t.CreatedAt, &t.UpdatedAt, &t.Unread); err != nil {
+	if err := row.Scan(&t.ID, &t.HomeworkID, &t.HomeworkTitle, &t.Instructions, &t.DueDate, &t.ProblemID, &t.Title, &t.Difficulty, &t.Kind, &t.SetSlug, &t.Chapter, &t.CompletedAt, &t.State, &t.SubmissionID, &t.SubmissionAttemptID, &t.Version, &t.CreatedAt, &t.UpdatedAt, &t.Unread); err != nil {
 		return t, err
 	}
 	if t.Kind == "problem" {
@@ -162,7 +158,7 @@ func (s *Server) getTask(ctx context.Context, q querier, id, role string) (Homew
 var (
 	contentPath    = regexp.MustCompile(`^/leetcode/api/homework/([^/]+)/content$`)
 	discussionPath = regexp.MustCompile(`^/leetcode/api/problems/([^/]+)/feedback$`)
-	homeworkPath   = regexp.MustCompile(`^/leetcode/api/homework(?:/([^/]+)(/postpone)?)?$`)
+	homeworkPath   = regexp.MustCompile(`^/leetcode/api/homework(?:/([^/]+))?$`)
 	tasksPath      = regexp.MustCompile(`^/leetcode/api/tasks(?:/([^/]+)/(start|review|cancel|complete))?$`)
 )
 
@@ -179,9 +175,6 @@ func (s *Server) handleHomework(w http.ResponseWriter, r *http.Request, user *Se
 			if _, err := uuid(match[1]); err != nil {
 				return true, err
 			}
-		}
-		if match[2] != "" {
-			return true, s.postpone(w, r, user, match[1])
 		}
 		return true, s.homework(w, r, user, match[1])
 	}
@@ -358,66 +351,6 @@ func (s *Server) discussion(w http.ResponseWriter, r *http.Request, user *Sessio
 	return writeJSON(w, r, http.StatusOK, page(items, limit, offset))
 }
 
-// postpone moves the due date of a homework to one day after the later of the due date and today. The student can do it one time for each homework that has an open task.
-func (s *Server) postpone(w http.ResponseWriter, r *http.Request, user *SessionUser, id string) error {
-	ctx := r.Context()
-	if err := methods(r, http.MethodPost); err != nil {
-		return err
-	}
-	if err := requireRole(user, "student"); err != nil {
-		return err
-	}
-	now := isoNow()
-	version, err := readVersion(r)
-	if err != nil {
-		return err
-	}
-	err = s.tx(ctx, func(tx pgx.Tx) error {
-		homework, err := getHomework(ctx, tx, id)
-		if err != nil {
-			return err
-		}
-		if homework.PostponedTo != nil {
-			return &HTTPError{Status: http.StatusConflict, Code: "postponed", Message: "Сила Бомжа уже использована для этой домашней работы."}
-		}
-		if homework.DueDate == nil {
-			return invalid("У этой домашней работы нет срока.")
-		}
-		// A homework with no task for the student to do keeps its due date.
-		var open bool
-		if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM homework_tasks WHERE homework_id=$1 AND state IN ('assigned','in_progress','changes_requested'))", id).Scan(&open); err != nil {
-			return err
-		}
-		if !open {
-			return invalid("В этой домашней работе нет открытых заданий.")
-		}
-		// Today is the UTC date, as in the rule for late tasks.
-		from, err := time.Parse(time.DateOnly, max(*homework.DueDate, now[:10]))
-		if err != nil {
-			return err
-		}
-		next := from.AddDate(0, 0, 1).Format(time.DateOnly)
-		// The primary key of postponements allows one row for each homework.
-		tag, err := tx.Exec(ctx, "INSERT INTO postponements SELECT id,due_date,$1,$2 FROM homework WHERE id=$3 AND version=$4 ON CONFLICT DO NOTHING", next, now, id, version)
-		if err != nil {
-			return err
-		}
-		if err := changed(tag); err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, "UPDATE homework SET due_date=$1,version=version+1,updated_at=$2 WHERE id=$3 AND version=$4", next, now, id, version)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	homework, err := getHomework(ctx, s.db, id)
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, r, http.StatusOK, homework)
-}
-
 func (s *Server) homework(w http.ResponseWriter, r *http.Request, user *SessionUser, id string) error {
 	ctx, query := r.Context(), r.URL.Query()
 	allowed := []string{http.MethodGet, http.MethodPost}
@@ -513,10 +446,6 @@ func (s *Server) homework(w http.ResponseWriter, r *http.Request, user *SessionU
 		}
 		err = s.tx(ctx, func(tx pgx.Tx) error {
 			if _, err := tx.Exec(ctx, awardOnTimeSQL); err != nil {
-				return err
-			}
-			// A new due date gives the student the postponement again. The delete reads the old due date before the update.
-			if _, err := tx.Exec(ctx, "DELETE FROM postponements WHERE homework_id=$1 AND EXISTS(SELECT 1 FROM homework WHERE id=$1 AND version=$2 AND due_date IS DISTINCT FROM $3)", id, version, dueDate); err != nil {
 				return err
 			}
 			tag, err := tx.Exec(ctx, "UPDATE homework SET title=$1,instructions=$2,due_date=$3,version=version+1,updated_at=$4 WHERE id=$5 AND version=$6", title, instructions, dueDate, now, id, version)

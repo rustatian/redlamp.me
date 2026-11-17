@@ -53,7 +53,6 @@ type gameSpec struct {
 	reviews          []gameReview
 	task, due        string
 	submitted, added string
-	postpone         bool
 	runs             []gameRun
 }
 
@@ -196,14 +195,6 @@ func gameSeed(t *testing.T, pool *pgxpool.Pool, spec gameSpec) {
 		exec(t, pool, gameInsertBundle, homeworkID, gameNull(spec.due))
 		exec(t, pool, gameInsertTask, taskID, homeworkID, id, spec.task, cmp.Or(spec.added, "2026-09-01T00:00:00.000Z"))
 	}
-	if spec.postpone {
-		// date(due_date,'+1 day') of the TypeScript statement.
-		due, err := time.Parse(time.DateOnly, spec.due)
-		if err != nil {
-			t.Fatal(err)
-		}
-		exec(t, pool, "UPDATE homework SET due_date=$1 WHERE id=$2", due.AddDate(0, 0, 1).Format(time.DateOnly), homeworkID)
-	}
 	if len(spec.runs) > 0 || spec.submitted != "" {
 		exec(t, pool, gameInsertAttempt, attemptID, id, "draft", "not_submitted", "needs_practice", nil)
 	}
@@ -335,7 +326,6 @@ func TestGameXPLevelAndBadges(t *testing.T) {
 		{name: "not submitted and overdue", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "assigned", due: "2026-10-01"}}, xp: 5, late: 1, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
 		{name: "not submitted and due today", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "assigned", due: today}}, xp: 20, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
 		{name: "cancelled and overdue", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "cancelled", due: "2026-10-01"}}, xp: 20, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
-		{name: "postponed and submitted on the new date", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "submitted", due: "2026-10-01", postpone: true, submitted: "2026-10-02T12:00:00.000Z"}}, xp: 20, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
 		{name: "added after the due date and not submitted", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "assigned", due: "2026-10-01", added: "2026-10-02T09:00:00.000Z"}}, xp: 20, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
 		{name: "added on the due date and not submitted", problems: []gameSpec{{difficulty: "medium", attempts: gameAccepted("with_help"), task: "assigned", due: "2026-10-01", added: "2026-10-01T09:00:00.000Z"}}, xp: 5, late: 1, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},
 		{name: "late penalty below 0 XP", problems: []gameSpec{{difficulty: "easy", attempts: gameAccepted("with_help"), task: "assigned", due: "2026-10-01"}}, xp: 0, late: 1, level: 1, levelXp: 0, nextLevelXp: 100, earned: []string{"first-accept"}},

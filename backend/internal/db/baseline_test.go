@@ -37,7 +37,6 @@ func TestBaselineTables(t *testing.T) {
 		{name: "homework_sets", columns: "homework_id,set_slug"},
 		{name: "homework_tasks", columns: "id,homework_id,problem_id,state,current_submission_id,version,created_at,updated_at,kind,set_slug,chapter,completed_at"},
 		{name: "judge_runs", columns: "problem_id,seed,created_at"},
-		{name: "postponements", columns: "homework_id,from_date,to_date,created_at"},
 		{name: "problem_sets", columns: "problem_id,set_slug"},
 		{name: "problem_tests", columns: "id,problem_id,input,created_at"},
 		{name: "problems", columns: "id,slug,number,title,difficulty,topics,summary,search_text,understanding,next_review_date,archived_at,version,created_at,updated_at,progress_version"},
@@ -127,7 +126,6 @@ func TestBaselineRules(t *testing.T) {
 		"INSERT INTO homework_tasks (id, homework_id, state, created_at, updated_at, kind, set_slug, chapter) VALUES ('t2', 'h1', 'assigned', 't0', 't0', 'chapter', 'two-pointers', 1)",
 		"INSERT INTO submissions VALUES ('s1', 't1', 'a1', 2, 't0')",
 		"INSERT INTO card_answers VALUES ('c1', 'card', 1, 1, '2026-10-07', '2026-10-08', 't0')",
-		"INSERT INTO postponements VALUES ('h1', '2026-10-07', '2026-10-08', 't0')",
 	} {
 		if _, err := pool.Exec(ctx, sql); err != nil {
 			t.Fatalf("%s: %v", sql, err)
@@ -165,7 +163,6 @@ func TestBaselineRules(t *testing.T) {
 		{name: "a quiz attempt has no more correct answers than cards", sql: "INSERT INTO quiz_attempts VALUES ('q1', 'deck', 3, 2, 1, 't0')", wantCode: "23514"},
 		{name: "a card has one answer for each day", sql: "INSERT INTO card_answers VALUES ('c2', 'card', 0, 1, '2026-10-07', '2026-10-08', 't0')", wantCode: "23505"},
 		{name: "a card interval is one of the five steps", sql: "INSERT INTO card_answers VALUES ('c3', 'card', 1, 2, '2026-10-09', '2026-10-11', 't0')", wantCode: "23514"},
-		{name: "a homework has one postponement", sql: "INSERT INTO postponements VALUES ('h1', '2026-10-08', '2026-10-09', 't0')", wantCode: "23505"},
 		{name: "a judge seed uses 32 bits without a sign", sql: "INSERT INTO judge_runs VALUES ('p1', 4294967295, 't0')"},
 		{name: "a session time is in milliseconds", sql: "INSERT INTO sessions VALUES ('hash', 'student', 'fingerprint', 1794787200000, 1795392000000)"},
 		{name: "the ChatGPT connection has no table", sql: "SELECT 1 FROM tutor_account", wantCode: "42P01"},
