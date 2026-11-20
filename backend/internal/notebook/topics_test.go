@@ -53,6 +53,7 @@ func TestTopics(t *testing.T) {
 		{name: "Unique Paths table context", values: []any{"Таблица", "dynamic programming"}, slug: "unique-paths", want: []string{"Dynamic Programming"}},
 		{name: "Top K Frequent Words correction", values: []any{"Сортировка подсчётом", "Bucket Sort"}, slug: "top-k-frequent-words", want: []string{"Bucket Sort"}},
 		{name: "known Counting Sort stays distinct", values: []any{"Counting Sort", "Bucket Sort"}, slug: "top-k-frequent-words", want: []string{"Counting Sort", "Bucket Sort"}},
+		{name: "Codeforces topic names", values: []any{"Теория чисел", "DFS", "Поиск в глубину", "Bit Manipulation"}, want: []string{"Number Theory", "Depth-First Search", "Bit Manipulation"}},
 		{name: "unknown English topics keep first occurrence order", values: []any{"  Custom   Technique ", "HashTable", "custom technique", "Хеш-таблица"}, want: []string{"Custom Technique", "Hash Table"}},
 	}
 	for _, tt := range tests {

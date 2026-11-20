@@ -52,6 +52,19 @@ var topicAliases = []struct {
 	{"Dynamic Programming", []string{"Динамическое программирование"}},
 	{"Enumeration", nil},
 	{"Brute Force", nil},
+	{"Implementation", []string{"Реализация"}},
+	{"Constructive Algorithms", nil},
+	{"Number Theory", []string{"Теория чисел"}},
+	{"Data Structures", []string{"Структуры данных"}},
+	{"Game Theory", []string{"Теория игр"}},
+	{"Bit Manipulation", []string{"Битовые операции"}},
+	{"Geometry", []string{"Геометрия"}},
+	{"Depth-First Search", []string{"DFS", "Поиск в глубину"}},
+	{"Union Find", []string{"DSU"}},
+	{"Tree", []string{"Дерево", "Деревья"}},
+	{"Hash Function", nil},
+	{"Probability and Statistics", nil},
+	{"Shortest Path", []string{"Кратчайший путь"}},
 }
 
 // topicNames maps each spelling in lower case to the LeetCode name.
