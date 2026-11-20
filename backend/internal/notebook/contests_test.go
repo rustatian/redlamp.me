@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,8 +23,13 @@ import (
 var contestNow = time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
 
 // contestBank is the bank of the contest tests: two problems at 800, two at 1000, one at 1100 and one at 1200.
+// Only cf-101-a has a statement, an example and hidden tests.
 var contestBank = []bank.Problem{
-	{Slug: "cf-101-a", Title: "Easy One", Rating: 800, Topics: []string{"Math", "Brute Force"}},
+	{
+		Slug: "cf-101-a", Title: "Easy One", Rating: 800, Topics: []string{"Math", "Brute Force"}, Statement: "<p>Выведите ответ.</p>", IgnoreCase: true,
+		Examples: []bank.Test{{Input: "1\n", Output: "1\n"}},
+		Tests:    []bank.Test{{Input: "hidden-input-7731\n", Output: "hidden-answer-5519"}, {Input: "2\n", Output: "4"}},
+	},
 	{Slug: "cf-102-a", Title: "Easy Two", Rating: 800, Topics: []string{"String"}},
 	{Slug: "cf-103-b", Title: "Medium One", Rating: 1000, Topics: []string{"Greedy"}},
 	{Slug: "cf-104-b", Title: "Medium Two", Rating: 1000, Topics: []string{"Sorting", "Greedy"}},
@@ -430,6 +436,220 @@ func TestContestDetail(t *testing.T) {
 			}
 			if tt.want != nil {
 				problemsMatchBody(t, decode[any](t, w), tt.want)
+			}
+		})
+	}
+}
+
+func TestContestVerdict(t *testing.T) {
+	value := func(s string) judgeOutput { return judgeOutput{Value: &s} }
+	failure := func(s string) judgeOutput { return judgeOutput{Error: &s} }
+	timeout := judgeOutput{Timeout: true}
+	tests := []struct {
+		name        string
+		ignoreCase  bool
+		outputs     []judgeOutput
+		wantVerdict string
+		wantTest    int
+		wantMessage string
+	}{
+		{name: "all outputs match", outputs: []judgeOutput{value("1"), value("2"), value("YES")}, wantVerdict: "accepted"},
+		{name: "wrong second test", outputs: []judgeOutput{value("1"), value("3"), value("YES")}, wantVerdict: "wrong", wantTest: 2},
+		{name: "case differs with ignoreCase", ignoreCase: true, outputs: []judgeOutput{value("1"), value("2"), value("yes")}, wantVerdict: "accepted"},
+		{name: "case differs without ignoreCase", outputs: []judgeOutput{value("1"), value("2"), value("yes")}, wantVerdict: "wrong", wantTest: 3},
+		{
+			name:        "error on the first test",
+			outputs:     []judgeOutput{failure("ZeroDivisionError: division by zero"), timeout, timeout},
+			wantVerdict: "error",
+			wantTest:    1,
+			wantMessage: "ZeroDivisionError: division by zero",
+		},
+		{name: "long error message is cut", outputs: []judgeOutput{failure(strings.Repeat("e", 2001)), timeout, timeout}, wantVerdict: "error", wantTest: 1, wantMessage: strings.Repeat("e", 2000) + "…"},
+		{name: "timeout on the third test", outputs: []judgeOutput{value("1"), value("2"), timeout}, wantVerdict: "timeout", wantTest: 3},
+		{name: "extra spaces and newlines", outputs: []judgeOutput{value("1 \n\n"), value("2"), value("YES")}, wantVerdict: "accepted"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := bank.Problem{IgnoreCase: tt.ignoreCase, Tests: []bank.Test{{Input: "a\n", Output: "1"}, {Input: "b\n", Output: "2"}, {Input: "c\n", Output: "YES"}}}
+			verdict, test, message := contestVerdict(p, tt.outputs)
+			if verdict != tt.wantVerdict || test != tt.wantTest || message != tt.wantMessage {
+				t.Errorf("contestVerdict = %q, %d, %q, want %q, %d, %q", verdict, test, message, tt.wantVerdict, tt.wantTest, tt.wantMessage)
+			}
+		})
+	}
+}
+
+func TestContestTimeRules(t *testing.T) {
+	right := map[string]any{"code": "print(1)", "outputs": []map[string]any{{"value": "hidden-answer-5519"}, {"value": "4"}}}
+	save := map[string]any{"code": "print(2)"}
+	tests := []struct {
+		name string
+		// at is the time from the end of the contest.
+		at         time.Duration
+		method     string
+		action     string
+		body       any
+		wantStatus int
+		wantCode   string
+		// wantStored is contest_problems.code after the request.
+		wantStored      string
+		wantSubmissions int64
+	}{
+		{name: "check one second before the end", at: -time.Second, method: http.MethodPost, action: "check", wantStatus: http.StatusOK},
+		{name: "check at the end", method: http.MethodPost, action: "check", wantStatus: http.StatusConflict, wantCode: "contest_over"},
+		{name: "submission 59 seconds after the end", at: 59 * time.Second, method: http.MethodPost, action: "submissions", body: right, wantStatus: http.StatusCreated, wantStored: "print(1)", wantSubmissions: 1},
+		{name: "submission 61 seconds after the end", at: 61 * time.Second, method: http.MethodPost, action: "submissions", body: right, wantStatus: http.StatusConflict, wantCode: "contest_over"},
+		{name: "code save one second before the end", at: -time.Second, method: http.MethodPut, action: "code", body: save, wantStatus: http.StatusNoContent, wantStored: "print(2)"},
+		{name: "code save at the end", method: http.MethodPut, action: "code", body: save, wantStatus: http.StatusConflict, wantCode: "contest_over"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool, s := contestServer(t)
+			// The contest ends at contestNow.
+			seedContests(t, pool, contestSeed{start: -90 * time.Minute, problems: []problemSeed{{slug: "cf-101-a", rating: 800, difficulty: "easy", points: 3}}})
+			s.now = func() time.Time { return contestNow.Add(tt.at) }
+			w := request(t, s, "/contests/"+contestID(0)+"/problems/1/"+tt.action, tt.method, tt.body, loginAs(t, s, "student"))
+			if w.Code != tt.wantStatus || errorCode(w) != tt.wantCode {
+				t.Fatalf("status = %d, code %q, want %d, %q; body %s", w.Code, errorCode(w), tt.wantStatus, tt.wantCode, w.Body.String())
+			}
+			if got := queryValue[string](t, pool, "SELECT code FROM contest_problems"); got != tt.wantStored {
+				t.Errorf("stored code = %q, want %q", got, tt.wantStored)
+			}
+			if got := queryValue[int64](t, pool, "SELECT count(*) FROM contest_submissions"); got != tt.wantSubmissions {
+				t.Errorf("submissions = %d, want %d", got, tt.wantSubmissions)
+			}
+		})
+	}
+}
+
+func TestContestSubmission(t *testing.T) {
+	easy := problemSeed{slug: "cf-101-a", rating: 800, difficulty: "easy", points: 3}
+	solved := problemSeed{slug: "cf-101-a", rating: 800, difficulty: "easy", points: 3, accepted: []time.Duration{10 * time.Minute}}
+	removed := problemSeed{slug: "cf-999-z", rating: 800, difficulty: "easy", points: 3}
+	// active is a contest of the problem p that started 30 minutes ago.
+	active := func(p problemSeed) []contestSeed {
+		return []contestSeed{{start: -30 * time.Minute, problems: []problemSeed{p}}}
+	}
+	submit := func(code string, outputs ...map[string]any) map[string]any {
+		return map[string]any{"code": code, "outputs": outputs}
+	}
+	right := []map[string]any{{"value": "hidden-answer-5519"}, {"value": "4"}}
+	const zeroDivision = "ZeroDivisionError: integer division or modulo by zero"
+	tests := []struct {
+		name     string
+		contests []contestSeed
+		role     string
+		method   string
+		// path is the path after /contests/<id>.
+		path       string
+		body       any
+		wantStatus int
+		wantCode   string
+		// wantBody is the whole body. wantView has fields of the problem view after the request.
+		wantBody        any
+		wantView        map[string]any
+		wantSubmissions int64
+	}{
+		{
+			name: "problem view before the end", contests: active(easy), role: "parent", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
+			wantBody: map[string]any{
+				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": "<p>Выведите ответ.</p>", "ignoreCase": true,
+				"examples": []map[string]any{{"input": "1\n", "output": "1\n"}}, "code": "", "solved": false, "submissions": []any{}, "url": nil,
+				"endsAt": "2026-11-20T13:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
+			},
+		},
+		{
+			name:       "link after the end",
+			contests:   []contestSeed{{start: -2 * time.Hour, problems: []problemSeed{easy}}},
+			role:       "parent",
+			method:     http.MethodGet,
+			path:       "/problems/1",
+			wantStatus: http.StatusOK,
+			wantView:   map[string]any{"url": "https://codeforces.com/problemset/problem/101/A"},
+		},
+		{name: "check gives the hidden inputs", contests: active(easy), role: "student", method: http.MethodPost, path: "/problems/1/check", wantStatus: http.StatusOK, wantBody: map[string]any{"inputs": []string{"hidden-input-7731\n", "2\n"}}},
+		{
+			name:            "accepted submission solves the problem",
+			contests:        active(easy),
+			role:            "student",
+			method:          http.MethodPost,
+			path:            "/problems/1/submissions",
+			body:            submit("print(answer)", right...),
+			wantStatus:      http.StatusCreated,
+			wantBody:        map[string]any{"verdict": "accepted", "test": nil, "error": nil},
+			wantView:        map[string]any{"code": "print(answer)", "solved": true, "submissions": []map[string]any{{"verdict": "accepted", "test": nil, "error": nil, "createdAt": "2026-11-20T12:00:00.000Z"}}},
+			wantSubmissions: 1,
+		},
+		{
+			// The refused submission keeps the code of the problem.
+			name:            "submission after an accepted one",
+			contests:        active(solved),
+			role:            "student",
+			method:          http.MethodPost,
+			path:            "/problems/1/submissions",
+			body:            submit("print(2)", right...),
+			wantStatus:      http.StatusConflict,
+			wantCode:        "solved",
+			wantView:        map[string]any{"code": "", "solved": true},
+			wantSubmissions: 1,
+		},
+		{name: "check of a solved problem", contests: active(solved), role: "student", method: http.MethodPost, path: "/problems/1/check", wantStatus: http.StatusConflict, wantCode: "solved", wantSubmissions: 1},
+		{name: "parent submission", contests: active(easy), role: "parent", method: http.MethodPost, path: "/problems/1/submissions", body: submit("print(1)", right...), wantStatus: http.StatusForbidden, wantCode: "forbidden"},
+		{name: "wrong number of outputs", contests: active(easy), role: "student", method: http.MethodPost, path: "/problems/1/submissions", body: submit("print(1)", right[0]), wantStatus: http.StatusBadRequest, wantCode: "invalid_input"},
+		{
+			// The exact body has no hidden input and no hidden answer.
+			name:            "wrong answer hides the test",
+			contests:        active(easy),
+			role:            "student",
+			method:          http.MethodPost,
+			path:            "/problems/1/submissions",
+			body:            submit("print('x')", map[string]any{"value": "x"}, map[string]any{"value": "4"}),
+			wantStatus:      http.StatusCreated,
+			wantBody:        map[string]any{"verdict": "wrong", "test": 1, "error": nil},
+			wantView:        map[string]any{"code": "print('x')", "solved": false, "submissions": []map[string]any{{"verdict": "wrong", "test": 1, "error": nil}}},
+			wantSubmissions: 1,
+		},
+		{
+			name:            "error message is kept",
+			contests:        active(easy),
+			role:            "student",
+			method:          http.MethodPost,
+			path:            "/problems/1/submissions",
+			body:            submit("print(1 // 0)", map[string]any{"error": zeroDivision}, map[string]any{"timeout": true}),
+			wantStatus:      http.StatusCreated,
+			wantBody:        map[string]any{"verdict": "error", "test": 1, "error": zeroDivision},
+			wantView:        map[string]any{"submissions": []map[string]any{{"verdict": "error", "test": 1, "error": zeroDivision}}},
+			wantSubmissions: 1,
+		},
+		{
+			name: "removed problem", contests: active(removed), role: "student", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
+			wantBody: map[string]any{
+				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": nil, "ignoreCase": false,
+				"examples": []any{}, "code": "", "solved": false, "submissions": []any{}, "url": nil, "endsAt": "2026-11-20T13:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
+			},
+		},
+		{name: "check of a removed problem", contests: active(removed), role: "student", method: http.MethodPost, path: "/problems/1/check", wantStatus: http.StatusNotFound, wantCode: "problem_removed"},
+		{name: "submission for a position without a problem", contests: active(easy), role: "student", method: http.MethodPost, path: "/problems/2/submissions", body: submit("print(1)", right...), wantStatus: http.StatusNotFound, wantCode: "not_found"},
+		{name: "unknown contest", role: "student", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusNotFound, wantCode: "not_found"},
+		{name: "code of 100,001 characters", contests: active(easy), role: "student", method: http.MethodPut, path: "/problems/1/code", body: map[string]any{"code": strings.Repeat("a", 100_001)}, wantStatus: http.StatusBadRequest, wantCode: "invalid_input"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pool, s := contestServer(t)
+			seedContests(t, pool, tt.contests...)
+			w := request(t, s, "/contests/"+contestID(0)+tt.path, tt.method, tt.body, loginAs(t, s, tt.role))
+			if w.Code != tt.wantStatus || errorCode(w) != tt.wantCode {
+				t.Fatalf("status = %d, code %q, want %d, %q; body %s", w.Code, errorCode(w), tt.wantStatus, tt.wantCode, w.Body.String())
+			}
+			if tt.wantBody != nil {
+				reviewsEqualJSON(t, decode[any](t, w), tt.wantBody)
+			}
+			if tt.wantView != nil {
+				view := request(t, s, "/contests/"+contestID(0)+"/problems/1", http.MethodGet, nil, loginAs(t, s, "student"))
+				problemsMatchBody(t, decode[any](t, view), tt.wantView)
+			}
+			if got := queryValue[int64](t, pool, "SELECT count(*) FROM contest_submissions"); got != tt.wantSubmissions {
+				t.Errorf("submissions = %d, want %d", got, tt.wantSubmissions)
 			}
 		})
 	}

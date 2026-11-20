@@ -6,16 +6,22 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/rustatian/redlamp.me/backend/internal/answers"
 	"github.com/rustatian/redlamp.me/backend/internal/bank"
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // contestLength is the time of each contest.
 const contestLength = 90 * time.Minute
+
+// contestGrace is the time after the end in which a submission still counts, so a check that starts at the last second counts.
+const contestGrace = time.Minute
 
 // contestSummary is the result of a contest in the form of the API. RatingChange and RatingAfter are null while the contest is active.
 // Best is true for the best finished result: the higher score, then the shorter finish.
@@ -64,15 +70,229 @@ type contestClock struct {
 	Now    string `json:"now"`
 }
 
+// submissionVerdict is the verdict of a contest submission in the form of the API. It never has a hidden input or a hidden answer.
+// Test is the 1-based number of the failed test, or null. Error is the message of an error verdict, else null.
+type submissionVerdict struct {
+	Verdict string  `json:"verdict"`
+	Test    *int    `json:"test"`
+	Error   *string `json:"error"`
+}
+
+// contestSubmission is a submission of a contest problem in the form of the API.
+type contestSubmission struct {
+	submissionVerdict
+	CreatedAt string `json:"createdAt"`
+}
+
+// contestProblemView is a contest problem with its statement, the last code and the submissions in the form of the API.
+// Statement is null and Examples is empty for a problem that is not in the bank. URL is null while the contest is active. Now is the server time.
+type contestProblemView struct {
+	Position    int                 `json:"position"`
+	Title       string              `json:"title"`
+	Difficulty  string              `json:"difficulty"`
+	Points      int                 `json:"points"`
+	Topic       string              `json:"topic"`
+	Statement   *string             `json:"statement"`
+	IgnoreCase  bool                `json:"ignoreCase"`
+	Examples    []bank.Test         `json:"examples"`
+	Code        string              `json:"code"`
+	Solved      bool                `json:"solved"`
+	Submissions []contestSubmission `json:"submissions"`
+	URL         *string             `json:"url"`
+	EndsAt      string              `json:"endsAt"`
+	Now         string              `json:"now"`
+}
+
 var contestsPath = regexp.MustCompile(`^/leetcode/api/contests(?:/([^/]+)(?:/problems/([1-4])(?:/(code|check|submissions))?)?)?$`)
 
 func (s *Server) handleContests(w http.ResponseWriter, r *http.Request, user *SessionUser) (bool, error) {
 	match := contestsPath.FindStringSubmatch(r.URL.Path)
-	// A contest problem path gets 404.
-	if match == nil || match[2] != "" {
+	if match == nil {
 		return false, nil
 	}
+	if match[2] != "" {
+		position, _ := strconv.Atoi(match[2])
+		return true, s.contestProblemRoute(w, r, user, match[1], position, match[3])
+	}
 	return true, s.contests(w, r, user, match[1])
+}
+
+// contestProblemRoute serves the problem at position of the contest id: the view, the code autosave, the start of a check and the submission.
+// Each action first reads the contest problem, so a submission is only written for a problem of the contest.
+func (s *Server) contestProblemRoute(w http.ResponseWriter, r *http.Request, user *SessionUser, id string, position int, action string) error {
+	ctx := r.Context()
+	if _, err := uuid(id); err != nil {
+		return err
+	}
+	method := http.MethodPost
+	switch action {
+	case "":
+		method = http.MethodGet
+	case "code":
+		method = http.MethodPut
+	}
+	if err := methods(r, method); err != nil {
+		return err
+	}
+	if action != "" {
+		if err := requireRole(user, "student"); err != nil {
+			return err
+		}
+	}
+	now := s.now().UTC()
+	view := contestProblemView{Position: position, Examples: []bank.Test{}, Submissions: []contestSubmission{}, Now: now.Format(timeLayout)}
+	var slug string
+	err := s.db.QueryRow(ctx, "SELECT c.ends_at,p.slug,p.title,p.difficulty,p.points,p.topic,p.code FROM contest_problems p JOIN contests c ON c.id=p.contest_id WHERE p.contest_id=$1 AND p.position=$2", id, position).
+		Scan(&view.EndsAt, &slug, &view.Title, &view.Difficulty, &view.Points, &view.Topic, &view.Code)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return &HTTPError{Status: http.StatusNotFound, Code: "not_found", Message: "Такой задачи нет."}
+	}
+	if err != nil {
+		return err
+	}
+	rows, err := s.db.Query(ctx, "SELECT verdict,failed_test,error,created_at FROM contest_submissions WHERE contest_id=$1 AND position=$2 ORDER BY created_at,id", id, position)
+	if err != nil {
+		return err
+	}
+	var item contestSubmission
+	if _, err := pgx.ForEachRow(rows, []any{&item.Verdict, &item.Test, &item.Error, &item.CreatedAt}, func() error {
+		view.Solved = view.Solved || item.Verdict == "accepted"
+		view.Submissions = append(view.Submissions, item)
+		return nil
+	}); err != nil {
+		return err
+	}
+	problem, inBank := s.bankBySlug[slug]
+	active := view.Now < view.EndsAt
+	over := &HTTPError{Status: http.StatusConflict, Code: "contest_over", Message: "Контест закончился."}
+	removed := &HTTPError{Status: http.StatusNotFound, Code: "problem_removed", Message: "Задача убрана из банка."}
+	solved := &HTTPError{Status: http.StatusConflict, Code: "solved", Message: "Эта задача уже решена."}
+	switch action {
+	case "code":
+		if !active {
+			return over
+		}
+		// 100,000 UTF-16 units of code fit in 1 MiB of JSON, also with escapes.
+		body, err := readJSON(r, 1_048_576)
+		if err != nil {
+			return err
+		}
+		data, err := object(body, "code")
+		if err != nil {
+			return err
+		}
+		code, err := text(data["code"], 100_000, false)
+		if err != nil {
+			return err
+		}
+		if _, err := s.db.Exec(ctx, "UPDATE contest_problems SET code=$1 WHERE contest_id=$2 AND position=$3", code, id, position); err != nil {
+			return err
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	case "check":
+		if !active {
+			return over
+		}
+		if !inBank {
+			return removed
+		}
+		if view.Solved {
+			return solved
+		}
+		inputs := make([]string, len(problem.Tests))
+		for i, test := range problem.Tests {
+			inputs[i] = test.Input
+		}
+		return writeJSON(w, r, http.StatusOK, map[string][]string{"inputs": inputs})
+	case "submissions":
+		if now.Add(-contestGrace).Format(timeLayout) >= view.EndsAt {
+			return over
+		}
+		if !inBank {
+			return removed
+		}
+		// 16 outputs of 1,000,000 ASCII characters fit in 16 MiB, the code and the rest of the JSON in 1 MiB.
+		body, err := readJSON(r, 17_825_792)
+		if err != nil {
+			return err
+		}
+		data, err := object(body, "code", "outputs")
+		if err != nil {
+			return err
+		}
+		code, err := text(data["code"], 100_000, false)
+		if err != nil {
+			return err
+		}
+		raw, ok := data["outputs"].([]any)
+		if !ok || len(raw) != len(problem.Tests) {
+			return invalid("Проверьте поля запроса.")
+		}
+		outputs := make([]judgeOutput, len(raw))
+		for i, item := range raw {
+			if outputs[i], err = outputOf(item); err != nil {
+				return err
+			}
+		}
+		verdict, test, message := contestVerdict(problem, outputs)
+		result := submissionVerdict{Verdict: verdict}
+		if test > 0 {
+			result.Test = &test
+		}
+		if verdict == "error" {
+			result.Error = &message
+		}
+		err = s.tx(ctx, func(tx pgx.Tx) error {
+			// The write of the problem row makes two submissions at the same time conflict. The second one runs again and finds the accepted one.
+			if _, err := tx.Exec(ctx, "UPDATE contest_problems SET code=$1 WHERE contest_id=$2 AND position=$3", code, id, position); err != nil {
+				return err
+			}
+			tag, err := tx.Exec(ctx, "INSERT INTO contest_submissions (id,contest_id,position,verdict,failed_test,error,code,created_at) SELECT $1,$2,$3,$4,$5,$6,$7,$8 WHERE NOT EXISTS (SELECT 1 FROM contest_submissions WHERE contest_id=$2 AND position=$3 AND verdict='accepted')",
+				newID(), id, position, verdict, result.Test, result.Error, code, view.Now)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 0 {
+				return solved
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return writeJSON(w, r, http.StatusCreated, result)
+	}
+	view.IgnoreCase = problem.IgnoreCase
+	view.Examples = append(view.Examples, problem.Examples...)
+	if inBank {
+		view.Statement = &problem.Statement
+	}
+	if !active {
+		url := sets.URL(slug)
+		view.URL = &url
+	}
+	return writeJSON(w, r, http.StatusOK, view)
+}
+
+// contestVerdict compares the outputs with the answers of the hidden tests, test by test. The first failed test gives the verdict and its 1-based number.
+// message is the cut error message of an error verdict.
+func contestVerdict(p bank.Problem, outputs []judgeOutput) (verdict string, test int, message string) {
+	spec := answers.Spec{Mode: "stdio", IgnoreCase: p.IgnoreCase}
+	for i, t := range p.Tests {
+		output := outputs[i]
+		if output.Value != nil && answers.Same(spec, t.Output, *output.Value) {
+			continue
+		}
+		switch {
+		case output.Value != nil:
+			return "wrong", i + 1, ""
+		case output.Error != nil:
+			return "error", i + 1, cut(*output.Error)
+		}
+		return "timeout", i + 1, ""
+	}
+	return "accepted", 0, ""
 }
 
 func (s *Server) contests(w http.ResponseWriter, r *http.Request, user *SessionUser, id string) error {
