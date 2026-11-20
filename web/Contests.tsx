@@ -9,7 +9,7 @@ import { difficultyLabels } from './Problems';
 import { plural } from './text';
 import { useResource } from './useResource';
 
-const points = (count: number) => plural(count, ['очко', 'очка', 'очков']);
+export const points = (count: number) => plural(count, ['очко', 'очка', 'очков']);
 
 export function Contests({ user }: { user: SessionUser }) {
 	const { data, error } = useResource<ContestList>('/contests');

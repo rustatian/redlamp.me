@@ -11,6 +11,7 @@ import { Workspace } from './Workspace';
 import type { LeaveGuard } from './useDraft';
 import { Homework } from './Homework';
 import { Contests } from './Contests';
+import { ContestPage, ContestProblemPage } from './Contest';
 import { SetProblem, Sets } from './Sets';
 import { Quiz } from './Quiz';
 import { Today } from './Today';
@@ -111,6 +112,7 @@ export function App() {
 	const setProblem = /^\/leetcode\/sets\/([a-z0-9-]+)\/problems\/([a-z0-9-]+)$/.exec(path);
 	const quiz = /^\/leetcode\/quiz(?:\/([a-z0-9-]+))?$/.exec(path);
 	const review = /^\/leetcode\/problems\/([a-f0-9-]{36})\/review$/.exec(path);
-	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : path === '/leetcode/contests' ? <Contests user={user} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : <Today user={user} />;
+	const contest = /^\/leetcode\/contests\/([a-f0-9-]{36})(?:\/([1-4]))?$/.exec(path);
+	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : path === '/leetcode/contests' ? <Contests user={user} /> : contest ? contest[2] ? <ContestProblemPage id={contest[1]} position={Number(contest[2])} user={user} /> : <ContestPage id={contest[1]} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : <Today user={user} />;
 	return <Layout user={user} visit={visit} logout={logout}>{error && <p className="error" role="alert">{error}</p>}<Fragment key={visit}>{screen}</Fragment></Layout>;
 }
