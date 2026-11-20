@@ -10,6 +10,7 @@ import { Problems } from './Problems';
 import { Workspace } from './Workspace';
 import type { LeaveGuard } from './useDraft';
 import { Homework } from './Homework';
+import { Contests } from './Contests';
 import { SetProblem, Sets } from './Sets';
 import { Quiz } from './Quiz';
 import { Today } from './Today';
@@ -52,7 +53,7 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 			<nav aria-label="Тетрадь">{navigation.map(({ path, label, Icon }) => <a key={path} href={`/leetcode${path}`} aria-current={location.pathname === `/leetcode${path}` ? 'page' : undefined}><Icon size={18} />{label}</a>)}</nav>
 		</aside>
 		<div className="workspace"><header className="topbar"><a className="search" href="/leetcode/problems"><Search size={16} /><span>Поиск по задачам и заметкам</span></a>
-			<div className="account">{contest && left ? <a href={`/leetcode/contests/${contest.id}`}><span role="timer" aria-label="До конца контеста">{clock(left)}</span></a> : null}{game && <div className="xp-chip"><strong>Уровень {game.level}</strong><progress className="xp" aria-label={`Прогресс до уровня ${game.level + 1}`} value={game.xp - game.levelXp} max={game.nextLevelXp - game.levelXp} /></div>}<button className="icon-button" onClick={appearance} aria-label={dark ? 'Светлая тема' : 'Тёмная тема'} data-tip={dark ? 'Включить светлую тему.' : 'Включить тёмную тему.'}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="user"><span className="avatar" aria-hidden="true">{user.username[0].toUpperCase()}</span><span><strong>{user.username}</strong><small>{user.role === 'parent' ? 'Родитель' : 'Ученик'}</small></span></div><button className="icon-button" onClick={logout} aria-label="Выйти" data-tip="Выйти из аккаунта."><LogOut size={18} /></button></div></header><main id="main">{children}</main></div>
+			<div className="account">{contest && left ? <a className="contest-clock" href={`/leetcode/contests/${contest.id}`}><Skull size={14} aria-hidden="true" /><span role="timer" aria-label="До конца контеста">{clock(left)}</span></a> : null}{game && <div className="xp-chip"><strong>Уровень {game.level}</strong><progress className="xp" aria-label={`Прогресс до уровня ${game.level + 1}`} value={game.xp - game.levelXp} max={game.nextLevelXp - game.levelXp} /></div>}<button className="icon-button" onClick={appearance} aria-label={dark ? 'Светлая тема' : 'Тёмная тема'} data-tip={dark ? 'Включить светлую тему.' : 'Включить тёмную тему.'}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="user"><span className="avatar" aria-hidden="true">{user.username[0].toUpperCase()}</span><span><strong>{user.username}</strong><small>{user.role === 'parent' ? 'Родитель' : 'Ученик'}</small></span></div><button className="icon-button" onClick={logout} aria-label="Выйти" data-tip="Выйти из аккаунта."><LogOut size={18} /></button></div></header><main id="main">{children}</main></div>
 		<Music />
 		<TermTips />
 	</div>;
@@ -110,6 +111,6 @@ export function App() {
 	const setProblem = /^\/leetcode\/sets\/([a-z0-9-]+)\/problems\/([a-z0-9-]+)$/.exec(path);
 	const quiz = /^\/leetcode\/quiz(?:\/([a-z0-9-]+))?$/.exec(path);
 	const review = /^\/leetcode\/problems\/([a-f0-9-]{36})\/review$/.exec(path);
-	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : <Today user={user} />;
+	const screen = path === '/leetcode/problems' ? <Problems user={user} /> : path === '/leetcode/contests' ? <Contests user={user} /> : match ? <Workspace problemId={match[1]} user={user} registerGuard={registerGuard} /> : homework ? <Homework id={homework[1]} user={user} /> : sets ? <Sets slug={sets[1]} chapter={sets[2] ? Number(sets[2]) : undefined} user={user} /> : setProblem ? <SetProblem slug={setProblem[1]} taskSlug={setProblem[2]} /> : quiz ? <Quiz slug={quiz[1]} user={user} /> : review ? <Review id={review[1]} user={user} /> : <Today user={user} />;
 	return <Layout user={user} visit={visit} logout={logout}>{error && <p className="error" role="alert">{error}</p>}<Fragment key={visit}>{screen}</Fragment></Layout>;
 }
