@@ -14,6 +14,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rustatian/redlamp.me/backend/internal/bank"
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
@@ -31,6 +32,9 @@ type Server struct {
 	decks      []deck
 	references map[string]sets.Reference
 	generators map[string]sets.Generator
+	// bank is the bank of the contest problems. bankBySlug has the same problems by slug.
+	bank       []bank.Problem
+	bankBySlug map[string]bank.Problem
 	// now is the clock of the rules that depend on the current day.
 	now func() time.Time
 	// random returns a random number from 0 to count-1. It chooses the recall days.
@@ -61,6 +65,8 @@ type Config struct {
 	References map[string]sets.Reference
 	// Generators make the hidden tests of the learning set tasks, by problem slug.
 	Generators map[string]sets.Generator
+	// Bank is the bank of the Codeforces problems of the contests.
+	Bank []bank.Problem
 	// Anthropic is the client of the Anthropic API for the tutor, or nil when the server has no API key.
 	Anthropic *anthropic.Client
 	// Transcriber is the speech service of the dictation, or nil when the server has none.
@@ -81,7 +87,10 @@ func New(cfg Config) (*Server, error) {
 	if err != nil || u.Scheme == "" || u.Host == "" || cfg.PublicOrigin != strings.ToLower(u.Scheme+"://"+u.Host) {
 		return nil, fmt.Errorf("the public origin %q does not have the form https://host", cfg.PublicOrigin)
 	}
-	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second, transcriber: cfg.Transcriber, assets: cfg.Assets}
+	s := &Server{db: cfg.DB, origin: cfg.PublicOrigin, cookieName: siteCookie, leetcode: cfg.LeetCode, sets: cfg.Sets, decks: decksOf(cfg.Sets), references: cfg.References, generators: cfg.Generators, bank: cfg.Bank, bankBySlug: map[string]bank.Problem{}, now: time.Now, random: rand.IntN, tutor: cfg.Anthropic, thinkingEvery: 10 * time.Second, transcriber: cfg.Transcriber, assets: cfg.Assets}
+	for _, p := range cfg.Bank {
+		s.bankBySlug[p.Slug] = p
+	}
 	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
 		s.cookieName = localCookie
 	}
@@ -147,7 +156,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, path string, user
 			return &HTTPError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "Войдите, чтобы продолжить."}
 		}
 		// The first handler that knows the path answers the request.
-		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleSets, s.handleQuiz, s.handleJudge, s.handleTests, s.handleStatement, s.handleRuns, s.handleTutor, s.handleDictation} {
+		for _, handle := range []func(http.ResponseWriter, *http.Request, *SessionUser) (bool, error){s.handleProblems, s.handleAttempts, s.handleHomework, s.handleReviews, s.handleSets, s.handleQuiz, s.handleJudge, s.handleTests, s.handleStatement, s.handleRuns, s.handleTutor, s.handleDictation, s.handleContests} {
 			if handled, err := handle(w, r, user); handled || err != nil {
 				return err
 			}

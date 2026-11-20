@@ -52,7 +52,7 @@ func ratingChange(before int, problems []problemResult) int {
 	return int(math.Round(32 * sum))
 }
 
-// ratingHistory returns the rating after each contest. The contests are in the order of their start.
+// ratingHistory returns the rating after each finished contest. The contests are in the order of their start.
 func ratingHistory(contests [][]problemResult) []int {
 	history := make([]int, len(contests))
 	rating := startRating
