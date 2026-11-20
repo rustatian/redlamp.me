@@ -1,7 +1,7 @@
 export type Role = 'parent' | 'student';
 export interface SessionUser { role: Role; username: string }
 export interface Page<T> { items: T[]; nextOffset: number | null }
-export const NOTEBOOK_PAGE = /^\/leetcode(?:\/(?:problems|homework)(?:\/[a-f0-9-]{36}(?:\/review)?)?|\/sets(?:\/[a-z0-9-]+(?:\/(?:[1-9][0-9]?|problems\/[a-z0-9-]+))?)?|\/quiz(?:\/[a-z0-9-]+)?)?$/;
+export const NOTEBOOK_PAGE = /^\/leetcode(?:\/(?:problems|homework)(?:\/[a-f0-9-]{36}(?:\/review)?)?|\/sets(?:\/[a-z0-9-]+(?:\/(?:[1-9][0-9]?|problems\/[a-z0-9-]+))?)?|\/quiz(?:\/[a-z0-9-]+)?|\/contests(?:\/[a-f0-9-]{36}(?:\/[1-4])?)?)?$/;
 export type Acceptance = 'not_submitted' | 'not_accepted' | 'accepted';
 export type Understanding = 'needs_practice' | 'with_help' | 'independent';
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -117,6 +117,19 @@ export interface TutorMessage { id: string; author: 'student' | 'assistant'; bod
 export type TutorEvent = { delta: string } | { done: true } | { error: { code: string; message: string } } | { thinking: true };
 export type BadgeId = 'first-accept' | 'three-day-streak' | 'first-hard' | 'ten-accepted' | 'independent-five' | 'set-cleared' | 'week-no-miss' | 'month-no-miss' | 'twenty-five-accepted' | 'fifty-accepted' | 'fifty-cards' | 'ten-recalls' | 'first-codeforces' | 'first-try' | 'two-sets' | 'on-time-five' | 'level-five';
 export interface Game { xp: number; level: number; levelXp: number; nextLevelXp: number; late: number; missed: number; badges: { id: BadgeId; earned: boolean }[] }
+// ratingChange and ratingAfter are null while the contest is active. best marks the best finished result: the higher score, then the shorter finish.
+export interface ContestSummary { id: string; startedAt: string; endsAt: string; active: boolean; solved: number; total: number; score: number; finishSeconds: number; ratingChange: number | null; ratingAfter: number | null; best: boolean }
+// The active contest for the topbar clock. now is the server time.
+export interface ContestClock { id: string; endsAt: string; now: string }
+export interface ContestList { rating: number; bestRating: number; best: ContestSummary | null; active: ContestClock | null; items: ContestSummary[] }
+// rating is null while the contest is active. wrong counts the wrong submissions before the first accepted one, acceptedSeconds is the time from the start to it.
+export interface ContestProblemRow { position: number; title: string; difficulty: Difficulty; points: number; topic: string; rating: number | null; solved: boolean; wrong: number; acceptedSeconds: number | null }
+export interface ContestDetail extends ContestSummary { now: string; problems: ContestProblemRow[] }
+// test is the 1-based number of the failed test. error is the message of an error verdict, else null.
+export interface ContestVerdict { verdict: 'accepted' | 'wrong' | 'timeout' | 'error'; test: number | null; error: string | null }
+// statement is null for a problem that is not in the bank. url is null while the contest is active.
+export interface ContestProblem { position: number; title: string; difficulty: Difficulty; points: number; topic: string; statement: string | null; ignoreCase: boolean; examples: { input: string; output: string }[]; code: string; solved: boolean; submissions: (ContestVerdict & { createdAt: string })[]; url: string | null; endsAt: string; now: string }
+export interface BankEntry { slug: string; rating: number; topics: string[]; difficulty: Difficulty; points: number }
 export function newApproach(): Approach {
 	return { id: crypto.randomUUID(), label: '', idea: '', correctness: '', timeComplexity: '', spaceComplexity: '', edgeCases: '', mistakes: '', language: '', code: '' };
 }

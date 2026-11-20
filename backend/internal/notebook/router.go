@@ -105,7 +105,7 @@ func isNotebookPath(path string) bool {
 }
 
 // notebookPage matches the paths of the web client pages. It equals NOTEBOOK_PAGE of shared/leetcode.ts.
-var notebookPage = regexp.MustCompile(`^/leetcode(?:/(?:problems|homework)(?:/[a-f0-9-]{36}(?:/review)?)?|/sets(?:/[a-z0-9-]+(?:/(?:[1-9][0-9]?|problems/[a-z0-9-]+))?)?|/quiz(?:/[a-z0-9-]+)?)?$`)
+var notebookPage = regexp.MustCompile(`^/leetcode(?:/(?:problems|homework)(?:/[a-f0-9-]{36}(?:/review)?)?|/sets(?:/[a-z0-9-]+(?:/(?:[1-9][0-9]?|problems/[a-z0-9-]+))?)?|/quiz(?:/[a-z0-9-]+)?|/contests(?:/[a-f0-9-]{36}(?:/[1-4])?)?)?$`)
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path

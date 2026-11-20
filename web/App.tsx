@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Brain, CalendarCheck, ClipboardCheck, CodeXml, LogOut, Moon, Search, Sun, Tent } from 'lucide-react';
-import { NOTEBOOK_PAGE, type Game, type SessionUser } from '../shared/leetcode';
+import { Brain, CalendarCheck, ClipboardCheck, CodeXml, LogOut, Moon, Search, Skull, Sun, Tent } from 'lucide-react';
+import { NOTEBOOK_PAGE, type ContestClock, type Game, type SessionUser } from '../shared/leetcode';
 import { api, ApiError, message } from './api';
+import { clock, remaining } from './contestTime';
 import { Login } from './Login';
 import { Music } from './Music';
 import { go } from './navigate';
@@ -21,12 +22,29 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 		try { return localStorage.getItem('leetcode:appearance') !== 'light'; } catch { return true; }
 	});
 	const { data: game } = useResource<Game>('/game', visit);
+	const { data: contest } = useResource<ContestClock | null>('/contests/active', visit);
+	const [left, setLeft] = useState(0);
+	useEffect(() => {
+		if (!contest) return;
+		const { endsAt, now } = contest, fetchedAt = Date.now(), page = `/leetcode/contests/${contest.id}`;
+		function tick() {
+			const seconds = remaining(endsAt, now, fetchedAt, Date.now());
+			setLeft(seconds);
+			if (seconds > 0) return;
+			clearInterval(timer);
+			// At the end only the contest page loads its result. A remount of the problem page stops a check that started before the end.
+			if (location.pathname === page) go(page, true);
+		}
+		const timer = setInterval(tick, 1000);
+		tick();
+		return () => clearInterval(timer);
+	}, [contest]);
 	document.documentElement.dataset.appearance = dark ? 'dark' : 'light';
 	function appearance() {
 		setDark(!dark);
 		try { localStorage.setItem('leetcode:appearance', dark ? 'light' : 'dark'); } catch { /* Appearance remains available in this page. */ }
 	}
-	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Бомжарня', Icon: Tent }, { path: '/quiz', label: 'Квиз', Icon: Brain }];
+	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Бомжарня', Icon: Tent }, { path: '/contests', label: 'Мясорубка', Icon: Skull }, { path: '/quiz', label: 'Квиз', Icon: Brain }];
 	return <div className="app">
 		<a className="skip-link" href="#main">К содержимому</a>
 		<aside className="sidebar">
@@ -34,7 +52,7 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 			<nav aria-label="Тетрадь">{navigation.map(({ path, label, Icon }) => <a key={path} href={`/leetcode${path}`} aria-current={location.pathname === `/leetcode${path}` ? 'page' : undefined}><Icon size={18} />{label}</a>)}</nav>
 		</aside>
 		<div className="workspace"><header className="topbar"><a className="search" href="/leetcode/problems"><Search size={16} /><span>Поиск по задачам и заметкам</span></a>
-			<div className="account">{game && <div className="xp-chip"><strong>Уровень {game.level}</strong><progress className="xp" aria-label={`Прогресс до уровня ${game.level + 1}`} value={game.xp - game.levelXp} max={game.nextLevelXp - game.levelXp} /></div>}<button className="icon-button" onClick={appearance} aria-label={dark ? 'Светлая тема' : 'Тёмная тема'} data-tip={dark ? 'Включить светлую тему.' : 'Включить тёмную тему.'}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="user"><span className="avatar" aria-hidden="true">{user.username[0].toUpperCase()}</span><span><strong>{user.username}</strong><small>{user.role === 'parent' ? 'Родитель' : 'Ученик'}</small></span></div><button className="icon-button" onClick={logout} aria-label="Выйти" data-tip="Выйти из аккаунта."><LogOut size={18} /></button></div></header><main id="main">{children}</main></div>
+			<div className="account">{contest && left ? <a href={`/leetcode/contests/${contest.id}`}><span role="timer" aria-label="До конца контеста">{clock(left)}</span></a> : null}{game && <div className="xp-chip"><strong>Уровень {game.level}</strong><progress className="xp" aria-label={`Прогресс до уровня ${game.level + 1}`} value={game.xp - game.levelXp} max={game.nextLevelXp - game.levelXp} /></div>}<button className="icon-button" onClick={appearance} aria-label={dark ? 'Светлая тема' : 'Тёмная тема'} data-tip={dark ? 'Включить светлую тему.' : 'Включить тёмную тему.'}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="user"><span className="avatar" aria-hidden="true">{user.username[0].toUpperCase()}</span><span><strong>{user.username}</strong><small>{user.role === 'parent' ? 'Родитель' : 'Ученик'}</small></span></div><button className="icon-button" onClick={logout} aria-label="Выйти" data-tip="Выйти из аккаунта."><LogOut size={18} /></button></div></header><main id="main">{children}</main></div>
 		<Music />
 		<TermTips />
 	</div>;
