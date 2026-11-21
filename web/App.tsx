@@ -34,8 +34,8 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 			setLeft(seconds);
 			if (seconds > 0) return;
 			clearInterval(timer);
-			// At the end only the contest page loads its result. A remount of the problem page stops a check that started before the end.
-			if (location.pathname === page) go(page, true);
+			// At the end the contest page and the contests page load again. A remount of the problem page drops the verdict of a running check and the local own tests from the page.
+			if (location.pathname === page || location.pathname === '/leetcode/contests') go(location.pathname, true);
 		}
 		const timer = setInterval(tick, 1000);
 		tick();

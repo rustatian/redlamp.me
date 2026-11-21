@@ -41,6 +41,8 @@ test('the skull window closes with Нет and the setup starts a contest', async
 	await dialog.getByRole('button', { name: 'Начать', exact: true }).click();
 	await expect(page).toHaveURL(/\/leetcode\/contests\/[a-f0-9-]{36}$/);
 	await expect(page.getByRole('timer')).toHaveText(/^(89|90):\d\d$/);
+	// The setup sends the picks from the easiest, so position 1 is the easy problem.
+	await expect(page.getByRole('table').getByText(/^(Легко|Средне|Сложно)$/)).toHaveText(['Легко', 'Средне', 'Средне', 'Сложно']);
 });
 
 test('a wrong submission shows only the test number, a right one is accepted', async ({ page, db }) => {
@@ -58,6 +60,32 @@ test('a wrong submission shows only the test number, a right one is accepted', a
 	await send.click();
 	await expect(page.getByText('Принято', { exact: true })).toBeVisible({ timeout: 60_000 });
 	await expect(send).toHaveCount(0);
+	// A solved problem is read-only, so the autosave never replaces the accepted code.
+	await expect(code).not.toBeEditable();
+});
+
+test('an accepted submission clears the error of a failed save', async ({ page, db }) => {
+	test.slow();
+	await signIn(page);
+	const id = await addContest(db, Date.now());
+	await page.goto(`/leetcode/contests/${id}/1`);
+	// Each code save fails. The submission carries the code, so it is accepted.
+	await page.route('**/code', route => route.abort());
+	await page.getByLabel('Код решения', { exact: true }).fill(solution);
+	await page.getByRole('button', { name: 'Отправить', exact: true }).click();
+	await expect(page.getByText('Принято', { exact: true })).toBeVisible({ timeout: 60_000 });
+	await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('the contest clock stays on the screen when the page scrolls', async ({ page, db }) => {
+	await signIn(page);
+	const id = await addContest(db, Date.now());
+	// At 900 px and less the panes are one column, so the whole page scrolls.
+	await page.setViewportSize({ width: 800, height: 600 });
+	await page.goto(`/leetcode/contests/${id}/1`);
+	await expect(page.getByLabel('Код решения', { exact: true })).toBeVisible();
+	await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+	await expect(page.getByRole('timer')).toBeInViewport();
 });
 
 test('a reload keeps the code', async ({ page, db }) => {
@@ -101,6 +129,9 @@ test('the problem page turns read-only at the end without a reload', async ({ pa
 	await expect(send).toBeVisible();
 	await expect(code).not.toBeEditable({ timeout: 15_000 });
 	await expect(send).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Результат', exact: true })).toHaveAttribute('href', `/leetcode/contests/${id}`);
+	// The view loads again at the end, so the Codeforces link shows.
+	await expect(page.getByRole('link', { name: 'Задача на Codeforces ↗', exact: true })).toBeVisible();
 	// The clock hides at its end. A remount of the page at that time drops the own tests, because they stay only in the page.
 	await expect(page.getByRole('timer')).toHaveCount(0);
 	await expect(page.getByRole('list', { name: 'Мои тесты' }).getByRole('listitem')).toHaveText(['Тест 4 Ввод: 10 4 Удалить'], { useInnerText: true });
@@ -113,10 +144,21 @@ test('the contest page loads the result at the end and the clock hides', async (
 	await page.goto(`/leetcode/contests/${id}`);
 	await expect(page.getByRole('timer')).toBeVisible();
 	await expect(page.locator('.stat')).toHaveText(['0 Очки'], { useInnerText: true });
-	// No solved problem: the finish is 0 and the change is round(32 × (0 - 0.5)) = -16.
-	await expect(page.locator('.stat')).toHaveText(['0 Очки', '00:00 Финиш', '-16 Изменение рейтинга'], { useInnerText: true, timeout: 15_000 });
+	// No solved problem: the page shows no finish time, and the change is round(32 × (0 - 0.5)) = -16.
+	await expect(page.locator('.stat')).toHaveText(['0 Очки', '- Финиш', '-16 Изменение рейтинга'], { useInnerText: true, timeout: 15_000 });
 	await expect(page.getByText('Контест закончился.', { exact: true })).toBeVisible();
 	await expect(page.getByRole('timer')).toHaveCount(0);
+});
+
+test('the contests page loads again at the end', async ({ page, db }) => {
+	test.slow();
+	await signIn(page);
+	await addContest(db, Date.now() + 10_000 - 90 * minute);
+	await page.goto('/leetcode/contests');
+	await expect(page.getByRole('link', { name: 'Идёт контест', exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'В мясорубку', exact: true })).toBeVisible({ timeout: 15_000 });
+	// No solved problem: no finish time, and the rating changes from 800 by round(32 × (0 - 0.5)) = -16.
+	await expect(page.getByRole('row').nth(1).getByRole('cell')).toHaveText([/Лучший$/, '0 из 1', '0', '-', '-16', '784']);
 });
 
 test('own tests of a contest problem show only the output', async ({ page, db }) => {

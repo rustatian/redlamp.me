@@ -18,7 +18,7 @@ const verdictText = (item: ContestVerdict) => item.verdict === 'accepted' ? 'П�
 export function ContestPage({ id }: { id: string }) {
 	const { data, error } = useResource<ContestDetail>(`/contests/${id}`);
 	if (!data) return <div className="stack"><h1>Контест</h1><p role="status">{error || 'Открываем контест...'}</p></div>;
-	const stats = [{ label: 'Очки', value: data.score }, ...(data.active ? [] : [{ label: 'Финиш', value: clock(data.finishSeconds) }, { label: 'Изменение рейтинга', value: data.ratingChange!.toLocaleString('ru-RU', { signDisplay: 'exceptZero' }) }])];
+	const stats = [{ label: 'Очки', value: data.score }, ...(data.active ? [] : [{ label: 'Финиш', value: data.solved ? clock(data.finishSeconds) : '-' }, { label: 'Изменение рейтинга', value: data.ratingChange!.toLocaleString('ru-RU', { signDisplay: 'exceptZero' }) }])];
 	return <div className="stack"><div className="heading"><div><p className="small"><a href="/leetcode/contests">Мясорубка</a></p><h1>Контест {new Date(data.startedAt).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}</h1><p>{data.active ? 'Контест идёт.' : 'Контест закончился.'}</p></div></div>
 		<div className="stats">{stats.map(item => <div className="stat" key={item.label}><strong>{item.value}</strong><span>{item.label}</span></div>)}</div>
 		<section className="card"><header className="card-head"><h2>Задачи</h2></header><div className="results"><table><thead><tr><th scope="col">№</th><th scope="col">Задача</th><th scope="col">Сложность</th><th scope="col">Очки</th><th scope="col">Состояние</th><th scope="col">Неверные отправки</th></tr></thead>
@@ -40,10 +40,14 @@ function ProblemEditor({ path, contestId, problem, student, reload }: { path: st
 	const [saveError, setSaveError] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false), [progress, setProgress] = useState(''), [verdict, setVerdict] = useState<ContestVerdict | null>(null);
 	const [own, setOwn] = useState<OwnTest[]>([]), [input, setInput] = useState('');
 	const latest = useRef(problem.code), stored = useRef(problem.code), pending = useRef(Promise.resolve()), timer = useRef<ReturnType<typeof setTimeout>>(undefined), statement = useRef<HTMLElement>(null);
-	const editable = student && !over, solved = problem.solved || verdict?.verdict === 'accepted';
+	const solved = problem.solved || verdict?.verdict === 'accepted', editable = student && !over && !solved;
 	const spec: TestSpec = { mode: 'stdio', ignoreCase: problem.ignoreCase }, tests: ProblemTests = { spec, source: 'set', standard: problem.examples.map(e => ({ input: e.input, expected: e.output })), own, skeleton: '' };
-	// The editor turns read-only at the end without a remount, so a check that started before the end goes on.
-	useEffect(() => { const end = setTimeout(() => setOver(true), deadline - Date.now()); return () => clearTimeout(end); }, [deadline]);
+	// The editor turns read-only at the end without a remount: a remount drops the verdict of a running check and the local own tests from the page. The reload of the view shows the link to Codeforces.
+	useEffect(() => {
+		if (Date.now() >= deadline) return;
+		const end = setTimeout(() => { setOver(true); reload(); }, deadline - Date.now());
+		return () => clearTimeout(end);
+	}, [deadline, reload]);
 	// A page change sends the code that waits for the autosave.
 	useEffect(() => () => { if (latest.current !== stored.current) void save(); }, []);
 	// One save at a time, so an older code never replaces a newer one. A save sends the newest code.
@@ -72,15 +76,16 @@ function ProblemEditor({ path, contestId, problem, student, reload }: { path: st
 			const sent = latest.current, { inputs } = await api<{ inputs: string[] }>(`${path}/check`, { method: 'POST' });
 			const outputs = await hiddenOutputs(sent, spec, inputs, (done, total) => setProgress(`Проверяем: ${done} из ${total}`));
 			setVerdict(await api<ContestVerdict>(`${path}/submissions`, { method: 'POST', body: JSON.stringify({ code: sent, outputs }) }));
-			stored.current = sent; setStatus(latest.current === sent ? 'saved' : 'unsaved');
+			stored.current = sent; setSaveError(''); setStatus(latest.current === sent ? 'saved' : 'unsaved');
 		} catch (error) { if (error instanceof ApiError && error.code === 'contest_over') setOver(true); setError(message(error)); }
 		finally { setBusy(false); setProgress(''); reload(); }
 	}
 	const example = problem.examples[0]?.input.trimEnd(), placeholder = `Входные данные, как в условии${example ? `, например:\n${example}` : ''}`;
 	const left = <section className="stack"><h2>Условие</h2>{problem.statement === null ? <p className="notice">Задача убрана из банка</p> : <Lesson html={problem.statement} ref={statement} />}<p className="small">Источник: Codeforces, набор open-r1/codeforces (CC BY 4.0)</p>{problem.url && <p><a href={problem.url} target="_blank" rel="noopener noreferrer">Задача на Codeforces ↗</a></p>}</section>;
 	// The tip of a button shows below it, so the verdict is beside the button.
-	const after = <>{editable && !solved && <button type="button" className="primary" disabled={busy || !code.trim()} onClick={() => void submit()} data-tip="Проверить решение на скрытых тестах. Тесты сайт не показывает.">Отправить</button>}{progress && <p role="status">{progress}</p>}{verdict && (verdict.verdict === 'accepted' ? <p role="status"><span className="tag good">Принято</span></p> : <p className="error" role="alert" aria-label="Результат проверки">{verdictText(verdict)}</p>)}</>;
+	const after = <>{editable && <button type="button" className="primary" disabled={busy || !code.trim()} onClick={() => void submit()} data-tip="Проверить решение на скрытых тестах. Тесты сайт не показывает.">Отправить</button>}{progress && <p role="status">{progress}</p>}{verdict && (verdict.verdict === 'accepted' ? <p role="status"><span className="tag good">Принято</span></p> : <p className="error" role="alert" aria-label="Результат проверки">{verdictText(verdict)}</p>)}</>;
 	const right = <div className="stack">
+		{over && <p className="notice">Контест закончился. <a href={`/leetcode/contests/${contestId}`}>Результат</a></p>}
 		{editable && <p role="status" aria-label="Состояние сохранения" aria-live="polite">{{ saved: 'Сохранено', saving: 'Сохраняем', unsaved: 'Не сохранено' }[status]}</p>}
 		{(error || saveError) && <p className="error" role="alert">{error || saveError}</p>}
 		{/* A disabled fieldset does not lock the code editor, which is not a form control. */}

@@ -126,5 +126,5 @@ A check of the code of a contest problem on its hidden tests, with the verdict a
 _Avoid_: Submission, test run.
 
 **Contest rating**:
-The rating of the student from the finished contests. It starts at 800. Each finished contest changes it by round(32 × Σ(S − E)), where S is 1 for a solved problem and E is the expected score from the problem rating and the rating before the contest.
+The rating of the student from the finished contests. It starts at 800. Each finished contest changes it by round(32 × Σ(S − E)), where S is 1 for a solved problem, else 0, and E is the expected score from the problem rating and the rating before the contest.
 _Avoid_: XP, level.
