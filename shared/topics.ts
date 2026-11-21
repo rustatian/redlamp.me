@@ -36,6 +36,18 @@ const aliases: Record<string, string[]> = {
 	Backtracking: ['перебор с возвратом', 'поиск с возвратом'],
 	'Dynamic Programming': ['Динамическое программирование'],
 	Enumeration: [], 'Brute Force': [],
+	Implementation: ['Реализация'],
+	'Constructive Algorithms': [],
+	'Number Theory': ['Теория чисел'],
+	'Data Structures': ['Структуры данных'],
+	'Game Theory': ['Теория игр'],
+	'Bit Manipulation': ['Битовые операции'],
+	Geometry: ['Геометрия'],
+	'Depth-First Search': ['DFS', 'Поиск в глубину'],
+	'Union Find': ['DSU'],
+	Tree: ['Дерево', 'Деревья'],
+	'Hash Function': [], 'Probability and Statistics': [],
+	'Shortest Path': ['Кратчайший путь'],
 };
 const names = new Map(Object.entries(aliases).flatMap(([name, values]) => [name, ...values].map(value => [value.toLowerCase(), name])));
 

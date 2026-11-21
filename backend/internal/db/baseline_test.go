@@ -23,6 +23,7 @@ func baseline(t *testing.T) *pgxpool.Pool {
 
 // The expected tables and columns are the D1 schema after migrations/0017_homework_content.sql, without tutor_account.
 // quiz_decks is not in D1: it is the guard row of the one-hour pause of a quiz deck.
+// The contest tables are not in D1.
 func TestBaselineTables(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -30,6 +31,10 @@ func TestBaselineTables(t *testing.T) {
 	}{
 		{name: "attempts", columns: "id,problem_id,state,document,search_text,acceptance,understanding,version,created_at,updated_at,saved_at"},
 		{name: "card_answers", columns: "id,card_id,correct,interval_days,answered_on,next_date,created_at"},
+		{name: "contest_problems", columns: "contest_id,position,slug,title,rating,topic,difficulty,points,code"},
+		{name: "contest_starts", columns: "id,started_at"},
+		{name: "contest_submissions", columns: "id,contest_id,position,verdict,failed_test,error,code,created_at"},
+		{name: "contests", columns: "id,started_at,ends_at"},
 		{name: "discussion_reads", columns: "role,problem_id,read_at"},
 		{name: "earned_badges", columns: "id"},
 		{name: "feedback", columns: "id,problem_id,task_id,submission_id,author,kind,body,created_at"},
@@ -76,6 +81,7 @@ func TestBaselineTables(t *testing.T) {
 }
 
 // The expected indexes are the named indexes of the D1 schema after migrations/0017_homework_content.sql.
+// contest_problems_slug is not in D1: it keeps a problem out of a second contest.
 func TestBaselineIndexes(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -94,6 +100,7 @@ func TestBaselineIndexes(t *testing.T) {
 		{name: "tutor_messages_thread", table: "tutor_messages", columns: "context_kind,context_ref,created_at"},
 		{name: "problem_tests_problem", table: "problem_tests", columns: "problem_id,created_at"},
 		{name: "test_runs_problem", table: "test_runs", columns: "problem_id,run_on"},
+		{name: "contest_problems_slug", table: "contest_problems", columns: "slug", unique: true},
 	}
 	ctx := context.Background()
 	pool := baseline(t)

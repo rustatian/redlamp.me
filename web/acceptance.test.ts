@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { newApproach, type Attempt, type JudgeOutput, type Judgement, type TestSpec } from '../shared/leetcode';
-import { checkAcceptance } from './acceptance';
+import { checkAcceptance, hiddenOutputs } from './acceptance';
 import * as transport from './api';
 import * as python from './python';
 
@@ -62,4 +62,16 @@ it.each([
 	expect(request).toHaveBeenCalledTimes(row.requests);
 	expect(run).toHaveBeenCalledTimes(row.runs);
 	expect(progress.mock.calls).toEqual(row.progress);
+});
+
+it('hidden outputs stop at the first error and fill the rest with timeouts', async () => {
+	const request = vi.spyOn(transport, 'api');
+	const run = vi.spyOn(python, 'runTests').mockImplementation(async (_code, _spec, tests, onResult) => {
+		for (const test of tests) if (onResult(test.input === '1' ? result : { ...result, error: { line: 2, message: 'ValueError: bad' } })) break;
+	});
+	const progress = vi.fn();
+	expect(await hiddenOutputs('print(input())', spec, ['1', '2', '3'], progress)).toEqual([{ value: '1' }, { error: 'Строка 2: ValueError: bad' }, { timeout: true }]);
+	expect(run.mock.calls).toEqual([['print(input())', spec, [{ input: '1', expected: null }, { input: '2', expected: null }, { input: '3', expected: null }], expect.any(Function), 3]]);
+	expect(progress.mock.calls).toEqual([[0, 3], [1, 3], [2, 3]]);
+	expect(request).not.toHaveBeenCalled();
 });

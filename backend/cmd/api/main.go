@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rustatian/redlamp.me/backend/internal/bank"
 	"github.com/rustatian/redlamp.me/backend/internal/db"
 	"github.com/rustatian/redlamp.me/backend/internal/notebook"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
@@ -53,7 +54,7 @@ func main() {
 	if *assets != "" {
 		files = site(*assets)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: secret(ctx, "LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Anthropic: tutorClient(ctx), Transcriber: speech})
+	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: secret(ctx, "LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Bank: bank.Problems, Anthropic: tutorClient(ctx), Transcriber: speech})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}

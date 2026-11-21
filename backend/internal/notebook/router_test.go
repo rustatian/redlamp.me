@@ -159,6 +159,11 @@ func TestRoutesWithSession(t *testing.T) {
 		{name: "signed-in tutor page", path: "/leetcode/tutor", wantStatus: 404, wantBody: noPage},
 		{name: "signed-in quiz page", path: "/leetcode/quiz", wantStatus: 200},
 		{name: "signed-in deck page", path: "/leetcode/quiz/permutations-and-combinations", wantStatus: 200},
+		{name: "signed-in contests page", path: "/leetcode/contests", wantStatus: 200},
+		{name: "signed-in contest page", path: "/leetcode/contests/11111111-1111-4111-8111-111111111111", wantStatus: 200},
+		{name: "signed-in contest problem page", path: "/leetcode/contests/11111111-1111-4111-8111-111111111111/4", wantStatus: 200},
+		{name: "contest problem five", path: "/leetcode/contests/11111111-1111-4111-8111-111111111111/5", wantStatus: 404, wantBody: noPage},
+		{name: "contest problem zero", path: "/leetcode/contests/11111111-1111-4111-8111-111111111111/0", wantStatus: 404, wantBody: noPage},
 		{name: "signed-in unknown API", path: "/leetcode/api/missing", wantStatus: 404, wantBody: noRequest},
 		{name: "signed-in lessons API", path: "/leetcode/api/lessons", wantStatus: 404, wantBody: noRequest},
 	}

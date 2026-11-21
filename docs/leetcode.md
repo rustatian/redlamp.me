@@ -1,6 +1,6 @@
 # LeetCode notebook
 
-The private notebook at `https://redlamp.me/leetcode` supports one parent and one student. Use LeetCode for code runs and submissions. Use this notebook for explanations, saved attempts, homework, feedback, learning sets, and review reminders.
+The private notebook at `https://redlamp.me/leetcode` supports one parent and one student. Use LeetCode for code runs and submissions. Use this notebook for explanations, saved attempts, homework, feedback, learning sets, timed contests, and review reminders.
 
 The notebook server is a Go program in `backend/`. On AWS, it runs as a Lambda function behind CloudFront and keeps its data in Aurora DSQL. A local server uses PostgreSQL 16. The web client uses React and Bun.
 
@@ -148,6 +148,121 @@ To add a chapter to a published set:
 3. For each new task, add a reference to `References` in `solutions.go` and a generator to `Generators` in `generators.go`.
 4. Add the missing hard words, as in step 8 of the list above.
 5. Write `sets.json` again and run the checks, as in steps 9 and 10 of the list above.
+
+## Мясорубка
+
+**Мясорубка** gives the student timed contests on Codeforces problems from the problem bank. A contest gives no XP and no badges, see [Levels and badges](#levels-and-badges). Its problems do not go into the library.
+
+- The **Мясорубка** page shows the rating, the best rating, the score and the finish time of the best contest, and the number of finished contests. The table **Законченные контесты** shows the finished contests, newest first: the date, the solved problems of the total, the score, the finish time, the rating change and the rating after the contest. The best contest has the mark **Лучший**. A higher score is better. For the same score, the shorter finish time is better.
+- As the student, use **В мясорубку** to start a contest. The window asks "Готов умереть?". **Нет** or Escape closes the window. **Да** opens the setup. The parent sees the page without this button, and the server refuses a start by the parent. While a contest is active, the page shows **Идёт контест** in place of the button. This link opens the active contest.
+- The setup shows one button for each topic of the bank. Each press adds a random problem of that topic. The notebook first chooses a random difficulty that has a free place and an unused bank problem of the topic. Each such difficulty has the same chance. Then it chooses a random unused problem of the topic with that difficulty. A bank problem is unused when it was not in an earlier contest and is not in the library. The counter **xN** of a topic button shows the number of chosen problems from that topic. A topic button is not available when no difficulty with a free place has an unused problem of the topic.
+- The list of the chosen problems shows the topic, the difficulty and the points of each problem, but not the title. **Убрать** removes a problem and frees its place. **Начать** starts the contest. It needs 1 to 4 problems. **Закрыть** closes the window and discards the choice.
+
+| Difficulty | Codeforces rating | Places in a contest | Points |
+|---|---|---|---|
+| easy | 800 | 1 | 3 |
+| medium | 900, 1000, 1100 | 2 | 4 |
+| hard | 1200 | 1 | 6 |
+
+- A contest lasts exactly 90 minutes from its start. Nothing stops, pauses or extends it. Only one contest is active at a time.
+- While a contest is active, the top bar of each notebook page shows the time left as mm:ss and stays on the screen. The clock uses the server time of the response, so a wrong computer clock has no effect. At 00:00, an open contest page or **Мясорубка** page loads again and shows the result.
+- The contest page shows the score and the problems with the position, the title, the difficulty, the points, the state and the number of wrong submissions. After the end, it also shows the finish time and the rating change.
+- A problem page has two panes. The left pane has the Russian statement and the source "Источник: Codeforces, набор open-r1/codeforces (CC BY 4.0)". The right pane has the code editor, **Запустить тесты**, **Мои тесты** and the submissions. **Запустить тесты** runs the examples of the statement and the own tests in the browser. An own test shows only the output of the student. The own tests stay only on the page, and the notebook does not save them. The contest pages have no notes, no AI tutor and no AI evaluation.
+- The editor saves the code on the server 1.5 seconds after the last change and when the student opens another page of the notebook. A reload keeps the code. The page shows the save state: **Сохранено**, **Сохраняем** or **Не сохранено**.
+- **Отправить** checks the code on the hidden tests. The hidden tests are the official tests of the dataset: 5 to 16 for each problem, each input and output at most 4096 bytes. The browser gets the hidden inputs from the server and runs the code on them in Pyodide, with 3 seconds for each test. The run stops at the first timeout or error. Then the browser sends the outputs and the code to the server. The server compares each output with the official answer as a list of words: the spaces and the line breaks between the words have no effect. When the statement lets the answer use any letter case, the comparison also ignores the letter case.
+- The verdict shows only the verdict and the number of the failed test. It never shows a hidden input or a hidden answer. The first accepted submission solves the problem, and its code becomes read-only. The server refuses the next submissions of a solved problem.
+
+| Verdict | Cause |
+|---|---|
+| **Принято** | Each output is the same as the official answer. |
+| **Неверный ответ на тесте N** | The output of test N is not the same as the official answer. |
+| **Превышено время на тесте N** | Test N runs for more than 3 seconds. |
+| **Ошибка выполнения на тесте N** | The code stops with an error on test N. The verdict also shows the error message. |
+
+- At the end, the editor becomes read-only. The server refuses a code save and the start of a check. A check that started before the end continues. A submission in the 60 seconds after the end counts, so a check that starts in the last second also counts. The server keeps no record of the check start for such a submission. The hidden inputs do not change, so a student who has the hidden inputs before the end can get at most 60 more seconds.
+- After the end, the problem page shows "Контест закончился." with the link **Результат**, the last code as read-only text, the submissions and the link **Задача на Codeforces ↗**. The parent sees the contest pages without the runner and cannot change the code.
+- When a problem is removed from the bank, its problem page shows "Задача убрана из банка" in place of the statement, and the server refuses its check. A finished contest keeps its result and its rating change.
+
+The score is the sum of the points of the solved problems. The finish time is the time from the start to the latest first accepted submission, plus 5 minutes for each wrong submission before the first accepted submission of a solved problem. Wrong answer, time limit and error verdicts are all wrong submissions. The wrong submissions of an unsolved problem add no time. A contest without a solved problem has the finish time 0, and the pages do not show it.
+
+The rating starts at 800. Each finished contest changes it, in the order of the starts. An active contest does not change it. For each problem of the contest, S is 1 when the problem is solved, else 0. E = 1 / (1 + 10^((R_problem − R) / 400)) is the expected score, with R the rating before the contest and R_problem the Codeforces rating of the problem. The change is round(32 × Σ(S − E)) over the problems of the contest. The server rounds half away from zero, as Go `math.Round` does. For example, at the rating 800, a contest with a solved problem of rating 800 and an unsolved problem of rating 1200 gives round(32 × ((1 − 0.5) + (0 − 1/11))) = round(13.09) = 13, so the rating becomes 813. The best rating is the highest of 800 and the ratings after the finished contests. The server calculates the rating from the finished contests each time it reads it and does not store it.
+
+### Add a bank batch
+
+The problem bank is the files `backend/internal/bank/problems-NNN.json`. The Go server embeds them and reads them at start, in the order of their names. A file that is not valid JSON stops the start of the server. A deployment publishes the bank. The repository is public, so the hidden tests and their answers are readable on GitHub.
+
+A bank problem has these fields: `slug` (`cf-<contest>-<index>`, with the index in lower case), `title` (English), `rating`, `topics`, `statement` (Russian HTML), `ignoreCase`, `examples` and `tests`. `examples` and `tests` are lists of objects with the fields `input` and `output`. The examples are visible. The tests are hidden.
+
+The statements, the examples and the tests come from the Hugging Face dataset [open-r1/codeforces](https://huggingface.co/datasets/open-r1/codeforces). The accepted solutions of the check come from the dataset [open-r1/codeforces-submissions](https://huggingface.co/datasets/open-r1/codeforces-submissions). Both datasets have the license [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), which requires credit to the source. The bank has Russian translations of the statements. Each contest problem page names the dataset open-r1/codeforces and its license.
+
+The batch tooling is not in the repository. A new batch must meet these rules:
+
+1. Read the problem list from the method `problemset.problems` of the Codeforces API. Sign the call with the `apiSig` signature of the API. Give the key and the secret to the script only in the environment variables `CF_API_KEY` and `CF_API_SECRET`. Never write them to a file. Use the rating and the tags of the API.
+2. Join the list with `open-r1/codeforces` by the contest and the index. The dataset `id` is `<contest>/<index>`.
+3. Keep a problem only when it meets all of these conditions:
+
+   - The rating is 800 to 1200.
+   - `generated_checker` is null.
+   - `input_mode` is `stdio`.
+   - `interaction_format` is empty.
+   - The tags do not include `*special` or `interactive`.
+   - No learning set has the problem.
+
+   Leave out a problem whose statement allows more than one correct answer or a real-number answer with an allowed error, also when `generated_checker` is null. The problem must also have 5 or more official tests with an input and an output of at most 4096 bytes each. Keep the first 16 such tests, in the order of the dataset. Add a line break to the end of each test input and each example input that has none.
+4. Change the Codeforces tags to topic names with this table. Remove the other tags. Leave out a problem without a topic.
+
+   | Codeforces tag | Topic |
+   |---|---|
+   | `math` | Math |
+   | `greedy` | Greedy |
+   | `implementation` | Implementation |
+   | `brute force` | Brute Force |
+   | `constructive algorithms` | Constructive Algorithms |
+   | `sortings` | Sorting |
+   | `strings` | String |
+   | `number theory` | Number Theory |
+   | `dp` | Dynamic Programming |
+   | `data structures` | Data Structures |
+   | `binary search` | Binary Search |
+   | `two pointers` | Two Pointers |
+   | `games` | Game Theory |
+   | `bitmasks` | Bit Manipulation |
+   | `geometry` | Geometry |
+   | `combinatorics` | Combinatorics |
+   | `dfs and similar` | Depth-First Search |
+   | `graphs` | Graph Theory |
+   | `dsu` | Union Find |
+   | `trees` | Tree |
+   | `hashing` | Hash Function |
+   | `probabilities` | Probability and Statistics |
+   | `shortest paths` | Shortest Path |
+   | `matrices` | Matrix |
+   | `divide and conquer` | Divide and Conquer |
+
+5. Check each problem with a real accepted solution from `open-r1/codeforces-submissions`, with a `programmingLanguage` that starts with `Python 3` or `PyPy 3`. Take the first such submission of the configuration `selected_accepted`. When the problem has none, take the first such submission of the configuration `default` with the verdict `OK`. The submissions are code from the internet, so run them in a container without network, for example `podman run --rm --network none python:3.13-slim`. Run each submission with CPython on the examples and the hidden tests, with 1 second for each test, so the problem is also fast enough for Pyodide in the browser. Compare the outputs with the official answers by the rule of the server. Leave out a problem without such a submission or with a different output. When an output is the same only with a different letter case, keep the problem only when its statement lets the answer use any letter case.
+6. Translate the statement into Russian HTML. The title stays English. Use only the elements `h3 p ul ol li table thead tbody tr th td pre code strong em sup sub`, without attributes. Write the description, `<h3>Входные данные</h3>` and `<h3>Выходные данные</h3>`. For each example, write `<h3>Пример N</h3>` with `<p><strong>Входные данные:</strong></p><pre>...</pre><p><strong>Выходные данные:</strong></p><pre>...</pre>`. Write `<h3>Примечание</h3>` when the dataset has a note. Write `<h3>Ограничения</h3>` with a list of the constraints of the input section. Do not write the time limit or the memory limit. In the `pre` elements of the statement, escape `<`, `>` and `&`. Do not use LaTeX: use `code`, `sup`, `sub` and the signs ≤ ≥ · ×. Algorithm and data-structure names stay English. Set `ignoreCase` to true only when the output section lets the answer use any letter case. Copy the `examples` and the `tests` without changes. When the statement allows more than one correct answer, leave out the problem.
+7. Write the problems to new files `problems-NNN.json` with the next numbers. Keep each file below 2 MB. Do not change a published problem. To correct a wrong problem, remove it from the bank.
+8. Run the content checks in `backend/`:
+
+   ```bash
+   go test ./internal/notebook -run TestBank
+   ```
+
+   The checks find these errors:
+
+   - A repeated slug.
+   - A slug of a wrong format.
+   - A slug of a learning set task.
+   - A rating that is not 800 to 1200 in steps of 100.
+   - A problem without topics or with a topic that is not a canonical name.
+   - A statement element outside the list or with an attribute.
+   - A missing statement section.
+   - A `$` of LaTeX.
+   - A problem without examples.
+   - An example input without a line break at the end.
+   - A number of tests that is not 5 to 16.
+   - A test input that is longer than 4096 bytes or has no line break at the end.
+   - A test answer that is empty or longer than 4096 bytes.
 
 ## AI tutor
 

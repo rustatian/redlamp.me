@@ -1,0 +1,270 @@
+[
+	{
+		"slug": "cf-678-a",
+		"title": "Johny Likes Numbers",
+		"rating": 800,
+		"topics": [
+			"Implementation",
+			"Math"
+		],
+		"statement": "<p>Джонни очень любит числа <code>n</code> и <code>k</code>. Теперь Джонни хочет найти наименьшее целое число <code>x</code>, которое больше <code>n</code> и делится на <code>k</code>.</p><h3>Входные данные</h3><p>В единственной строке записаны два целых числа <code>n</code> и <code>k</code> (<code>1 ≤ n, k ≤ 10<sup>9</sup></code>).</p><h3>Выходные данные</h3><p>Выведите наименьшее целое число <code>x &gt; n</code>, которое делится на <code>k</code>.</p><h3>Пример 1</h3><p><strong>Входные данные:</strong></p><pre>5 3</pre><p><strong>Выходные данные:</strong></p><pre>6</pre><h3>Пример 2</h3><p><strong>Входные данные:</strong></p><pre>25 13</pre><p><strong>Выходные данные:</strong></p><pre>26</pre><h3>Пример 3</h3><p><strong>Входные данные:</strong></p><pre>26 13</pre><p><strong>Выходные данные:</strong></p><pre>39</pre><h3>Ограничения</h3><ul><li><code>1 ≤ n, k ≤ 10<sup>9</sup></code></li></ul>",
+		"ignoreCase": false,
+		"examples": [
+			{
+				"input": "5 3\n",
+				"output": "6"
+			},
+			{
+				"input": "25 13\n",
+				"output": "26"
+			},
+			{
+				"input": "26 13\n",
+				"output": "39"
+			}
+		],
+		"tests": [
+			{
+				"input": "5 3\n",
+				"output": "6\n"
+			},
+			{
+				"input": "25 13\n",
+				"output": "26\n"
+			},
+			{
+				"input": "26 13\n",
+				"output": "39\n"
+			},
+			{
+				"input": "1 1\n",
+				"output": "2\n"
+			},
+			{
+				"input": "8 8\n",
+				"output": "16\n"
+			},
+			{
+				"input": "14 15\n",
+				"output": "15\n"
+			},
+			{
+				"input": "197 894\n",
+				"output": "894\n"
+			},
+			{
+				"input": "6058 8581\n",
+				"output": "8581\n"
+			},
+			{
+				"input": "97259 41764\n",
+				"output": "125292\n"
+			},
+			{
+				"input": "453145 333625\n",
+				"output": "667250\n"
+			},
+			{
+				"input": "2233224 4394826\n",
+				"output": "4394826\n"
+			},
+			{
+				"input": "76770926 13350712\n",
+				"output": "80104272\n"
+			},
+			{
+				"input": "687355301 142098087\n",
+				"output": "710490435\n"
+			},
+			{
+				"input": "1000000000 999999999\n",
+				"output": "1999999998\n"
+			},
+			{
+				"input": "1000000000 1000000000\n",
+				"output": "2000000000\n"
+			},
+			{
+				"input": "999999999 1000000000\n",
+				"output": "1000000000\n"
+			}
+		]
+	},
+	{
+		"slug": "cf-26-a",
+		"title": "Almost Prime",
+		"rating": 900,
+		"topics": [
+			"Number Theory"
+		],
+		"statement": "<p>Число называется <strong>почти простым</strong>, если у него ровно два разных простых делителя. Например, числа <code>6</code>, <code>18</code>, <code>24</code> почти простые, а числа <code>4</code>, <code>8</code>, <code>9</code>, <code>42</code> нет. Найдите количество почти простых чисел от <code>1</code> до <code>n</code> включительно.</p><h3>Входные данные</h3><p>Во входных данных записано одно целое число <code>n</code> (<code>1 ≤ n ≤ 3000</code>).</p><h3>Выходные данные</h3><p>Выведите количество почти простых чисел от <code>1</code> до <code>n</code> включительно.</p><h3>Пример 1</h3><p><strong>Входные данные:</strong></p><pre>10</pre><p><strong>Выходные данные:</strong></p><pre>2</pre><h3>Пример 2</h3><p><strong>Входные данные:</strong></p><pre>21</pre><p><strong>Выходные данные:</strong></p><pre>8</pre><h3>Ограничения</h3><ul><li><code>1 ≤ n ≤ 3000</code></li></ul>",
+		"ignoreCase": false,
+		"examples": [
+			{
+				"input": "10\n",
+				"output": "2"
+			},
+			{
+				"input": "21\n",
+				"output": "8"
+			}
+		],
+		"tests": [
+			{
+				"input": "10\n",
+				"output": "2\n"
+			},
+			{
+				"input": "21\n",
+				"output": "8\n"
+			},
+			{
+				"input": "1\n",
+				"output": "0\n"
+			},
+			{
+				"input": "2\n",
+				"output": "0\n"
+			},
+			{
+				"input": "4\n",
+				"output": "0\n"
+			},
+			{
+				"input": "3\n",
+				"output": "0\n"
+			},
+			{
+				"input": "8\n",
+				"output": "1\n"
+			},
+			{
+				"input": "19\n",
+				"output": "6\n"
+			},
+			{
+				"input": "40\n",
+				"output": "19\n"
+			},
+			{
+				"input": "77\n",
+				"output": "41\n"
+			},
+			{
+				"input": "222\n",
+				"output": "125\n"
+			},
+			{
+				"input": "987\n",
+				"output": "501\n"
+			},
+			{
+				"input": "1000\n",
+				"output": "508\n"
+			},
+			{
+				"input": "2000\n",
+				"output": "958\n"
+			},
+			{
+				"input": "3000\n",
+				"output": "1375\n"
+			},
+			{
+				"input": "2999\n",
+				"output": "1375\n"
+			}
+		]
+	},
+	{
+		"slug": "cf-23-a",
+		"title": "You're Given a String...",
+		"rating": 1200,
+		"topics": [
+			"Brute Force",
+			"Greedy"
+		],
+		"statement": "<p>Дана String из строчных латинских букв. Найдите длину самой длинной подстроки, которая встречается в String не меньше двух раз. Вхождения могут перекрываться (см. пример 2).</p><h3>Входные данные</h3><p>В первой строке записана String. Гарантируется, что String не пустая, состоит из строчных латинских букв и её длина не больше <code>100</code>.</p><h3>Выходные данные</h3><p>Выведите одно число: длину самой длинной подстроки, которая встречается в String не меньше двух раз.</p><h3>Пример 1</h3><p><strong>Входные данные:</strong></p><pre>abcd</pre><p><strong>Выходные данные:</strong></p><pre>0</pre><h3>Пример 2</h3><p><strong>Входные данные:</strong></p><pre>ababa</pre><p><strong>Выходные данные:</strong></p><pre>3</pre><h3>Пример 3</h3><p><strong>Входные данные:</strong></p><pre>zzz</pre><p><strong>Выходные данные:</strong></p><pre>2</pre><h3>Ограничения</h3><ul><li>String не пустая, её длина не больше <code>100</code></li><li>String состоит из строчных латинских букв</li></ul>",
+		"ignoreCase": false,
+		"examples": [
+			{
+				"input": "abcd\n",
+				"output": "0"
+			},
+			{
+				"input": "ababa\n",
+				"output": "3"
+			},
+			{
+				"input": "zzz\n",
+				"output": "2"
+			}
+		],
+		"tests": [
+			{
+				"input": "abcd\n",
+				"output": "0"
+			},
+			{
+				"input": "ababa\n",
+				"output": "3"
+			},
+			{
+				"input": "zzz\n",
+				"output": "2"
+			},
+			{
+				"input": "kmmm\n",
+				"output": "2"
+			},
+			{
+				"input": "wzznz\n",
+				"output": "1"
+			},
+			{
+				"input": "qlzazaaqll\n",
+				"output": "2"
+			},
+			{
+				"input": "lzggglgpep\n",
+				"output": "2"
+			},
+			{
+				"input": "iegdlraaidefgegiagrdfhihe\n",
+				"output": "2"
+			},
+			{
+				"input": "esxpqmdrtidgtkxojuxyrcwxlycywtzbjzpxvbngnlepgzcaeg\n",
+				"output": "1"
+			},
+			{
+				"input": "garvpaimjdjiivamusjdwfcaoswuhxyyxvrxzajoyihggvuxumaadycfphrzbprraicvjjlsdhojihaw\n",
+				"output": "2"
+			},
+			{
+				"input": "ckvfndqgkmhcyojaqgdkenmbexufryhqejdhctxujmtrwkpbqxufxamgoeigzfyzbhevpbkvviwntdhqscvkmphnkkljizndnbjt\n",
+				"output": "3"
+			},
+			{
+				"input": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+				"output": "99"
+			},
+			{
+				"input": "ikiikiikikiiikkkkkikkkkiiiiikkiiikkiikiikkkkikkkikikkikiiikkikikiiikikkkiiikkkikkikkikkkkiiikkiiiiii\n",
+				"output": "10"
+			},
+			{
+				"input": "ovovhoovvhohhhvhhvhhvhovoohovhhoooooovohvooooohvvoooohvvovhhvhovhhvoovhvhvoovovvhooovhhooovohvhhovhv\n",
+				"output": "8"
+			},
+			{
+				"input": "ccwckkkycccccckwckwkwkwkkkkyycykcccycyckwywcckwykcycykkkwcycwwcykcwkwkwwykwkwcykywwwyyykckkyycckwcwk\n",
+				"output": "5"
+			},
+			{
+				"input": "ttketfkefktfztezzkzfkkeetkkfktftzktezekkeezkeeetteeteefetefkzzzetekfftkeffzkktffzkzzeftfeezfefzffeef\n",
+				"output": "4"
+			}
+		]
+	}
+]

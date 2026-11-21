@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rustatian/redlamp.me/backend/internal/bank"
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/settest"
 )
@@ -117,6 +118,16 @@ func newServerWithLeetCode(t *testing.T, pool *pgxpool.Pool, leetcode LeetCode) 
 func newServerWithSets(t *testing.T, pool *pgxpool.Pool, content []sets.LearningSet) *Server {
 	t.Helper()
 	s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Sets: content})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// newServerWithBank returns a Server with the test accounts and a bank of contest problems.
+func newServerWithBank(t *testing.T, pool *pgxpool.Pool, problems []bank.Problem) *Server {
+	t.Helper()
+	s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: &fakeLeetCode{}, Bank: problems})
 	if err != nil {
 		t.Fatal(err)
 	}

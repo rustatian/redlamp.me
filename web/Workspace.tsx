@@ -17,7 +17,7 @@ import { localDate } from '../shared/dates';
 export const understandingLabels = { needs_practice: 'Нужно потренироваться', with_help: 'Решил с подсказкой', independent: 'Решил сам' };
 const fields = [{ key: 'idea', label: 'Основная идея' }, { key: 'correctness', label: 'Почему это работает' }, { key: 'edgeCases', label: 'Крайние случаи' }, { key: 'mistakes', label: 'Ошибки и выводы' }] as const;
 
-function Panes({ left, right }: { left: ReactNode; right: ReactNode }) {
+export function Panes({ left, right }: { left: ReactNode; right: ReactNode }) {
 	const [split, setSplit] = useState(() => { try { return Number(localStorage.getItem('leetcode:panes')) || 50; } catch { return 50; } });
 	function move(value: number) {
 		const next = Math.round(Math.min(75, Math.max(25, value)));
