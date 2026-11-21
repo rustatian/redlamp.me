@@ -35,7 +35,7 @@ _Avoid_: Attempt, test run.
 ### Learning material
 
 **Learning set**:
-An ordered sequence of chapters about one subject, available through **Бомжарня**.
+An ordered sequence of chapters about one subject, available through **Лекции**.
 _Avoid_: Homework, lesson.
 
 **Chapter**:

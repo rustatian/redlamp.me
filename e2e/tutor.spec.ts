@@ -297,7 +297,7 @@ for (const row of placements) {
 
 test('shows no tutor entry in the menu of the parent', async ({ page }) => {
 	await signIn(page, 'parent');
-	await expect(page.getByRole('navigation', { name: 'Тетрадь' }).getByRole('link')).toHaveText(['Сегодня', 'Задачи', 'Домашняя работа', 'Бомжарня', 'Мясорубка', 'Квиз']);
+	await expect(page.getByRole('navigation', { name: 'Тетрадь' }).getByRole('link')).toHaveText(['Сегодня', 'Задачи', 'Домашняя работа', 'Лекции', 'Мясорубка', 'Квиз']);
 });
 
 const oldTutorPage = [

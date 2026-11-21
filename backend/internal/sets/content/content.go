@@ -1,4 +1,4 @@
-// Package content has the learning sets of the notebook, in the order of the Бомжарня page.
+// Package content has the learning sets of the notebook, in the order of the Лекции page.
 package content
 
 import (

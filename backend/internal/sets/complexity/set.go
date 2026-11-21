@@ -31,9 +31,9 @@ var Set = sets.LearningSet{
 				{ID: "complexity-pointers", Type: "choice", Prompt: "Two Pointers ищет пару в уже упорядоченном списке. Каждая неудачная проверка сдвигает один край внутрь на одну позицию. Каковы время в худшем случае и дополнительная память?", Options: []string{"O(n²) и O(1)", "O(n) и O(n)", "O(n) и O(1)"}, Answer: 2, Explain: "Расстояние между краями уменьшается с n - 1 до нуля или до найденной пары. Проверок не больше n - 1. Храним только два индекса и сумму; ответ содержит два индекса."},
 			},
 			Links: []sets.Link{
-				{Title: "Максимум и число вариантов", URL: "https://redlamp.me/leetcode/sets/permutations-and-combinations/1", Source: "Бомжарня"},
-				{Title: "Two Pointers: навстречу", URL: "https://redlamp.me/leetcode/sets/two-pointers/1", Source: "Бомжарня"},
-				{Title: "Queue, Deque и работа внутри pop(0)", URL: "https://redlamp.me/leetcode/sets/heaps-and-queues/1", Source: "Бомжарня"},
+				{Title: "Максимум и число вариантов", URL: "https://redlamp.me/leetcode/sets/permutations-and-combinations/1", Source: "Лекции"},
+				{Title: "Two Pointers: навстречу", URL: "https://redlamp.me/leetcode/sets/two-pointers/1", Source: "Лекции"},
+				{Title: "Queue, Deque и работа внутри pop(0)", URL: "https://redlamp.me/leetcode/sets/heaps-and-queues/1", Source: "Лекции"},
 			},
 		},
 	},
