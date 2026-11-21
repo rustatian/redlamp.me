@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Brain, CalendarCheck, ClipboardCheck, CodeXml, LogOut, Moon, Search, Skull, Sun, Tent } from 'lucide-react';
+import { Brain, CalendarCheck, ClipboardCheck, CodeXml, GraduationCap, LogOut, Moon, Search, Skull, Sun } from 'lucide-react';
 import { NOTEBOOK_PAGE, type ContestClock, type Game, type SessionUser } from '../shared/leetcode';
 import { api, ApiError, message } from './api';
 import { clock, remaining } from './contestTime';
@@ -46,7 +46,7 @@ export function Layout({ user, visit, children, logout }: { user: SessionUser; v
 		setDark(!dark);
 		try { localStorage.setItem('leetcode:appearance', dark ? 'light' : 'dark'); } catch { /* Appearance remains available in this page. */ }
 	}
-	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Бомжарня', Icon: Tent }, { path: '/contests', label: 'Мясорубка', Icon: Skull }, { path: '/quiz', label: 'Квиз', Icon: Brain }];
+	const navigation = [{ path: '', label: 'Сегодня', Icon: CalendarCheck }, { path: '/problems', label: 'Задачи', Icon: CodeXml }, { path: '/homework', label: 'Домашняя работа', Icon: ClipboardCheck }, { path: '/sets', label: 'Лекции', Icon: GraduationCap }, { path: '/contests', label: 'Мясорубка', Icon: Skull }, { path: '/quiz', label: 'Квиз', Icon: Brain }];
 	return <div className="app">
 		<a className="skip-link" href="#main">К содержимому</a>
 		<aside className="sidebar">

@@ -76,7 +76,7 @@ A local server has no speech service, so dictation answers "Распознава
 ## Use the notebook
 
 - Add a LeetCode problem. Paste its URL in **Add a problem**. The notebook fills the number, title, difficulty, and topics from LeetCode. If LeetCode does not answer, enter them yourself.
-- As the student, start a draft. A draft can hold one or more approaches. The editor autosaves changed content. On a Бомжарня task, use **Отправить**: the server checks the code on hidden tests and accepts the attempt when all tests pass. On another problem, use **Решено** to save the attempt as accepted.
+- As the student, start a draft. A draft can hold one or more approaches. The editor autosaves changed content. On a task of a learning set, use **Отправить**: the server checks the code on hidden tests and accepts the attempt when all tests pass. On another problem, use **Решено** to save the attempt as accepted.
 - The understanding of an accepted attempt is automatic: "independent" when the student did not write to the tutor about the problem, else "with help". Both roles can use **Нужно потренироваться**. It sets the understanding "needs practice" and a random review date from 15 to 45 days after today.
 - Below **Solution code** of a Python approach, the notebook checks the student's draft code while he types. Ruff and the Python compiler report the problems with their line numbers. **Run tests** runs the code in the browser with Pyodide against the tests of the problem. Each test has 2 seconds. The code is not sent to LeetCode or Codeforces.
 - In the code editor, a list of names opens while the student types. It shows the Python keywords, the built-in names, the names that a solution can use without an import, such as `heapq` and `List`, and the names of the code. After a dot, for example `heapq.` or `q.`, [jedi](https://jedi.readthedocs.io/) in the Pyodide worker gives the members. The browser loads jedi on the first completion after a dot. Tab or Enter inserts the selected name. Enter after a name that is typed in full adds a new line. Escape closes the list, and Ctrl+Space opens it. Ctrl+Space without a dot shows the names without jedi.
@@ -100,7 +100,7 @@ A local server has no speech service, so dictation answers "Распознава
 
 ## Learning sets
 
-A learning set is a sequence of chapters about one subject. Each chapter has a lesson, a list of problems and a deck of quiz cards. The sets are content in the repository. A deployment publishes them. The **Бомжарня** page lists the sets. It is read-only for both roles.
+A learning set is a sequence of chapters about one subject. Each chapter has a lesson, a list of problems and a deck of quiz cards. The sets are content in the repository. A deployment publishes them. The **Лекции** page lists the sets. It is read-only for both roles.
 
 A set page shows the reading links and the chapters. A chapter row shows the accepted problem count and the quiz status. A chapter page shows the chapter lesson, the problems, the quiz status and a link to the chapter quiz. A lesson can show figures. A figure with more than one step shows **Назад** and **Вперёд**. A hard word, for example "инвариант", has a dotted line at its first use in a lesson, a statement, a summary or a quiz card. Its tip shows on hover, on keyboard focus and after a tap. A problem row shows **Accepted** when the library problem has an accepted saved attempt. A problem row with an active homework task shows the task state. The state links to the problem page.
 

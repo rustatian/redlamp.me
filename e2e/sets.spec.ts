@@ -137,8 +137,8 @@ for (const item of openFailures) {
 
 test('opens chapter material and assigns the chapter to existing homework', async ({ page, context, baseURL }) => {
 	await signIn(page, 'parent');
-	await page.getByRole('link', { name: 'Бомжарня', exact: true }).click();
-	await expect(page.getByRole('heading', { name: 'Бомжарня', level: 1 })).toBeVisible();
+	await page.getByRole('link', { name: 'Лекции', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Лекции', level: 1 })).toBeVisible();
 	await expect(row(page, 'Permutations и Combinations').locator('.term')).toHaveText(['Permutations', 'Combinations', 'Subsets', 'Backtracking', 'Pruning']);
 	await page.getByRole('link', { name: 'Permutations и Combinations', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Permutations и Combinations', level: 1 })).toBeVisible();
