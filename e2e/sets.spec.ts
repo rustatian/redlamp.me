@@ -54,6 +54,7 @@ const chapters = [
 	{ name: 'combinatorics 2', slug: 'permutations-and-combinations', number: 2, count: 5 },
 	{ name: 'combinatorics 3', slug: 'permutations-and-combinations', number: 3, count: 5 },
 	{ name: 'combinatorics 4', slug: 'permutations-and-combinations', number: 4, count: 4 },
+	{ name: 'combinatorics 5', slug: 'permutations-and-combinations', number: 5, count: 5 },
 	{ name: 'two pointers 1', slug: 'two-pointers', number: 1, count: 5 },
 	{ name: 'two pointers 2', slug: 'two-pointers', number: 2, count: 5 },
 	{ name: 'two pointers 3', slug: 'two-pointers', number: 3, count: 4 },
@@ -74,6 +75,9 @@ const chapters = [
 	{ name: 'sliding window 2', slug: 'sliding-window', number: 2, count: 5 },
 	{ name: 'sliding window 3', slug: 'sliding-window', number: 3, count: 5 },
 	{ name: 'sliding window 4', slug: 'sliding-window', number: 4, count: 5 },
+	{ name: 'modular arithmetic 1', slug: 'modular-arithmetic', number: 1, count: 5 },
+	{ name: 'modular arithmetic 2', slug: 'modular-arithmetic', number: 2, count: 5 },
+	{ name: 'modular arithmetic 3', slug: 'modular-arithmetic', number: 3, count: 4 },
 ];
 for (const item of chapters) {
 	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {
@@ -156,7 +160,7 @@ test('opens chapter material and assigns the chapter to existing homework', asyn
 	await expect(page.getByRole('heading', { name: 'Permutations и Combinations', level: 1 })).toBeVisible();
 	await expect(page.locator('main .heading .term')).toHaveText(['Permutations', 'Combinations', 'Subsets', 'Backtracking', 'Pruning']);
 	await expect(row(page, 'Считаем варианты').locator('.term')).toHaveText(['Linear Scan', 'Product Rule', 'Sum Rule', 'Factorial', 'Permutations', 'Combinations', 'Subsets']);
-	await expect(page.getByRole('link', { name: 'Открыть главу', exact: true })).toHaveCount(4);
+	await expect(page.getByRole('link', { name: 'Открыть главу', exact: true })).toHaveCount(5);
 	await expect(row(page, permutations2.title)).toContainText('Задач принято 0 из 5');
 	await expect(row(page, permutations2.title)).toContainText('Квиз. Не пройден');
 	await page.locator(`h2 a[href="${chapterPath}"]`).click();
@@ -449,7 +453,7 @@ test('fits the set pages at the mobile width', async ({ page }, testInfo) => {
 	await expect(page.getByRole('link', { name: 'Permutations и Combinations', exact: true })).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 	await page.goto(setPath);
-	await expect(page.getByRole('link', { name: 'Открыть главу', exact: true })).toHaveCount(4);
+	await expect(page.getByRole('link', { name: 'Открыть главу', exact: true })).toHaveCount(5);
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 	await lessonWith(page, [wide, wideHeap]);
 	await page.goto(chapterPath);

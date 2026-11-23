@@ -310,4 +310,71 @@ var Generators = map[string]sets.Generator{
 		}
 		return append(tests, sets.Call(9), sets.Call(9))
 	},
+	"cf-2025-b": func(random func() float64) []string {
+		// t random pairs with n in [lo, hi] and k in [1, min(n - 1, top)]. The table of the wrong formula up to n = 10^5 has about 5 · 10^9 values.
+		pairs := func(t, lo, hi, top int) string {
+			n := randomInts(random, t, lo, hi)
+			k := make([]int, t)
+			for i, x := range n {
+				k[i] = randomInt(random, 1, min(x-1, top))
+			}
+			return lines([]string{strconv.Itoa(t), join(n, " "), join(k, " ")})
+		}
+		last := randomInts(random, 80000, 2, 1e5)
+		before := make([]int, len(last))
+		for i, x := range last {
+			before[i] = x - 1
+		}
+		return slices.Concat(
+			[]string{"7\n2 5 5 100000 100000 100000 100000\n1 2 3 1 33333 66666 99999\n", "1\n2\n1\n", "3\n3 4 4\n2 1 3\n", "2\n31 31\n30 29\n", "3\n6 6 6\n3 4 5\n", "1\n100000\n99999\n"},
+			[]string{pairs(100, 2, 1e5, 1e5), pairs(1000, 2, 1e5, 1e5), pairs(1e4, 2, 50, 50)},
+			// A random answer has up to 10 digits, so 8 · 10^4 such pairs keep the answer below 1,000,000 characters. The answers for k <= 16 have at most 5 digits.
+			[]string{pairs(80000, 2, 1e5, 1e5), lines([]string{"80000", join(last, " "), join(before, " ")}), pairs(1e5, 2, 1e5, 16)},
+		)
+	},
+	"find-the-n-th-value-after-k-seconds": func(random func() float64) []string {
+		// Simulation with % after each addition makes (n - 1) · k additions, at most 999 000. The statement limits let it pass.
+		return slices.Concat(
+			[]string{sets.Call(4, 5), sets.Call(5, 3), sets.Call(1, 1), sets.Call(1, 1000), sets.Call(1000, 1), sets.Call(2, 2)},
+			repeat(4, func() string { return sets.Call(randomInt(random, 2, 1000), randomInt(random, 2, 1000)) }),
+			[]string{sets.Call(999, 1000), sets.Call(1000, 1000)},
+		)
+	},
+	"number-of-ways-to-reach-a-position-after-exactly-k-steps": func(random func() float64) []string {
+		// A random start and end, and a random k = d + 2j >= 1 for the distance d. The answer is not 0.
+		reachable := func() string {
+			start, end := randomInt(random, 1, 1000), randomInt(random, 1, 1000)
+			d := max(start-end, end-start)
+			return sets.Call(start, end, d+2*randomInt(random, max(0, 1-d), (1000-d)/2))
+		}
+		// Backtracking over the 2^k paths is rejected at k = 1000.
+		return slices.Concat(
+			[]string{sets.Call(1, 2, 3), sets.Call(2, 5, 10), sets.Call(5, 5, 2), sets.Call(1, 1000, 999), sets.Call(7, 3, 6), sets.Call(1000, 1, 1), sets.Call(1, 1, 1)},
+			repeat(3, reachable),
+			[]string{sets.Call(500, 500, 1000), sets.Call(1, 1000, 1000), sets.Call(400, 600, 1000)},
+		)
+	},
+	"number-of-sets-of-k-non-overlapping-line-segments": func(random func() float64) []string {
+		// Dynamic Programming over the points and the segments without Prefix Sum makes O(n^2 * k) steps, about 5 · 10^8 at n = 1000 and k = 500.
+		return slices.Concat(
+			[]string{sets.Call(4, 2), sets.Call(3, 1), sets.Call(30, 7), sets.Call(2, 1), sets.Call(5, 4), sets.Call(1000, 1), sets.Call(1000, 999)},
+			repeat(3, func() string {
+				n := randomInt(random, 2, 1000)
+				return sets.Call(n, randomInt(random, 1, n-1))
+			}),
+			[]string{sets.Call(1000, 500), sets.Call(1000, 333)},
+		)
+	},
+	"cf-1081-c": func(random func() float64) []string {
+		// Brute Force over the m^n colorings is rejected. Dynamic Programming f[i][j] in O(nk) passes at the statement limits.
+		bricks := func(n, m, k int) string { return join([]int{n, m, k}, " ") + "\n" }
+		return slices.Concat(
+			[]string{"3 3 0\n", "3 2 1\n", "1 1 0\n", "2000 1 0\n", "2000 1 1\n", "4 3 2\n"},
+			repeat(3, func() string {
+				n := randomInt(random, 1, 2000)
+				return bricks(n, randomInt(random, 1, 2000), randomInt(random, 0, n-1))
+			}),
+			[]string{"2000 2 1999\n", "2000 2000 1000\n", "2000 2000 1999\n"},
+		)
+	},
 }

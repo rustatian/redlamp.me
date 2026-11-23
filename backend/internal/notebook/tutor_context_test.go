@@ -44,12 +44,14 @@ func tutorContextMinute(i int) string {
 }
 
 // tutorContextSets returns the learning sets of the Worker with tutorContextLessons as the lessons of tutorSet.
+// tutorSet keeps only the chapters that have a lesson in tutorContextLessons.
 // Decided difference: the TypeScript test changes the shared sets and restores them. goldenSets decodes a new value on each call, so the change stays in this value.
 func tutorContextSets(t *testing.T) []sets.LearningSet {
 	t.Helper()
 	content := goldenSets(t)
 	for i := range content {
 		if content[i].Slug == tutorSet {
+			content[i].Chapters = content[i].Chapters[:len(tutorContextLessons)]
 			for j := range content[i].Chapters {
 				content[i].Chapters[j].Lesson = tutorContextLessons[j]
 			}
