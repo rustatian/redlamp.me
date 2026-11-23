@@ -83,6 +83,17 @@ const expectedSamples = [
 	{ name: 'modular-arithmetic/chapter3 sample 3', output: '500000004\n666666673\n' },
 	{ name: 'modular-arithmetic/chapter3 sample 4', output: '[1, 1, 2, 6, 3, 1, 6]\n' },
 	{ name: 'modular-arithmetic/chapter3 sample 5', output: '60\n10\n' },
+	{ name: 'trees/chapter1 sample 1', output: '[[1, 2], [0, 3, 4], [0, 5], [1], [1, 6], [2], [4]]\n' },
+	{ name: 'trees/chapter1 sample 2', output: '[[1, 2], [3, 4], [5], [], [6], [], []]\n' },
+	{ name: 'trees/chapter1 sample 3', output: '[0, 1, 2, 3, 4, 5, 6]\n[-1, 0, 0, 1, 1, 2, 4]\n[0, 1, 1, 2, 2, 2, 3]\n' },
+	{ name: 'trees/chapter1 sample 4', output: '[0, 2, 5, 1, 4, 6, 3]\n' },
+	{ name: 'trees/chapter2 sample 1', output: '[7, 4, 2, 1, 2, 1, 1]\n' },
+	{ name: 'trees/chapter2 sample 2', output: '[18, 10, 6, 3, 6, 2, 1]\n4\n' },
+	{ name: 'trees/chapter3 sample 1', output: '[16, 4, 4, 3, 1, 6, 2]\n[11, 5, 6, 0, 2, 0, 0]\n16\n' },
+	{ name: 'trees/chapter3 sample 2', output: '4 12\n6 10\n12\n' },
+	{ name: 'trees/chapter3 sample 3', output: '[4, 3, 2, 1, 2, 1, 1]\n6\n' },
+	{ name: 'trees/chapter4 sample 1', output: '[3, 1, 0, 2, 5]\n' },
+	{ name: 'trees/chapter4 sample 2', output: '6 3\n5 5\n' },
 	{ name: 'starter code of a Codeforces task', output: '0\n0\n' },
 ];
 
