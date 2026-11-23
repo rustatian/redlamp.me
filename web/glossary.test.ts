@@ -23,6 +23,7 @@ it.each([
 	{ name: 'priority queue is one term', texts: ['Это priority queue, а не queue.'], expected: ['Это [priority queue], а не [queue].'] },
 	{ name: 'monotonic deque is one term', texts: ['В monotonic deque, а потом в deque.'], expected: ['В [monotonic deque], а потом в [deque].'] },
 	{ name: 'canonical hash table and array terms', texts: ['Hash Table хранит значения Array.'], expected: ['[Hash Table] хранит значения [Array].'] },
+	{ name: 'difference array before array', texts: ['Difference Array и Array.'], expected: ['[Difference Array] и [Array].'] },
 	{ name: 'full canonical heap topic', texts: ['Heap (Priority Queue) и Queue.'], expected: ['[Heap (Priority Queue)] и [Queue].'] },
 	{ name: 'specific heap names before generic heap', texts: ['Min-Heap, Max-Heap и Heap.'], expected: ['[Min-Heap], [Max-Heap] и [Heap].'] },
 	{ name: 'call stack before stack', texts: ['Call Stack и Stack.'], expected: ['[Call Stack] и [Stack].'] },
@@ -67,7 +68,7 @@ const sets = content as unknown as { slug: string; summary: string; chapters: { 
 
 // The hard words that need a tip in shared/glossary.ts. The list also has words that no set uses yet, so a new set with such a word fails until the word gets a tip.
 // An English name of a data structure is a word of its own: heapq, dequeue, collections.deque, deque(...) and deque.popleft are code.
-const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination)s?|monotonic|priority|hash\s+table|two\s+pointers|linear\s+scan|binary\s+search|sliding\s+window|dynamic\s+programming|brute\s+force|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|граф|бинарн)/giu;
+const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination)s?|monotonic|priority|hash\s+table|two\s+pointers|linear\s+scan|binary\s+search|sliding\s+window|dynamic\s+programming|brute\s+force|prefix\s+product|difference\s+array|matri(?:x|ces)|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|64-бит|префикс|суффикс|включени\p{L}*\s+и\s+исключени|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|граф|бинарн)/giu;
 // The hard words of the text that no match of the patterns covers.
 const untipped = (text: string, patterns: RegExp[]) => [...text.matchAll(hardWord)].filter(word => !patterns.some(pattern => [...text.matchAll(pattern)].some(match => match.index <= word.index && word.index < match.index + match[0].length))).map(word => word[0]);
 // Code is not prose. The text of the other tags stays.
