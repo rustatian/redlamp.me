@@ -7,7 +7,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// topicAliases is the table of shared/topics.ts: the LeetCode name of a topic and its other spellings.
+// topicAliases is the table of shared/topics.ts: the canonical name of a topic and its other spellings.
 var topicAliases = []struct {
 	name    string
 	aliases []string
@@ -52,9 +52,22 @@ var topicAliases = []struct {
 	{"Dynamic Programming", []string{"Динамическое программирование"}},
 	{"Enumeration", nil},
 	{"Brute Force", nil},
+	{"Implementation", []string{"Реализация"}},
+	{"Constructive Algorithms", nil},
+	{"Number Theory", []string{"Теория чисел"}},
+	{"Data Structures", []string{"Структуры данных"}},
+	{"Game Theory", []string{"Теория игр"}},
+	{"Bit Manipulation", []string{"Битовые операции"}},
+	{"Geometry", []string{"Геометрия"}},
+	{"Depth-First Search", []string{"DFS", "Поиск в глубину"}},
+	{"Union Find", []string{"DSU"}},
+	{"Tree", []string{"Дерево", "Деревья"}},
+	{"Hash Function", nil},
+	{"Probability and Statistics", nil},
+	{"Shortest Path", []string{"Кратчайший путь"}},
 }
 
-// topicNames maps each spelling in lower case to the LeetCode name.
+// topicNames maps each spelling in lower case to the canonical name.
 var topicNames = func() map[string]string {
 	names := map[string]string{}
 	for _, topic := range topicAliases {
@@ -69,7 +82,7 @@ var topicNames = func() map[string]string {
 // backtrackingProblems are the problems where the Russian word "перебор" means backtracking.
 var backtrackingProblems = []string{"letter-case-permutation", "subsets", "permutations", "combinations", "letter-combinations-of-a-phone-number", "subsets-ii", "permutations-ii", "combination-sum", "generate-parentheses", "cf-1097-b", "n-queens"}
 
-// normalizeTopic returns the LeetCode name of a topic. slug is the problem of the topic, or "".
+// normalizeTopic returns the canonical name of a topic. slug is the problem of the topic, or "".
 func normalizeTopic(value, slug string) string {
 	name := strings.Join(strings.Fields(norm.NFC.String(value)), " ")
 	key := strings.ToLower(name)

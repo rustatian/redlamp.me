@@ -23,6 +23,7 @@ func baseline(t *testing.T) *pgxpool.Pool {
 
 // The expected tables and columns are the D1 schema after migrations/0017_homework_content.sql, without tutor_account.
 // quiz_decks is not in D1: it is the guard row of the one-hour pause of a quiz deck.
+// The contest tables are not in D1.
 func TestBaselineTables(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -30,6 +31,10 @@ func TestBaselineTables(t *testing.T) {
 	}{
 		{name: "attempts", columns: "id,problem_id,state,document,search_text,acceptance,understanding,version,created_at,updated_at,saved_at"},
 		{name: "card_answers", columns: "id,card_id,correct,interval_days,answered_on,next_date,created_at"},
+		{name: "contest_problems", columns: "contest_id,position,slug,title,rating,topic,difficulty,points,code"},
+		{name: "contest_starts", columns: "id,started_at"},
+		{name: "contest_submissions", columns: "id,contest_id,position,verdict,failed_test,error,code,created_at"},
+		{name: "contests", columns: "id,started_at,ends_at"},
 		{name: "discussion_reads", columns: "role,problem_id,read_at"},
 		{name: "earned_badges", columns: "id"},
 		{name: "feedback", columns: "id,problem_id,task_id,submission_id,author,kind,body,created_at"},
@@ -37,7 +42,6 @@ func TestBaselineTables(t *testing.T) {
 		{name: "homework_sets", columns: "homework_id,set_slug"},
 		{name: "homework_tasks", columns: "id,homework_id,problem_id,state,current_submission_id,version,created_at,updated_at,kind,set_slug,chapter,completed_at"},
 		{name: "judge_runs", columns: "problem_id,seed,created_at"},
-		{name: "postponements", columns: "homework_id,from_date,to_date,created_at"},
 		{name: "problem_sets", columns: "problem_id,set_slug"},
 		{name: "problem_tests", columns: "id,problem_id,input,created_at"},
 		{name: "problems", columns: "id,slug,number,title,difficulty,topics,summary,search_text,understanding,next_review_date,archived_at,version,created_at,updated_at,progress_version"},
@@ -77,6 +81,7 @@ func TestBaselineTables(t *testing.T) {
 }
 
 // The expected indexes are the named indexes of the D1 schema after migrations/0017_homework_content.sql.
+// contest_problems_slug is not in D1: it keeps a problem out of a second contest.
 func TestBaselineIndexes(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -95,6 +100,7 @@ func TestBaselineIndexes(t *testing.T) {
 		{name: "tutor_messages_thread", table: "tutor_messages", columns: "context_kind,context_ref,created_at"},
 		{name: "problem_tests_problem", table: "problem_tests", columns: "problem_id,created_at"},
 		{name: "test_runs_problem", table: "test_runs", columns: "problem_id,run_on"},
+		{name: "contest_problems_slug", table: "contest_problems", columns: "slug", unique: true},
 	}
 	ctx := context.Background()
 	pool := baseline(t)
@@ -127,7 +133,6 @@ func TestBaselineRules(t *testing.T) {
 		"INSERT INTO homework_tasks (id, homework_id, state, created_at, updated_at, kind, set_slug, chapter) VALUES ('t2', 'h1', 'assigned', 't0', 't0', 'chapter', 'two-pointers', 1)",
 		"INSERT INTO submissions VALUES ('s1', 't1', 'a1', 2, 't0')",
 		"INSERT INTO card_answers VALUES ('c1', 'card', 1, 1, '2026-10-07', '2026-10-08', 't0')",
-		"INSERT INTO postponements VALUES ('h1', '2026-10-07', '2026-10-08', 't0')",
 	} {
 		if _, err := pool.Exec(ctx, sql); err != nil {
 			t.Fatalf("%s: %v", sql, err)
@@ -165,7 +170,6 @@ func TestBaselineRules(t *testing.T) {
 		{name: "a quiz attempt has no more correct answers than cards", sql: "INSERT INTO quiz_attempts VALUES ('q1', 'deck', 3, 2, 1, 't0')", wantCode: "23514"},
 		{name: "a card has one answer for each day", sql: "INSERT INTO card_answers VALUES ('c2', 'card', 0, 1, '2026-10-07', '2026-10-08', 't0')", wantCode: "23505"},
 		{name: "a card interval is one of the five steps", sql: "INSERT INTO card_answers VALUES ('c3', 'card', 1, 2, '2026-10-09', '2026-10-11', 't0')", wantCode: "23514"},
-		{name: "a homework has one postponement", sql: "INSERT INTO postponements VALUES ('h1', '2026-10-08', '2026-10-09', 't0')", wantCode: "23505"},
 		{name: "a judge seed uses 32 bits without a sign", sql: "INSERT INTO judge_runs VALUES ('p1', 4294967295, 't0')"},
 		{name: "a session time is in milliseconds", sql: "INSERT INTO sessions VALUES ('hash', 'student', 'fingerprint', 1794787200000, 1795392000000)"},
 		{name: "the ChatGPT connection has no table", sql: "SELECT 1 FROM tutor_account", wantCode: "42P01"},

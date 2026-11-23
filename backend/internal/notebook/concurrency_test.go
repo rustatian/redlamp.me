@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -258,18 +257,6 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 			wantCount:     1,
 		},
 		{
-			name: "a homework gets one postponement from two requests of the student",
-			setup: func(t *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
-				exec(t, a.pool, "UPDATE homework SET due_date=$1 WHERE id=$2", time.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly), a.homework)
-				exec(t, a.pool, "INSERT INTO homework_tasks (id,homework_id,problem_id,state,created_at,updated_at) VALUES ($1,$2,$3,'assigned','t0','t0')", newID(), a.homework, a.problemID)
-				postpone := post(a, "/homework/"+a.homework+"/postpone", `{"version":1}`, a.student)
-				return "UPDATE homework SET version=version WHERE id=$1", []any{a.homework}, postpone, postpone
-			},
-			wantConflicts: 1,
-			count:         "SELECT count(*) FROM homework h JOIN postponements p ON p.homework_id=h.id WHERE h.due_date=p.to_date AND h.due_date=$1",
-			wantCount:     1,
-		},
-		{
 			name: "a quiz deck gets one attempt from two submits of the student",
 			setup: func(_ *testing.T, a raceActors) (string, []any, func() *httptest.ResponseRecorder, func() *httptest.ResponseRecorder) {
 				submit := post(a, "/quiz/race-set-1/attempts", `{"answers":{"race-card":0}}`, a.student)
@@ -375,12 +362,7 @@ func TestConcurrentRequestsOfHomework(t *testing.T) {
 			if !slices.Contains(wantConflicts, conflicts) || paused != tt.wantPaused {
 				t.Errorf("%d requests got 409 and %d got 429, want one of %v and %d; bodies %s and %s", conflicts, paused, wantConflicts, tt.wantPaused, results[0].Body.String(), results[1].Body.String())
 			}
-			var countArgs []any
-			if strings.Contains(tt.count, "$1") {
-				// The due date after one postponement: tomorrow and one day.
-				countArgs = []any{time.Now().UTC().AddDate(0, 0, 2).Format(time.DateOnly)}
-			}
-			if got := queryValue[int64](t, pool, tt.count, countArgs...); got != tt.wantCount {
+			if got := queryValue[int64](t, pool, tt.count); got != tt.wantCount {
 				t.Errorf("%s = %d, want %d", tt.count, got, tt.wantCount)
 			}
 		})

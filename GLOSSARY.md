@@ -35,7 +35,7 @@ _Avoid_: Attempt, test run.
 ### Learning material
 
 **Learning set**:
-An ordered sequence of chapters about one subject, available through **Бомжарня**.
+An ordered sequence of chapters about one subject, available through **Лекции**.
 _Avoid_: Homework, lesson.
 
 **Chapter**:
@@ -109,3 +109,22 @@ _Avoid_: Recall, review without context.
 **Tutor chat**:
 The student's private conversation with the AI tutor about one problem or one learning set. Chapters in the same learning set share that set's tutor chat.
 _Avoid_: Homework feedback, parent discussion.
+
+### Contests
+
+**Contest**:
+A round of 1 to 4 problems from the problem bank in **Мясорубка**. A contest lasts exactly 90 minutes from its start, and only the end of the time ends it. At most one contest is active at a time. A contest gives no XP and no badges.
+
+**Contest problem**:
+One bank problem in a contest, with its position, the topic of its pick, its difficulty, its points and the last code of the student. A contest problem does not go into the library. A bank problem is in at most one contest.
+
+**Problem bank**:
+The Codeforces problems rated 800 to 1200 with Russian statements, visible examples and 5 to 16 hidden tests, from which a contest takes its problems. The bank is repository content.
+
+**Contest submission**:
+A check of the code of a contest problem on its hidden tests, with the verdict and the number of the failed test. The first accepted contest submission solves the contest problem.
+_Avoid_: Submission, test run.
+
+**Contest rating**:
+The rating of the student from the finished contests. It starts at 800. Each finished contest changes it by round(32 × Σ(S − E)), where S is 1 for a solved problem, else 0, and E is the expected score from the problem rating and the rating before the contest.
+_Avoid_: XP, level.

@@ -344,7 +344,7 @@ func TestReviewsDashboardHomeworkByState(t *testing.T) {
 			f := reviewsSetup(t)
 			exec(t, f.pool, "UPDATE homework_tasks SET state=$1", tt.state)
 			homework := reviewsDashboard(t, f, "2026-10-07", f.cookie)["homework"]
-			want := []any{map[string]any{"id": f.taskID, "homeworkId": f.homeworkID, "homeworkTitle": "Week 41", "instructions": "Explain", "dueDate": "2026-10-07", "postponedTo": nil, "problemId": f.first, "title": "accepted independently", "href": "/leetcode/problems/" + f.first, "kind": "problem", "setSlug": nil, "chapter": nil, "completedAt": nil, "difficulty": "medium", "state": tt.state, "submissionId": nil, "submissionAttemptId": nil, "version": 1, "createdAt": "now", "updatedAt": "now", "unread": false}}
+			want := []any{map[string]any{"id": f.taskID, "homeworkId": f.homeworkID, "homeworkTitle": "Week 41", "instructions": "Explain", "dueDate": "2026-10-07", "problemId": f.first, "title": "accepted independently", "href": "/leetcode/problems/" + f.first, "kind": "problem", "setSlug": nil, "chapter": nil, "completedAt": nil, "difficulty": "medium", "state": tt.state, "submissionId": nil, "submissionAttemptId": nil, "version": 1, "createdAt": "now", "updatedAt": "now", "unread": false}}
 			reviewsEqualJSON(t, homework, want[:tt.rows])
 		})
 	}

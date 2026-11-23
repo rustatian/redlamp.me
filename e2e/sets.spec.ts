@@ -62,6 +62,10 @@ const chapters = [
 	{ name: 'heaps and queues 2', slug: 'heaps-and-queues', number: 2, count: 5 },
 	{ name: 'heaps and queues 3', slug: 'heaps-and-queues', number: 3, count: 4 },
 	{ name: 'heaps and queues 4', slug: 'heaps-and-queues', number: 4, count: 5 },
+	{ name: 'prefix sums 1', slug: 'prefix-sums', number: 1, count: 4 },
+	{ name: 'prefix sums 2', slug: 'prefix-sums', number: 2, count: 5 },
+	{ name: 'prefix sums 3', slug: 'prefix-sums', number: 3, count: 4 },
+	{ name: 'prefix sums 4', slug: 'prefix-sums', number: 4, count: 4 },
 ];
 for (const item of chapters) {
 	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {
@@ -137,8 +141,8 @@ for (const item of openFailures) {
 
 test('opens chapter material and assigns the chapter to existing homework', async ({ page, context, baseURL }) => {
 	await signIn(page, 'parent');
-	await page.getByRole('link', { name: 'Бомжарня', exact: true }).click();
-	await expect(page.getByRole('heading', { name: 'Бомжарня', level: 1 })).toBeVisible();
+	await page.getByRole('link', { name: 'Лекции', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Лекции', level: 1 })).toBeVisible();
 	await expect(row(page, 'Permutations и Combinations').locator('.term')).toHaveText(['Permutations', 'Combinations', 'Subsets', 'Backtracking', 'Pruning']);
 	await page.getByRole('link', { name: 'Permutations и Combinations', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Permutations и Combinations', level: 1 })).toBeVisible();

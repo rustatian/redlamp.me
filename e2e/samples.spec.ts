@@ -32,6 +32,15 @@ const expectedSamples = [
 	{ name: 'heaps-and-queues/chapter2 sample 3', output: '[-1]\n' },
 	{ name: 'heaps-and-queues/chapter3 sample 1', output: '[7, 7, 5, 5, 6, 6]\n' },
 	{ name: 'heaps-and-queues/chapter4 sample 1', output: '[1, 2, 3, 4, 5, 6, 7, 9, 10]\n' },
+	{ name: 'prefix-sums/chapter1 sample 1', output: '[0, 3, 4, 8, 9, 14, 23, 25, 31]\n19\n' },
+	{ name: 'prefix-sums/chapter1 sample 2', output: '3 -1 0\n' },
+	{ name: 'prefix-sums/chapter1 sample 3', output: '[24, 12, 8, 6]\n' },
+	{ name: 'prefix-sums/chapter2 sample 1', output: '7 {0: 2, 1: 3, 2: 1}\n' },
+	{ name: 'prefix-sums/chapter2 sample 2', output: '6 {0: 0, -1: 1, 1: 3, 2: 4, 3: 5, 4: 6}\n' },
+	{ name: 'prefix-sums/chapter3 sample 1', output: '[1, 1, 5, 0, -2, 0, -5]\n[1, 2, 7, 7, 5, 5]\n' },
+	{ name: 'prefix-sums/chapter3 sample 2', output: '1960 2\n' },
+	{ name: 'prefix-sums/chapter4 sample 1', output: '[0, 15, 33, 54, 78]\n34\n' },
+	{ name: 'prefix-sums/chapter4 sample 2', output: '[[1, 1, 0], [1, 2, 1], [0, 1, 1]]\n' },
 	{ name: 'starter code of a Codeforces task', output: '0\n0\n' },
 ];
 

@@ -9,7 +9,7 @@ type Case = TestCase & { note?: string };
 const ownCase = (input: string, answer: Expected): Case => ({ input, expected: answer && 'value' in answer ? answer.value : null, note: answer ? 'error' in answer ? notes[answer.error] : undefined : notes.none });
 
 // The run button is in one row with the buttons before and after it. The row stays mounted while the tests load, so a focused button keeps the focus.
-export function Runner({ problemId, code, tests, live, latest, record, before, after }: { problemId: string; code: string; tests?: ProblemTests; live: boolean; latest?: TestRun; record?: (run: Pick<TestRun, 'passed' | 'total' | 'codeHash'>) => Promise<void>; before: ReactNode; after: ReactNode }) {
+export function Runner({ problemId, code, tests, live, latest, record, before, after }: { problemId?: string; code: string; tests?: ProblemTests; live: boolean; latest?: TestRun; record?: (run: Pick<TestRun, 'passed' | 'total' | 'codeHash'>) => Promise<void>; before: ReactNode; after: ReactNode }) {
 	const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]), [results, setResults] = useState<RunResult[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState(''), [hash, setHash] = useState('');
 	// The results show the cases of their run. A later change of the own tests does not move them.
 	const [ran, setRan] = useState<Case[]>([]), total = ran.filter(item => item.expected !== null).length;
@@ -23,8 +23,9 @@ export function Runner({ problemId, code, tests, live, latest, record, before, a
 		setBusy(true); setError(''); setResults([]); setRan([]);
 		let passed = 0;
 		try {
-			const { own, standard, spec } = tests!, answers = own.length ? (await api<{ expected: Expected[] }>(`/problems/${problemId}/tests/expected`, { method: 'POST', body: JSON.stringify({ inputs: own.map(test => test.input) }) })).expected : [];
-			const cases = [...standard, ...own.map((test, index) => ownCase(test.input, answers[index]))];
+			const { own, standard, spec } = tests!, answers = problemId && own.length ? (await api<{ expected: Expected[] }>(`/problems/${problemId}/tests/expected`, { method: 'POST', body: JSON.stringify({ inputs: own.map(test => test.input) }) })).expected : [];
+			// Without a problem there is no reference solution, so an own test shows only the output.
+			const cases = [...standard, ...own.map((test, index) => problemId ? ownCase(test.input, answers[index]) : { input: test.input, expected: null })];
 			setRan(cases);
 			await runTests(code, spec!, cases, result => { passed += Number(result.ok === true); setResults(items => [...items, result]); });
 			await record?.({ passed, total: cases.filter(item => item.expected !== null).length, codeHash: await sha256(code) });
@@ -32,8 +33,8 @@ export function Runner({ problemId, code, tests, live, latest, record, before, a
 	}
 	return <div className="stack">
 		{diagnostics.length > 0 && <ul className="messages" aria-label="Замечания к коду">{diagnostics.map((item, index) => <li key={index}>{item.message}</li>)}</ul>}
-		{/* The code runs with the session of the page, so only the student runs his code. */}
-		<div className="row">{before}{record && tests && (tests.spec && tests.standard.length + tests.own.length > 0 ? <button type="button" disabled={busy || !code.trim()} onClick={() => void run()} data-tip="Запустить ваш код на тестах в браузере.">Запустить тесты</button> : <p>Тестов для этой задачи пока нет.</p>)}{after}</div>
+		{/* The code runs with the session of the page, so only the student runs his code. A page without a problem shows the runner only to the student. */}
+		<div className="row">{before}{(record || !problemId) && tests && (tests.spec && tests.standard.length + tests.own.length > 0 ? <button type="button" disabled={busy || !code.trim()} onClick={() => void run()} data-tip="Запустить ваш код на тестах в браузере.">Запустить тесты</button> : <p>Тестов для этой задачи пока нет.</p>)}{after}</div>
 		{latest && latest.total > 0 && latest.codeHash === hash && (latest.passed === latest.total ? <p><span className="tag good">Тесты пройдены</span></p> : !record && <p>Последний запуск: пройдено {latest.passed} из {latest.total}</p>)}
 		{error && <p className="error" role="alert">{error}</p>}
 		{results.length > 0 && <ol className="messages" aria-label="Результаты тестов">{results.map((result, index) => <li key={index} aria-label={`Тест ${index + 1}`} className={result.ok === null ? undefined : result.ok ? 'pass' : 'fail'}>
@@ -69,7 +70,7 @@ export function OwnTests({ problemId, tests, changed }: { problemId: string; tes
 	</section>;
 }
 
-const failures = { wrong: 'Неверный ответ на тесте', timeout: 'Превышено время на тесте', error: 'Ошибка выполнения на тесте' };
+export const failures = { wrong: 'Неверный ответ на тесте', timeout: 'Превышено время на тесте', error: 'Ошибка выполнения на тесте' };
 // The first hidden test that the code failed.
 export function Failure({ verdict, failed }: Exclude<Judgement, { failed: null }>) {
 	return <div className="error stack" role="alert" aria-label="Результат проверки">

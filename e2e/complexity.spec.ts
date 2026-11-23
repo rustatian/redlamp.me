@@ -16,7 +16,7 @@ const answers = [
 
 test('opens complexity practice from the learning sets and checks every answer', async ({ page }) => {
 	await signIn(page);
-	await page.getByRole('link', { name: 'Бомжарня', exact: true }).click();
+	await page.getByRole('link', { name: 'Лекции', exact: true }).click();
 	await page.getByRole('link', { name: title, exact: true }).click();
 	await page.getByRole('link', { name: 'Открыть главу', exact: true }).click();
 	await expect(page).toHaveURL(chapterPath);
