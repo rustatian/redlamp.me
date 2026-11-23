@@ -1,0 +1,127 @@
+<p class="lead">Monotonic Deque находит максимум или минимум в окне прошлых значений: это значения Prefix Sum или Dynamic Programming, а окно может идти по кругу.</p>
+<p>Правило из главы 3 набора Heap (Priority Queue), Queue и Deque: сзади удаляем кандидатов, которые не лучше нового, спереди - номера вне окна. Prefix Sum: p[0] = 0, p[j] - сумма первых j чисел, сумма nums[i..j − 1] равна p[j] − p[i]. <strong>Дополнительная память</strong> считается без входа и ответа.</p>
+<h2 id="s1">1. Круг: удвоить строку (Codeforces 1744C)</h2>
+<p>s = "rggry", горит r. Свет повторяется по кругу: после y снова r. Удвоим строку: "rggryrggry". От места 0 до ближайшей g справа 1 секунда, от места 3 - 3 секунды. Гарантия - наибольшее ожидание, ответ 3.</p>
+<div class="rule"><p><strong>Правило.</strong> Чтобы идти по кругу длины n, допишите Array к самому себе. Путь вправо от места i &lt; n в удвоенном Array - это путь по кругу. Окно на круге - это окно длины не больше n в удвоенном Array.</p></div>
+<p>Проход справа налево помнит номер ближайшей g справа: nxt.</p>
+<pre class="no-run"><code class="language-python">d = s + s
+nxt = -1
+best = 0
+for i in range(2 * n - 1, -1, -1):
+    if d[i] == "g":
+        nxt = i
+    elif i &lt; n and d[i] == c:
+        best = max(best, nxt - i)</code></pre>
+<p><strong>Время:</strong> 2n шагов, O(n) на набор. <strong>Дополнительная память:</strong> удвоенная строка из 2n символов, O(n); номер i % n даёт O(1), но код длиннее. Brute Force идёт циклом Python от каждого места c до g: при n = 200 000 и одной g это около 2 · 10<sup>10</sup> шагов. Лимит 2 с на пример, 3 с на скрытый тест: столько шагов Python не успеет.</p>
+<h2 id="s2">2. Минимум Prefix Sum в окне (LeetCode 918)</h2>
+<p>nums = [5, −3, 5] стоит по кругу. Удвоим: [5, −3, 5, 5, −3, 5]. Subarray на круге - это окно удвоенного Array длины не больше n = 3. Для конца j начало i лежит в j − n..j − 1, сумма равна p[j] − p[i]. Нужен наименьший p[i] в окне: это минимум окна.</p>
+<table><caption>p удвоенного Array</caption><thead><tr><th>j</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead><tbody><tr><td>p[j]</td><td>0</td><td>5</td><td>2</td><td>7</td><td>12</td><td>9</td><td>14</td></tr></tbody></table>
+<figure data-figure="sw4-circle"></figure>
+<div class="rule"><p><strong>Правило.</strong> Сумма nums[i..j − 1] равна p[j] − p[i]. Для лучшей суммы с концом j нужен наименьший p[i] среди разрешённых i. Этот минимум окна даёт Monotonic Deque с возрастающими p.</p></div>
+<pre><code class="language-python">from collections import deque
+
+nums = [5, -3, 5]
+n = len(nums)
+p = [0]
+for x in nums + nums:
+    p.append(p[-1] + x)
+dq = deque([0])
+best = nums[0]
+for j in range(1, 2 * n + 1):
+    if dq[0] &lt; j - n:
+        dq.popleft()
+    best = max(best, p[j] - p[dq[0]])
+    while dq and p[dq[-1]] &gt;= p[j]:
+        dq.pop()
+    dq.append(j)
+print(p, best)</code></pre>
+<p>Код печатает <code>[0, 5, 2, 7, 12, 9, 14] 10</code>. Одного popleft за шаг достаточно: окно сдвигается на один номер, и выйти из него может только один номер.</p>
+<p>Здесь 7 номеров вошли в Deque (1 при создании и 6 append), 2 ушли сзади и 2 спереди. <strong>Время:</strong> 2n шагов, каждый номер входит в Deque один раз и выходит не больше одного раза: O(n). <strong>Дополнительная память:</strong> p из 2n + 1 чисел и Deque до n + 1 номеров, O(n). Brute Force проверяет n · n окон на круге: при n = 30 000 это 9 · 10<sup>8</sup>.</p>
+<details><summary>Kadane's Algorithm для круга</summary><p>Ответ - большее из двух чисел: лучший обычный Subarray и total − худший Subarray, где total - сумма всех чисел. Kadane's Algorithm находит оба за один проход: O(n) времени и O(1) памяти. Если все числа отрицательные, total − худший = 0: это пустой Subarray, а он запрещён. Для [−3, −2, −3] формула даст 0, верный ответ −2. Решение с Deque этого случая не боится.</p></details>
+<h2 id="s3">3. Самый короткий Subarray с суммой не меньше k (LeetCode 862)</h2>
+<p>nums = [2, −1, 2], k = 3. Отрицательное число ломает шаблон главы 2. Работаем с p = [0, 2, 1, 3]: нужна пара i &lt; j с p[j] − p[i] ≥ k и наименьшей разностью j − i. Ответ 3: весь Array.</p>
+<figure data-figure="sw4-shortest"></figure>
+<div class="rule"><p><strong>Правило.</strong> Храните номера с возрастающими p. Спереди забирайте номер, пока p[j] − p[dq[0]] ≥ k: для него лучший конец найден, более поздние концы дадут окно длиннее. Сзади удаляйте номера с p ≥ p[j]: начало j не хуже и ближе.</p></div>
+<pre><code class="language-python">from collections import deque
+
+nums = [2, -1, 2]
+k = 3
+p = [0]
+for x in nums:
+    p.append(p[-1] + x)
+best = len(nums) + 1
+dq = deque()
+for j in range(len(p)):
+    while dq and p[j] - p[dq[0]] &gt;= k:
+        best = min(best, j - dq.popleft())
+    while dq and p[dq[-1]] &gt;= p[j]:
+        dq.pop()
+    dq.append(j)
+print(best if best &lt;= len(nums) else -1)</code></pre>
+<p>Код печатает <code>3</code>. Здесь 4 append, 1 pop сзади и 1 popleft. <strong>Время:</strong> n + 1 номеров, каждый входит и выходит не больше одного раза: O(n). <strong>Дополнительная память:</strong> p и Deque, O(n). Brute Force перебирает n(n + 1)/2 Subarray: при n = 100 000 это 5 000 050 000.</p>
+<p>Шаблон главы 2 сжимает окно, пока сумма не меньше k. Для nums = [84, −37, 32, 40, 95] и k = 167 он ответит 5: после удаления 84 сумма 130 меньше k, и −37 остаётся в окне. Верный ответ 3: [32, 40, 95].</p>
+<h2 id="s4">4. Dynamic Programming и Deque (LeetCode 1696)</h2>
+<p>nums = [1, −1, −2, 4, −7, 3], k = 2. dp[i] - лучший счёт, когда мы стоим на месте i. dp[0] = 1. На место 1 можно прыгнуть только с места 0: dp[1] = −1 + 1 = 0. На место 2 можно прыгнуть с мест 0 и 1: dp[2] = −2 + max(1, 0) = −1. В общем случае на место i прыгают с мест i − k..i − 1, поэтому dp[i] = nums[i] + max(dp[i − k..i − 1]). Максимум окна прошлых dp даёт Monotonic Deque.</p>
+<figure data-figure="sw4-dp"></figure>
+<div class="rule"><p><strong>Правило.</strong> Если dp[i] берёт максимум или минимум из последних k значений dp, храните их номера в Monotonic Deque. Шаг стоит O(1) амортизированно, весь проход O(n) вместо O(nk).</p></div>
+<pre><code class="language-python">from collections import deque
+
+nums = [1, -1, -2, 4, -7, 3]
+k = 2
+dp = [0] * len(nums)
+dp[0] = nums[0]
+dq = deque([0])
+for i in range(1, len(nums)):
+    if dq[0] &lt; i - k:
+        dq.popleft()
+    dp[i] = nums[i] + dp[dq[0]]
+    while dq and dp[dq[-1]] &lt;= dp[i]:
+        dq.pop()
+    dq.append(i)
+print(dp)</code></pre>
+<p>Код печатает <code>[1, 0, -1, 4, -3, 7]</code>, ответ dp[5] = 7.</p>
+<table><caption>n = 100 000, k = 50 000: чтения прошлых dp</caption><thead><tr><th>Способ</th><th>Работа</th></tr></thead><tbody><tr><td>Brute Force: max по k прошлым dp</td><td>3 749 975 000 чтений</td></tr><tr><td>Monotonic Deque</td><td>99 999 шагов, не больше 200 000 операций Deque</td></tr></tbody></table>
+<p>Здесь 6 номеров вошли в Deque (1 при создании и 5 append), 4 ушли сзади и 1 спереди. <strong>Время:</strong> O(n). <strong>Дополнительная память:</strong> dp из n чисел и Deque до min(n, k + 1) номеров, O(n). Ответ - одно число.</p>
+<h2 id="s5">5. Два окна в одной задаче (Codeforces 1941E)</h2>
+<p>Строка [0, 1, 9, 1, 0], d = 1. Опора в столбце j стоит a[j] + 1. Между соседними опорами |j1 − j2| − 1 ≤ d. Первая опора стоит на берегу: dp[0] = 0 + 1 = 1. dp[1] = 2 + 1 = 3: прошлая опора в столбце 0. dp[2] = 10 + min(1, 3) = 11: прошлая опора в столбце 0 или 1. В общем случае прошлая опора стоит в j − d − 1..j − 1, и dp[j] = a[j] + 1 + min(dp[j − d − 1..j − 1]). Дальше dp[3] = 2 + min(3, 11) = 5 и dp[4] = 1 + min(11, 5) = 6: цена строки 6. Если цены трёх строк 4, 6, 8, а k = 2, окна строк дают 4 + 6 = 10 и 6 + 8 = 14, ответ 10.</p>
+<div class="rule"><p><strong>Правило.</strong> Сначала посчитайте цену каждой строки: Dynamic Programming с Monotonic Deque для минимума. Потом окно фиксированной длины k по строкам даёт сумму k соседних цен.</p></div>
+<pre><code class="language-python">from collections import deque
+
+def row_cost(a, d):
+    dp = [0] * len(a)
+    dp[0] = 1
+    dq = deque([0])
+    for j in range(1, len(a)):
+        if dq[0] &lt; j - d - 1:
+            dq.popleft()
+        dp[j] = a[j] + 1 + dp[dq[0]]
+        while dq and dp[dq[-1]] &gt;= dp[j]:
+            dq.pop()
+        dq.append(j)
+    return dp[-1]
+
+rows = [[0, 4, 1, 4, 0], [0, 1, 9, 1, 0], [0, 5, 5, 5, 0]]
+d, k = 1, 2
+cost = [row_cost(a, d) for a in rows]
+s = sum(cost[:k])
+best = s
+for i in range(k, len(cost)):
+    s += cost[i] - cost[i - k]
+    best = min(best, s)
+print(cost, best)</code></pre>
+<p>Код печатает <code>[4, 6, 8] 10</code>: цены строк [0, 4, 1, 4, 0], [0, 1, 9, 1, 0], [0, 5, 5, 5, 0] и лучшая пара соседних строк.</p>
+<p><strong>Время:</strong> O(m) на строку, O(n · m) на набор и O(n) на окно строк. <strong>Дополнительная память:</strong> dp одной строки и Deque, O(m), и n цен строк, O(n). Brute Force берёт минимум по d + 1 прошлым опорам: при m = 200 000 и d = 100 000 это около 1,5 · 10<sup>10</sup> чтений.</p>
+<h2 id="s6">6. Что нужно запомнить</h2>
+<ul>
+<li>Monotonic Deque работает с любыми прошлыми значениями: p и dp. Окно может идти по кругу.</li>
+<li>Окно - это разрешённые прошлые номера: j − n..j − 1, i − k..i − 1, j − d − 1..j − 1.</li>
+<li>Для минимума держите возрастающие значения, для максимума - убывающие.</li>
+<li>Круг: удвойте Array и ограничьте длину окна числом n.</li>
+</ul>
+<h2 id="s7">7. Как решать задачи этой главы</h2>
+<ol>
+<li>Запишите ответ через прошлые значения: p[j] − p[i] или dp[i] = nums[i] + max(...).</li>
+<li>Найдите окно разрешённых прошлых номеров.</li>
+<li>Решите, нужен минимум или максимум, и какой знак сравнения ставить сзади.</li>
+<li>Посчитайте операции Deque за весь проход и память для p или dp.</li>
+</ol>

@@ -70,6 +70,10 @@ const chapters = [
 	{ name: 'binary search 2', slug: 'binary-search', number: 2, count: 5 },
 	{ name: 'binary search 3', slug: 'binary-search', number: 3, count: 5 },
 	{ name: 'binary search 4', slug: 'binary-search', number: 4, count: 5 },
+	{ name: 'sliding window 1', slug: 'sliding-window', number: 1, count: 5 },
+	{ name: 'sliding window 2', slug: 'sliding-window', number: 2, count: 5 },
+	{ name: 'sliding window 3', slug: 'sliding-window', number: 3, count: 5 },
+	{ name: 'sliding window 4', slug: 'sliding-window', number: 4, count: 5 },
 ];
 for (const item of chapters) {
 	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {

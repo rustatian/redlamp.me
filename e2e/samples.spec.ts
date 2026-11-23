@@ -54,6 +54,17 @@ const expectedSamples = [
 	{ name: 'binary-search/chapter4 sample 2', output: '3 1\n' },
 	{ name: 'binary-search/chapter4 sample 3', output: '[-19, -11, -1, 11, 25]\n1 5 1 347369930\n' },
 	{ name: 'binary-search/chapter4 sample 4', output: '4 0\n3 1\n0 11\n' },
+	{ name: 'sliding-window/chapter1 sample 1', output: '[8, 7, 9, 6] 9\n' },
+	{ name: 'sliding-window/chapter1 sample 2', output: '[0, 6]\n' },
+	{ name: 'sliding-window/chapter2 sample 1', output: '4 5\n' },
+	{ name: 'sliding-window/chapter2 sample 2', output: 'ab 3\n' },
+	{ name: 'sliding-window/chapter3 sample 1', output: '8\n' },
+	{ name: 'sliding-window/chapter3 sample 2', output: '10\n' },
+	{ name: 'sliding-window/chapter3 sample 3', output: '12 5 7\n' },
+	{ name: 'sliding-window/chapter4 sample 1', output: '[0, 5, 2, 7, 12, 9, 14] 10\n' },
+	{ name: 'sliding-window/chapter4 sample 2', output: '3\n' },
+	{ name: 'sliding-window/chapter4 sample 3', output: '[1, 0, -1, 4, -3, 7]\n' },
+	{ name: 'sliding-window/chapter4 sample 4', output: '[4, 6, 8] 10\n' },
 	{ name: 'starter code of a Codeforces task', output: '0\n0\n' },
 ];
 

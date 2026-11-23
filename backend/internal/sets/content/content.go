@@ -10,17 +10,18 @@ import (
 	"github.com/rustatian/redlamp.me/backend/internal/sets/heaps"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/permutations"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/prefixsums"
+	"github.com/rustatian/redlamp.me/backend/internal/sets/slidingwindow"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/twopointers"
 )
 
 // Sets are the learning sets.
-var Sets = []sets.LearningSet{complexity.Set, permutations.Set, twopointers.Set, heaps.Set, prefixsums.Set, binarysearch.Set}
+var Sets = []sets.LearningSet{complexity.Set, permutations.Set, twopointers.Set, heaps.Set, prefixsums.Set, binarysearch.Set, slidingwindow.Set}
 
 // References are the reference solutions of the tasks of all learning sets, by problem slug.
-var References = merge(permutations.References, twopointers.References, heaps.References, prefixsums.References, binarysearch.References)
+var References = merge(permutations.References, twopointers.References, heaps.References, prefixsums.References, binarysearch.References, slidingwindow.References)
 
 // Generators make the hidden tests of the tasks of all learning sets, by problem slug.
-var Generators = merge(permutations.Generators, twopointers.Generators, heaps.Generators, prefixsums.Generators, binarysearch.Generators)
+var Generators = merge(permutations.Generators, twopointers.Generators, heaps.Generators, prefixsums.Generators, binarysearch.Generators, slidingwindow.Generators)
 
 // merge joins the maps of the learning sets. A problem is in one learning set only.
 func merge[V any](parts ...map[string]V) map[string]V {
