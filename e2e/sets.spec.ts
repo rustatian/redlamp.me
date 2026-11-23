@@ -78,6 +78,10 @@ const chapters = [
 	{ name: 'modular arithmetic 1', slug: 'modular-arithmetic', number: 1, count: 5 },
 	{ name: 'modular arithmetic 2', slug: 'modular-arithmetic', number: 2, count: 5 },
 	{ name: 'modular arithmetic 3', slug: 'modular-arithmetic', number: 3, count: 4 },
+	{ name: 'trees 1', slug: 'trees', number: 1, count: 5 },
+	{ name: 'trees 2', slug: 'trees', number: 2, count: 5 },
+	{ name: 'trees 3', slug: 'trees', number: 3, count: 5 },
+	{ name: 'trees 4', slug: 'trees', number: 4, count: 5 },
 ];
 for (const item of chapters) {
 	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {
