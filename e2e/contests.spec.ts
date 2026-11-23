@@ -122,16 +122,18 @@ test('the problem page turns read-only at the end without a reload', async ({ pa
 	await signIn(page);
 	const id = await addContest(db, Date.now() + 10_000 - 90 * minute);
 	await page.goto(`/leetcode/contests/${id}/1`);
-	const code = page.getByLabel('Код решения', { exact: true }), send = page.getByRole('button', { name: 'Отправить', exact: true });
+	const code = page.getByLabel('Код решения', { exact: true }), send = page.getByRole('button', { name: 'Отправить', exact: true }), editorial = page.getByRole('button', { name: 'Показать разбор', exact: true });
 	await page.getByLabel('Ввод', { exact: true }).fill('10 4');
 	await page.getByRole('button', { name: 'Добавить тест', exact: true }).click();
 	await code.fill(solution);
 	await expect(send).toBeVisible();
+	await expect(editorial).toHaveCount(0);
 	await expect(code).not.toBeEditable({ timeout: 15_000 });
 	await expect(send).toHaveCount(0);
 	await expect(page.getByRole('link', { name: 'Результат', exact: true })).toHaveAttribute('href', `/leetcode/contests/${id}`);
-	// The view loads again at the end, so the Codeforces link shows.
+	// The view loads again at the end, so the Codeforces link and the Editorial show.
 	await expect(page.getByRole('link', { name: 'Задача на Codeforces ↗', exact: true })).toBeVisible();
+	await expect(editorial).toBeVisible();
 	// The clock hides at its end. A remount of the page at that time drops the own tests, because they stay only in the page.
 	await expect(page.getByRole('timer')).toHaveCount(0);
 	await expect(page.getByRole('list', { name: 'Мои тесты' }).getByRole('listitem')).toHaveText(['Тест 4 Ввод: 10 4 Удалить'], { useInnerText: true });

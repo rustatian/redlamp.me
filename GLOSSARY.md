@@ -46,6 +46,10 @@ _Avoid_: Lesson, learning set.
 The teaching text and figures within a chapter.
 _Avoid_: Chapter, learning set.
 
+**Editorial**:
+The solutions of one problem with their explanations and figures. A learning set task or a bank problem can have an Editorial. The page of a learning set task shows it after the press of **Показать разбор**. The page of a contest problem shows it only after the end of the contest.
+_Avoid_: Tutorial, solution.
+
 **Quiz card**:
 One question in a chapter's quiz, with an expected answer and an explanation.
 _Avoid_: Problem, homework task.

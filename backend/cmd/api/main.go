@@ -21,6 +21,7 @@ import (
 
 	"github.com/rustatian/redlamp.me/backend/internal/bank"
 	"github.com/rustatian/redlamp.me/backend/internal/db"
+	"github.com/rustatian/redlamp.me/backend/internal/editorials"
 	"github.com/rustatian/redlamp.me/backend/internal/notebook"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
 	"github.com/rustatian/redlamp.me/backend/internal/transcribe"
@@ -54,7 +55,7 @@ func main() {
 	if *assets != "" {
 		files = site(*assets)
 	}
-	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: secret(ctx, "LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Bank: bank.Problems, Anthropic: tutorClient(ctx), Transcriber: speech})
+	srv, err := notebook.New(notebook.Config{DB: pool, Assets: files, PublicOrigin: os.Getenv("PUBLIC_ORIGIN"), Accounts: secret(ctx, "LEETCODE_ACCOUNTS"), LeetCode: notebook.GraphQL{URL: "https://leetcode.com/graphql"}, Sets: content.Sets, References: content.References, Generators: content.Generators, Bank: bank.Problems, Editorials: editorials.All, Anthropic: tutorClient(ctx), Transcriber: speech})
 	if err != nil {
 		log.Fatalf("PUBLIC_ORIGIN: %v", err)
 	}

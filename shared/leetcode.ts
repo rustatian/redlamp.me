@@ -83,6 +83,8 @@ export interface SetTask { url: string; number?: number; title: string; difficul
 export interface FigureRow { label?: string; cells: (number | string)[]; marked?: number[]; dimmed?: number[]; pointers?: Partial<Record<string, number>>; window?: [number, number]; tree?: true }
 export interface FigureFrame { caption: string; rows: FigureRow[] }
 export interface Figure { id: string; title: string; frames: FigureFrame[] }
+// The solutions of one problem with their explanations: HTML in the lesson format and its figures in the order of the placeholders.
+export interface Editorial { html: string; figures: Figure[] }
 export interface Chapter { title: string; summary: string; tasks: SetTask[]; cards: Card[]; links: { title: string; url: string; source: string }[]; figures?: Figure[] }
 export interface LearningSet { slug: string; title: string; summary: string; topics: string[]; chapters: Chapter[] }
 export interface ChapterRef { set: string; setTitle: string; number: number; title: string }
@@ -127,8 +129,8 @@ export interface ContestProblemRow { position: number; title: string; difficulty
 export interface ContestDetail extends ContestSummary { now: string; problems: ContestProblemRow[] }
 // test is the 1-based number of the failed test. error is the message of an error verdict, else null.
 export interface ContestVerdict { verdict: 'accepted' | 'wrong' | 'timeout' | 'error'; test: number | null; error: string | null }
-// statement is null for a problem that is not in the bank. url is null while the contest is active.
-export interface ContestProblem { position: number; title: string; difficulty: Difficulty; points: number; topic: string; statement: string | null; ignoreCase: boolean; examples: { input: string; output: string }[]; code: string; solved: boolean; submissions: (ContestVerdict & { createdAt: string })[]; url: string | null; endsAt: string; now: string }
+// statement is null for a problem that is not in the bank. url and editorial are null while the contest is active.
+export interface ContestProblem { position: number; title: string; difficulty: Difficulty; points: number; topic: string; statement: string | null; ignoreCase: boolean; examples: { input: string; output: string }[]; code: string; solved: boolean; submissions: (ContestVerdict & { createdAt: string })[]; url: string | null; editorial: Editorial | null; endsAt: string; now: string }
 export interface BankEntry { slug: string; rating: number; topics: string[]; difficulty: Difficulty; points: number }
 export function newApproach(): Approach {
 	return { id: crypto.randomUUID(), label: '', idea: '', correctness: '', timeComplexity: '', spaceComplexity: '', edgeCases: '', mistakes: '', language: '', code: '' };

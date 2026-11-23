@@ -121,6 +121,31 @@ test('shows the chapter lesson to a parent before student work exists', async ({
 	await expect(page.locator('article.lesson')).toHaveCount(2);
 });
 
+// The pilot Editorial is repository content: its first figure is the first figure of the panel.
+const twoSumFigure = (JSON.parse(readFileSync('backend/internal/editorials/two-sum-ii-input-array-is-sorted.json', 'utf8')) as Figure[])[0];
+
+test('shows the Editorial of a set task only after the press of its button', async ({ page, baseURL }) => {
+	await signIn(page);
+	const problem = await (await page.request.post('/leetcode/api/problems', { headers: { Origin: new URL(baseURL!).origin }, data: { url: 'https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/', number: 167, title: 'Two Sum II - Input Array Is Sorted', difficulty: 'medium', topics: [], summary: '' } })).json() as Problem;
+	await page.goto(`/leetcode/problems/${problem.id}`);
+	const show = page.getByRole('button', { name: 'Показать разбор', exact: true }), heading = page.getByRole('heading', { name: 'Разбор', level: 2, exact: true });
+	await expect(show).toHaveAttribute('aria-expanded', 'false');
+	await expect(page.locator('article.lesson')).toHaveCount(2);
+	await expect(heading).toHaveCount(0);
+	await show.click();
+	const panel = page.locator('section').filter({ has: heading });
+	await expect(heading).toBeVisible();
+	await expect(page.locator('article.lesson')).toHaveCount(3);
+	await expect(panel.locator('figcaption').first()).toHaveText(twoSumFigure.title);
+	await expect(panel.getByText(`Шаг 1 из ${twoSumFigure.frames.length}`, { exact: true })).toBeVisible();
+	await expect(panel.getByRole('button', { name: 'Запустить', exact: true })).toHaveCount(0);
+	const hide = page.getByRole('button', { name: 'Скрыть разбор', exact: true });
+	await expect(hide).toHaveAttribute('aria-expanded', 'true');
+	await hide.click();
+	await expect(page.locator('article.lesson')).toHaveCount(2);
+	await expect(show).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('opens a direct catalog link and keeps its source separate', async ({ page, context, db }) => {
 	await signIn(page, 'parent');
 	const path = '/leetcode/sets/permutations-and-combinations/problems/cf-1821-a';

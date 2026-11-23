@@ -22,7 +22,8 @@ phases:
     commands:
       - cd backend
       - go vet ./...
-      - go test ./...
+      # The Backend workflow runs the Editorial solutions on each pull request, so the deploy build stays fast.
+      - go test -skip TestEditorialSolutions ./...
       # The Deploy action runs this binary on the same image.
       - go build -o ../build/migrate ./cmd/migrate
       - cd ..

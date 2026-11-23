@@ -73,7 +73,7 @@ const checkSpace = `\t\n\v\f\r\p{Z}\x{FEFF}`
 var (
 	checkSlug         = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 	checkMethod       = regexp.MustCompile(`^[a-z][A-Za-z0-9]*$`)
-	checkFragmentTag  = regexp.MustCompile(`^(?:h2|h3|p|ul|ol|li|table|caption|thead|tbody|tr|th|td|pre|code|strong|em|sup|blockquote|details|summary|a|br|div|figure)$`)
+	checkFragmentTag  = regexp.MustCompile(`^(?:h2|h3|p|ul|ol|li|table|caption|thead|tbody|tr|th|td|pre|code|strong|em|sup|sub|blockquote|details|summary|a|br|div|figure)$`)
 	checkStatementTag = regexp.MustCompile(`^(?:h3|p|ul|ol|li|table|thead|tbody|tr|th|td|pre|code|strong|em|sup|sub)$`)
 	checkTag          = regexp.MustCompile(`<([^` + checkSpace + `/>]+)([^>]*)>`)
 	// The JavaScript pattern is /<([a-z][a-z0-9]*)/gi.
@@ -148,12 +148,14 @@ func checkBadStatement(statement string) bool {
 	})
 }
 
+// checkBadFragment reports HTML with a style or event attribute, or with a div that is not a rule.
+func checkBadFragment(html string) bool {
+	return checkAttribute.MatchString(html) || slices.ContainsFunc(checkDiv.FindAllStringSubmatchIndex(html, -1), func(m []int) bool { return m[2] < 0 })
+}
+
 // checkBadLesson reports a lesson without the lead paragraph first, with a style or event attribute, or with a div that is not a rule.
 func checkBadLesson(lesson string) bool {
-	if !strings.HasPrefix(lesson, `<p class="lead">`) || checkAttribute.MatchString(lesson) {
-		return true
-	}
-	return slices.ContainsFunc(checkDiv.FindAllStringSubmatchIndex(lesson, -1), func(m []int) bool { return m[2] < 0 })
+	return !strings.HasPrefix(lesson, `<p class="lead">`) || checkBadFragment(lesson)
 }
 
 // checkBadRow reports a row without cells, a tree row with pointers or a window, a reversed window, or an index outside the cells.
@@ -181,6 +183,29 @@ func checkBadFigure(figure sets.Figure) bool {
 	return slices.ContainsFunc(figure.Frames, func(frame sets.FigureFrame) bool {
 		return strings.TrimSpace(frame.Caption) == "" || len(frame.Rows) == 0 || slices.ContainsFunc(frame.Rows, checkBadRow)
 	})
+}
+
+// checkFigures returns the figure problems of an HTML text: a figure that is not an empty placeholder on its own line,
+// placeholder IDs that are not the figure IDs in order, and bad figures.
+func checkFigures(html string, figures []sets.Figure) []string {
+	var problems []string
+	if len(checkFigure.FindAllString(html, -1)) != len(checkPlaceholder.FindAllString(html, -1)) {
+		problems = append(problems, "a figure that is not a placeholder")
+	}
+	got, want := []string{}, []string{}
+	for _, m := range checkFigureID.FindAllStringSubmatch(html, -1) {
+		got = append(got, m[1])
+	}
+	for _, figure := range figures {
+		want = append(want, figure.ID)
+		if checkBadFigure(figure) {
+			problems = append(problems, "bad figure "+figure.ID)
+		}
+	}
+	if !slices.Equal(got, want) {
+		problems = append(problems, fmt.Sprintf("figure placeholders %q, want %q", got, want))
+	}
+	return problems
 }
 
 // checkSetContent is the check "$name content". all is the learning sets of the source of the set.
@@ -231,7 +256,7 @@ func checkSetContent(t *testing.T, all []sets.LearningSet, set sets.LearningSet)
 	checkNone(t, "tasks with wrong tests", specs)
 	checkNone(t, "test cases with a wrong input or answer", cases)
 	checkNone(t, "tasks with a wrong statement", statements)
-	var blank, sizes, linkCounts, links, insecure, long, tags, lessons, placeholders, figures []string
+	var blank, sizes, linkCounts, links, insecure, long, tags, lessons, figures []string
 	for i, chapter := range set.Chapters {
 		number := fmt.Sprint(i + 1)
 		if strings.TrimSpace(chapter.Title) == "" || strings.TrimSpace(chapter.Summary) == "" {
@@ -265,22 +290,8 @@ func checkSetContent(t *testing.T, all []sets.LearningSet, set sets.LearningSet)
 		if checkBadLesson(chapter.Lesson) {
 			lessons = append(lessons, number)
 		}
-		// A figure is an empty placeholder on its own line. The placeholders follow the order of chapter.figures.
-		if len(checkFigure.FindAllString(chapter.Lesson, -1)) != len(checkPlaceholder.FindAllString(chapter.Lesson, -1)) {
-			placeholders = append(placeholders, number)
-		}
-		got, want := []string{}, []string{}
-		for _, m := range checkFigureID.FindAllStringSubmatch(chapter.Lesson, -1) {
-			got = append(got, m[1])
-		}
-		for _, figure := range chapter.Figures {
-			want = append(want, figure.ID)
-			if checkBadFigure(figure) {
-				figures = append(figures, figure.ID)
-			}
-		}
-		if !slices.Equal(got, want) {
-			t.Errorf("chapter %d: figure placeholders %q, want %q", i+1, got, want)
+		for _, problem := range checkFigures(chapter.Lesson, chapter.Figures) {
+			figures = append(figures, "chapter "+number+": "+problem)
 		}
 	}
 	checkNone(t, "chapters without a title or a summary", blank)
@@ -291,8 +302,7 @@ func checkSetContent(t *testing.T, all []sets.LearningSet, set sets.LearningSet)
 	checkNone(t, "lessons with 12000 or more characters of text", long)
 	checkNone(t, "lesson tags outside the list", tags)
 	checkNone(t, "chapters with a wrong lesson start, attribute or div", lessons)
-	checkNone(t, "chapters with a figure that is not a placeholder", placeholders)
-	checkNone(t, "bad figures", figures)
+	checkNone(t, "chapter figures", figures)
 }
 
 // checkChapterCosts is the check "$name states problem costs with English topics".
@@ -348,20 +358,20 @@ func checkRussianNames(text string) []string {
 	}
 }
 
-// checkEnglishNames is the check "$name names the data structures in English".
+// checkEnglishNames is the check "$name names the data structures in English". It checks each string of the JSON of the value.
 // Technical names stay English. Ordinary Russian words such as a table row or a line of people remain valid.
-func checkEnglishNames(t *testing.T, set sets.LearningSet) {
+func checkEnglishNames(t *testing.T, value any) {
 	t.Helper()
-	data, err := json.Marshal(set)
+	data, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
+	var decoded any
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatal(err)
 	}
 	var names []string
-	for _, text := range checkStrings(value) {
+	for _, text := range checkStrings(decoded) {
 		names = append(names, checkRussianNames(text)...)
 	}
 	checkNone(t, "Russian names of data structures", names)
