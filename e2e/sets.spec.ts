@@ -66,6 +66,10 @@ const chapters = [
 	{ name: 'prefix sums 2', slug: 'prefix-sums', number: 2, count: 5 },
 	{ name: 'prefix sums 3', slug: 'prefix-sums', number: 3, count: 4 },
 	{ name: 'prefix sums 4', slug: 'prefix-sums', number: 4, count: 4 },
+	{ name: 'binary search 1', slug: 'binary-search', number: 1, count: 4 },
+	{ name: 'binary search 2', slug: 'binary-search', number: 2, count: 5 },
+	{ name: 'binary search 3', slug: 'binary-search', number: 3, count: 5 },
+	{ name: 'binary search 4', slug: 'binary-search', number: 4, count: 5 },
 ];
 for (const item of chapters) {
 	test(`opens every problem internally from ${item.name}`, async ({ page, db }) => {

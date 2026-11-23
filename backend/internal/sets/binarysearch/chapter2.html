@@ -1,0 +1,85 @@
+<p class="lead">Если условие идёт «нет, ..., нет, да, ..., да», Binary Search находит первое «да» за O(log n) проверок.</p>
+<h2 id="s1">1. Условие «нет, ..., нет, да, ..., да»</h2>
+<p>Дан упорядоченный Array <code>a = [1, 3, 3, 3, 5, 8]</code> и x = 3. Проверим условие a[i] ≥ 3 для каждого индекса: нет, да, да, да, да, да. Первое «да» стоит в индексе 1. Условие a[i] &gt; 3 даёт нет, нет, нет, нет, да, да: первое «да» в индексе 4. Между этими индексами стоят все тройки, их 4 − 1 = 3.</p>
+<p>Для x = 9 условие a[i] ≥ 9 не выполняется нигде. Тогда ответ 6 = n: это позиция после конца Array.</p>
+<div class="rule"><p><strong>Правило.</strong> Lower Bound(x) - первый индекс i с a[i] ≥ x. Upper Bound(x) - первый индекс i с a[i] &gt; x. Если такого индекса нет, ответ n. Чисел, равных x, ровно Upper Bound(x) − Lower Bound(x).</p></div>
+<p>Ответ может быть любым из n + 1 мест 0, 1, ..., n. Инвариант: ответ лежит в [lo, hi], сначала lo = 0 и hi = n. При a[mid] ≥ x середина может быть ответом, поэтому hi = mid. Иначе ответ правее: lo = mid + 1. Цикл while lo &lt; hi заканчивается при lo = hi: это и есть ответ.</p>
+<pre><code class="language-python">def lower_bound(a, x):
+    lo, hi = 0, len(a)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &gt;= x:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+a = [1, 3, 3, 3, 5, 8]
+print(lower_bound(a, 3), lower_bound(a, 4), lower_bound(a, 9))</code></pre>
+<p>Программа выводит <code>1 4 6</code>. Поиск 3 делает 3 проверки:</p>
+<table><caption>Lower Bound(3): каждая строка - одна проверка</caption><thead><tr><th>lo</th><th>hi</th><th>mid</th><th>a[mid]</th><th>Решение</th></tr></thead><tbody><tr><td>0</td><td>6</td><td>3</td><td>3</td><td>3 ≥ 3: hi = 3</td></tr><tr><td>0</td><td>3</td><td>1</td><td>3</td><td>3 ≥ 3: hi = 1</td></tr><tr><td>0</td><td>1</td><td>0</td><td>1</td><td>1 &lt; 3: lo = 1</td></tr></tbody></table>
+<p>Теперь lo = hi = 1: ответ 1. Для x = 4 первое число ≥ 4 - это 5 в индексе 4. Для x = 9 ответ 6.</p>
+<figure data-figure="bs2-lower"></figure>
+<p>Upper Bound - тот же цикл с условием <code>a[mid] &gt; x</code>. Для x = 3: mid = 3 (3 &gt; 3 неверно, lo = 4), mid = 5 (8 &gt; 3, hi = 5), mid = 4 (5 &gt; 3, hi = 4). Ответ 4, и троек 4 − 1 = 3.</p>
+<p>Цикл главы 1 выбрасывает mid после проверки и идёт, пока lo ≤ hi. Здесь mid с «да» ещё может быть ответом, поэтому hi = mid, а не mid − 1. Отрезок всё равно становится короче: из lo &lt; hi следует mid &lt; hi.</p>
+<p><strong>Время:</strong> длина hi − lo каждый раз уменьшается не меньше чем вдвое, поэтому проверок не больше ⌊log₂ n⌋ + 1. Для n = 6 это 3, для n = 10⁵ это 17. <strong>Дополнительная память:</strong> O(1): числа lo, hi и mid.</p>
+<h2 id="s2">2. Модуль bisect</h2>
+<p>В Python этот цикл уже есть в модуле bisect. Для того же a: <code>bisect_left(a, 3)</code> = 1, <code>bisect_right(a, 3)</code> = 4. Чисел от 2 до 5: <code>bisect_right(a, 5) - bisect_left(a, 2)</code> = 5 − 1 = 4, это 3, 3, 3 и 5. Числа 4 в a нет: оба вызова дают 4, место для вставки.</p>
+<pre><code class="language-python">from bisect import bisect_left, bisect_right
+
+a = [1, 3, 3, 3, 5, 8]
+print(bisect_left(a, 3), bisect_right(a, 3))
+print(bisect_right(a, 3) - bisect_left(a, 3))
+print(bisect_right(a, 5) - bisect_left(a, 2))
+print(bisect_left(a, 4), bisect_right(a, 4))</code></pre>
+<p>Программа выводит четыре строки: <code>1 4</code>, <code>3</code>, <code>4</code> и <code>4 4</code>.</p>
+<div class="rule"><p><strong>Правило.</strong> bisect_left(a, x) - это Lower Bound, bisect_right(a, x) - это Upper Bound. Чисел в отрезке от L до R: bisect_right(a, R) − bisect_left(a, L). Если x нет в a, оба вызова дают одно место: туда x можно вставить.</p></div>
+<p>LeetCode 35 просит место вставки: это bisect_left. Для [1, 3, 5, 6] и target = 2 ответ 1: 3 - первое число ≥ 2. Для target = 7 ответ 4 = n, место после конца. LeetCode 34 просит первое и последнее вхождение: [bisect_left, bisect_right − 1], если bisect_left &lt; bisect_right, иначе [−1, −1]. Для [5, 7, 7, 8, 8, 10] и 8: bisect_left = 3, bisect_right = 5, ответ [3, 4].</p>
+<p>Можно найти одно вхождение поиском из главы 1 и шагать от него влево и вправо. На Array из одинаковых чисел это O(n): для 10⁵ семёрок около 10⁵ шагов. Два вызова bisect делают не больше 2 · 17 = 34 проверок.</p>
+<p><strong>Время:</strong> каждый вызов bisect делает не больше ⌊log₂ n⌋ + 1 сравнений, O(log n). Цикл bisect написан на C, поэтому одна проверка быстрее, чем в своём цикле, но их число то же. <strong>Дополнительная память:</strong> O(1).</p>
+<h2 id="s3">3. Много запросов: сначала Sorting</h2>
+<p>Codeforces 706B: цены в магазинах <code>x = [3, 10, 8, 6, 11]</code>, деньги по дням m = 1, 10, 3, 11. Для каждого дня нужно число магазинов с ценой ≤ m. После Sorting <code>x = [3, 6, 8, 10, 11]</code>. Условие x[i] &gt; m идёт «нет, ..., да», и его первое «да» - это bisect_right(x, m). Магазинов с ценой ≤ m: 0, 4, 1, 5.</p>
+<figure data-figure="bs2-queries"></figure>
+<pre><code class="language-python">from bisect import bisect_right
+
+x = sorted([3, 10, 8, 6, 11])
+print(x)
+print([bisect_right(x, m) for m in [1, 10, 3, 11]])</code></pre>
+<p>Программа выводит <code>[3, 6, 8, 10, 11]</code> и <code>[0, 4, 1, 5]</code>. Для «не больше m» нужен bisect_right. bisect_left(x, 10) = 3 не считает магазин с ценой ровно 10.</p>
+<div class="rule"><p><strong>Правило.</strong> В упорядоченном x число цен ≤ m равно bisect_right(x, m): Upper Bound стоит сразу после последней подходящей цены. Каждый день - отдельный поиск, порядок дней менять не нужно.</p></div>
+<p>LeetCode 2300 сводится к той же форме. Пара успешна, если spell · potion ≥ success, то есть potion ≥ ⌈success / spell⌉. ⌈a / b⌉ - деление с округлением вверх: ⌈7 / 2⌉ = 4, ⌈8 / 2⌉ = 4. В Python ⌈a / b⌉ = <code>(a + b - 1) // b</code>. Подходящих зелий len(potions) − bisect_left(potions, need), где need = ⌈success / spell⌉.</p>
+<p>Частая ошибка - need = success // spell без округления вверх. Для success = 10 и spell = 4 это 2, но 4 · 2 = 8 &lt; 10: зелье силы 2 лишнее. Верно ⌈10 / 4⌉ = 3.</p>
+<p>Пример: <code>potions = [1, 2, 3, 4, 5]</code>, success = 7. Для spell = 5: need = 2, bisect_left = 1, ответ 5 − 1 = 4. Для spell = 1: need = 7, ответ 0. Для spell = 3: need = 3, bisect_left = 2, ответ 3. Итог [4, 0, 3].</p>
+<p><strong>Время:</strong> O(n log n + q log n): одна Sorting и q поисков по ⌊log₂ n⌋ + 1 проверок. В примере n = 5, q = 4: не больше 4 · 3 = 12 проверок. Сравнение с Linear Scan для n = q = 10⁵ есть в разделе 4 главы 1. Выводите 10⁵ ответов одним <code>print("\n".join(...))</code>: это быстрее, чем 10⁵ вызовов print. <strong>Дополнительная память:</strong> копия sorted(x) из n ссылок; ответ отдельно, q чисел.</p>
+<details><summary>Счётчик цен вместо Sorting</summary><p>В задаче 706B цены не больше V = 10⁵. Посчитаем cnt[v], число магазинов с ценой v, и Prefix Sum по значениям: c[v] = cnt[1] + ... + cnt[v], это число цен ≤ v. Ответ дня - c[min(m, 10⁵)], O(1) на день. Время O(n + q + V), дополнительная память O(V). Этот способ требует малого диапазона значений, а Binary Search его не требует.</p></details>
+<h2 id="s4">4. Prefix Sum и Binary Search: в какой горке червяк</h2>
+<p>Codeforces 474B: горки червяков <code>a = [2, 7, 3, 4, 9]</code>. Каждый червяк получил метку, свой номер: в первой горке номера 1..2, во второй 3..9 и так далее. Prefix Sum <code>p = [2, 9, 12, 16, 25]</code>: p[i] - номер последнего червяка в горке i + 1. Как строить Prefix Sum, рассказывает набор «Prefix Sum».</p>
+<p>Червяк q лежит в первой горке, где p[i] ≥ q. Метка 1 в горке 1, метка 25 в горке 5, метка 11 в горке 3. Метка 9 в горке 2: это последний червяк горки 2. Метка 10 в горке 3.</p>
+<pre><code class="language-python">from bisect import bisect_left
+from itertools import accumulate
+
+a = [2, 7, 3, 4, 9]
+p = list(accumulate(a))
+print(p)
+print([bisect_left(p, q) + 1 for q in [1, 25, 11, 9, 10]])</code></pre>
+<p>Программа выводит <code>[2, 9, 12, 16, 25]</code> и <code>[1, 5, 3, 2, 3]</code>.</p>
+<figure data-figure="bs2-worms"></figure>
+<div class="rule"><p><strong>Правило.</strong> Если все числа положительные, Prefix Sum строго растёт. Метка q лежит в горке с индексом i = bisect_left(p, q): это первый индекс с p[i] ≥ q. Номер этой горки i + 1.</p></div>
+<p>bisect_right ошибается на последнем червяке горки: bisect_right(p, 9) = 2, и метка 9 попала бы в горку 3.</p>
+<p><strong>Время:</strong> O(n) на p и O(log n) на каждый из m вопросов, всего O(n + m log n). Проход по горкам для каждого вопроса дал бы O(nm), 10¹⁰ при n = m = 10⁵. Лимит: 2 с на пример и 3 с на скрытый тест, поэтому такой проход не успеет. <strong>Дополнительная память:</strong> O(n) для p, ответы отдельно.</p>
+<details><summary>Array владельцев</summary><p>Можно записать горку каждого червяка: owner[q] - номер горки метки q. Тогда ответ на вопрос стоит O(1). Но в owner S = a₁ + ... + aₙ записей, S ≤ 10⁶. Это O(S) времени и памяти: до миллиона записей против n записей p.</p></details>
+<h2 id="s5">5. Что нужно запомнить</h2>
+<ul>
+<li>Lower Bound ищет первое a[i] ≥ x, Upper Bound первое a[i] &gt; x; ответ n значит «нигде».</li>
+<li>Шаблон: hi = len(a), while lo &lt; hi, при «да» hi = mid, иначе lo = mid + 1.</li>
+<li>bisect_left и bisect_right заменяют этот цикл; для «≤ m» берите bisect_right.</li>
+<li>Много запросов: одна Sorting, затем O(log n) на запрос.</li>
+</ul>
+<h2 id="s6">6. Как решать задачи этой главы</h2>
+<ol>
+<li>Сформулируйте условие так, чтобы оно шло «нет, ..., да».</li>
+<li>Решите, нужен ≥ (Lower Bound) или &gt; (Upper Bound).</li>
+<li>Проверьте ответ n: условие нигде не выполнено.</li>
+<li>Если данные не упорядочены, упорядочите их один раз и посчитайте эту цену.</li>
+<li>Посчитайте время всех запросов и память копии и ответа.</li>
+</ol>

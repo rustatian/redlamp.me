@@ -430,6 +430,10 @@ func TestQuizDecks(t *testing.T) {
 		map[string]any{"slug": "prefix-sums-2", "title": "Prefix Sum и Difference Array, глава 2", "chapter": map[string]any{"set": "prefix-sums", "setTitle": "Prefix Sum и Difference Array", "number": 2, "title": "Prefix Sum и Hash Table"}, "cardCount": 7, "best": nil, "bestTotal": nil, "nextAt": nil},
 		map[string]any{"slug": "prefix-sums-3", "title": "Prefix Sum и Difference Array, глава 3", "chapter": map[string]any{"set": "prefix-sums", "setTitle": "Prefix Sum и Difference Array", "number": 3, "title": "Difference Array"}, "cardCount": 7, "best": nil, "bestTotal": nil, "nextAt": nil},
 		map[string]any{"slug": "prefix-sums-4", "title": "Prefix Sum и Difference Array, глава 4", "chapter": map[string]any{"set": "prefix-sums", "setTitle": "Prefix Sum и Difference Array", "number": 4, "title": "Prefix Sum на Matrix"}, "cardCount": 8, "best": nil, "bestTotal": nil, "nextAt": nil},
+		map[string]any{"slug": "binary-search-1", "title": "Binary Search, глава 1", "chapter": map[string]any{"set": "binary-search", "setTitle": "Binary Search", "number": 1, "title": "Binary Search в упорядоченном Array"}, "cardCount": 8, "best": nil, "bestTotal": nil, "nextAt": nil},
+		map[string]any{"slug": "binary-search-2", "title": "Binary Search, глава 2", "chapter": map[string]any{"set": "binary-search", "setTitle": "Binary Search", "number": 2, "title": "Lower Bound, Upper Bound и bisect"}, "cardCount": 8, "best": nil, "bestTotal": nil, "nextAt": nil},
+		map[string]any{"slug": "binary-search-3", "title": "Binary Search, глава 3", "chapter": map[string]any{"set": "binary-search", "setTitle": "Binary Search", "number": 3, "title": "Binary Search по ответу"}, "cardCount": 8, "best": nil, "bestTotal": nil, "nextAt": nil},
+		map[string]any{"slug": "binary-search-4", "title": "Binary Search, глава 4", "chapter": map[string]any{"set": "binary-search", "setTitle": "Binary Search", "number": 4, "title": "Необычный порядок: гора, повёрнутый Array, Matrix"}, "cardCount": 8, "best": nil, "bestTotal": nil, "nextAt": nil},
 	}
 	reviewsEqualJSON(t, decode[any](t, request(t, s, "/quiz", http.MethodGet, nil, student)), want)
 }
