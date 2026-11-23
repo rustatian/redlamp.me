@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { hasWork, type Approach, type Attempt, type AttemptSummary, type ChapterRef, type DraftValue, type Feedback, type Figure, type HomeworkTask, type Judgement, type Page, type Problem, type ProblemTests, type SessionUser, type TestRun } from '../shared/leetcode';
+import { hasWork, type Approach, type Attempt, type AttemptSummary, type ChapterRef, type DraftValue, type Editorial, type Feedback, type Figure, type HomeworkTask, type Judgement, type Page, type Problem, type ProblemTests, type SessionUser, type TestRun } from '../shared/leetcode';
 import { api, ApiError, message } from './api';
 import { useResource } from './useResource';
 import { useDraft, type LeaveGuard, type RegisterGuard } from './useDraft';
 import { difficultyLabels, ProblemForm } from './Problems';
 import { homeworkLabels } from './Homework';
 import { Materials } from './Materials';
-import { Lesson } from './Sets';
+import { EditorialPanel, Lesson } from './Sets';
 import { CodeField } from './Code';
 import { Tutor } from './Tutor';
 import { Dictation } from './Dictation';
@@ -119,7 +119,7 @@ export function Workspace({ problemId: id, user, registerGuard }: { problemId: s
 	const reviews = useResource<Page<Feedback>>(task ? `/problems/${id}/feedback` : null, task?.version);
 	const chapter = useResource<{ chapters: ChapterRef[] }>(`/problems/${id}/sets`).data?.chapters[0];
 	const lesson = useResource<{ html: string; figures: Figure[] }>(chapter ? `/sets/${chapter.set}/lesson/${chapter.number}` : null);
-	const statement = useResource<{ html: string | null; text: string | null }>(`/problems/${id}/statement`).data;
+	const statement = useResource<{ html: string | null; text: string | null; editorial: Editorial | null }>(`/problems/${id}/statement`).data;
 	// Parent review shows the submitted attempt. Completed tasks show the newest notes.
 	const [work, setWork] = useState<string>(), latest = attempts.data?.items[0];
 	const parentAttemptId = tasks.data && (task?.state === 'submitted' ? task.submissionAttemptId : latest?.id), attemptId = student ? work : parentAttemptId;
@@ -167,6 +167,7 @@ export function Workspace({ problemId: id, user, registerGuard }: { problemId: s
 			<div className="row"><a href={record.url} target="_blank" rel="noopener noreferrer">{record.slug.startsWith('cf-') ? 'Codeforces' : 'LeetCode'} ↗</a>{student && <Tutor context={{ kind: 'problem', id: record.id }} title={record.title} flush={() => guard.current?.flush()} lesson={chapterPane && current.data ? article : undefined} evaluate={Boolean(code.trim())} />}<button onClick={() => setEditing(true)} data-tip="Открыть форму изменения задачи.">Изменить задачу</button>{user.role === 'parent' && active && <button disabled={busy} onClick={() => { if (confirm('Отменить это задание?')) void act('cancel'); }} data-tip="Отменить это задание домашней работы.">Отменить задание</button>}</div></div>
 		{/* The statement HTML comes from the set files of the repository, not from a user. */}
 		{statement?.html ? <Lesson html={statement.html} ref={statementRoot} /> : statement && (statement.text ?? record.summary) && <p className="prose">{statement.text ?? record.summary}</p>}
+		{statement?.editorial && <EditorialPanel editorial={statement.editorial} />}
 		{task?.instructions && <p className="prose">{task.instructions}</p>}
 		{review && <p className="notice">{review.kind === 'completed' ? 'Завершено' : 'Нужны правки'}{review.body && `: ${review.body}`}</p>}
 		<div className="row"><a href={`/leetcode/problems/${record.id}/review`}>Повторить задачу</a>{record.archivedAt ? <button onClick={restore} data-tip="Вернуть задачу в список задач.">Вернуть из архива</button> : !active && <button onClick={archive} data-tip="Убрать задачу в архив.">В архив</button>}</div>

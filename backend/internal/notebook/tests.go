@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/rustatian/redlamp.me/backend/internal/editorials"
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
@@ -274,11 +275,16 @@ func (s *Server) handleStatement(w http.ResponseWriter, r *http.Request, _ *Sess
 		return true, err
 	}
 	var statement struct {
-		HTML *string `json:"html"`
-		Text *string `json:"text"`
+		HTML      *string               `json:"html"`
+		Text      *string               `json:"text"`
+		Editorial *editorials.Editorial `json:"editorial"`
 	}
+	// Only a set task gets its Editorial here. A bank Editorial opens only on the page of a finished contest problem.
 	if task, ok := s.setTask(problem.Slug); ok && task.Statement != "" {
 		statement.HTML = &task.Statement
+		if editorial, ok := s.editorials[problem.Slug]; ok {
+			statement.Editorial = &editorial
+		}
 	} else if !strings.HasPrefix(problem.Slug, "cf-") {
 		if content := s.leetcodeContent(r.Context(), problem.Slug); content != "" {
 			plain := htmlText(content)

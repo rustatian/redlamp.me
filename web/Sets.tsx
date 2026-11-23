@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import type { Figure, HomeworkTask, LearningSetDetails, LearningSetSummary, Page, Problem, SessionUser, SetTask } from '../shared/leetcode';
+import type { Editorial, Figure, HomeworkTask, LearningSetDetails, LearningSetSummary, Page, Problem, SessionUser, SetTask } from '../shared/leetcode';
 import { api, message } from './api';
 import { useResource } from './useResource';
 import { highlight } from './highlight';
@@ -89,6 +89,15 @@ export function Lesson({ html, figures, ref }: { html: string; figures?: Figure[
 		setExercises([...ref.current?.querySelectorAll<HTMLElement>('[data-exercise]') ?? []]);
 	}, [html, figures]);
 	return <><article className="lesson" ref={ref} dangerouslySetInnerHTML={{ __html: html }} />{slots.map(([figure, slot]) => createPortal(<LessonFigure figure={figure} />, slot, figure.id))}{samples.map(([code, pre], index) => createPortal(<Sample code={code} />, pre, `sample-${index}`))}{exercises.map(slot => createPortal(<Exercise data={slot.dataset} />, slot, slot.dataset.exercise))}</>;
+}
+
+// The Editorial renders only after the press, so a closed panel adds no article.lesson and no term tips to the page.
+export function EditorialPanel({ editorial }: { editorial: Editorial }) {
+	const [open, setOpen] = useState(false), root = useRef<HTMLElement>(null);
+	return <section className="stack">
+		<div className="row"><button type="button" aria-expanded={open} onClick={() => setOpen(!open)} data-tip={open ? 'Скрыть решения задачи.' : 'Показать решения задачи с объяснением.'}>{open ? 'Скрыть разбор' : 'Показать разбор'}</button></div>
+		{open && <><h2>Разбор</h2><Lesson html={editorial.html} figures={editorial.figures} ref={root} /></>}
+	</section>;
 }
 
 function Exercise({ data }: { data: DOMStringMap }) {

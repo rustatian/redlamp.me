@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { expect, it } from 'vitest';
 import { glossary, splitTerms } from '../shared/glossary';
 import content from '../backend/internal/sets/settest/sets.json';
@@ -97,6 +98,12 @@ it.each(sets.map(item => ({ name: item.slug, item })))('$name hard words have a 
 		...chapter.cards.flatMap(card => [[`${card.id} prompt`, card.prompt], [`${card.id} explain`, card.explain]]),
 	])];
 	expect(texts.flatMap(([place, text]) => untipped(text, patterns).map(word => `${place}: ${word}`))).toEqual([]);
+});
+
+// The Editorials are repository files in backend/internal/editorials.
+const editorials = import.meta.glob<string>('../backend/internal/editorials/*.html', { query: '?raw', import: 'default', eager: true });
+it.each(Object.entries(editorials).map(([file, html]) => ({ name: file.replace(/^.*\/|\.html$/g, ''), html })))('$name hard words have a tip', ({ html }) => {
+	expect(untipped(prose(html), glossary.map(entry => entry.pattern))).toEqual([]);
 });
 
 it('each tip is plain', () => {

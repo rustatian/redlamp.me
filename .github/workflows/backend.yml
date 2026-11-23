@@ -5,11 +5,13 @@ on:
     paths:
       - backend/**
       - shared/answers.cases.json
+      - web/harness.py
       - .github/workflows/backend.yml
   pull_request:
     paths:
       - backend/**
       - shared/answers.cases.json
+      - web/harness.py
       - .github/workflows/backend.yml
 
 permissions:
@@ -40,15 +42,34 @@ jobs:
           --health-retries 15
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@v7.0.0
+      - uses: actions/setup-go@v7.1.0
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
       - run: go vet ./...
-      - run: go test ./...
+      # The job editorials runs the Editorial solutions.
+      - run: go test -skip TestEditorialSolutions ./...
         env:
           TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
       - uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: v2.15.0
           working-directory: backend
+
+  editorials:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.1.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      # Pyodide 314.0.8 of the browser runs Python 3.14.
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.14'
+      - run: go test -count=1 -run TestEditorialSolutions ./internal/editorials

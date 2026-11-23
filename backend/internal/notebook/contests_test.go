@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/rustatian/redlamp.me/backend/internal/bank"
+	"github.com/rustatian/redlamp.me/backend/internal/editorials"
+	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
 // The expected values follow the rules of the contests: easy 800, medium 900 to 1100, hard 1200;
@@ -36,6 +38,16 @@ var contestBank = []bank.Problem{
 	{Slug: "cf-105-c", Title: "Medium Three", Rating: 1100, Topics: []string{"Math"}},
 	{Slug: "cf-106-d", Title: "Hard One", Rating: 1200, Topics: []string{"Dynamic Programming", "Math"}},
 }
+
+// contestEditorial is the Editorial of cf-101-a. contestEditorialBody is its JSON in the problem view.
+var (
+	contestEditorial = editorials.Editorial{HTML: "<p>Разбор задачи.</p>", Figures: []sets.Figure{{ID: "answer", Title: "Ответ", Frames: []sets.FigureFrame{
+		{Caption: "Ответ 1.", Rows: []sets.FigureRow{{Cells: []any{1}, Marked: []int{0}}}},
+	}}}}
+	contestEditorialBody = map[string]any{"html": "<p>Разбор задачи.</p>", "figures": []any{map[string]any{"id": "answer", "title": "Ответ", "frames": []any{
+		map[string]any{"caption": "Ответ 1.", "rows": []any{map[string]any{"cells": []any{1}, "marked": []any{0}}}},
+	}}}}
+)
 
 // contestSeed is a contest that a test writes with SQL. start is the time from contestNow to the start of the contest.
 type contestSeed struct {
@@ -80,11 +92,12 @@ func seedContests(t *testing.T, pool *pgxpool.Pool, contests ...contestSeed) {
 	}
 }
 
-// contestServer returns an empty database and a server with contestBank and the clock contestNow.
+// contestServer returns an empty database and a server with contestBank, the Editorial of cf-101-a and the clock contestNow.
 func contestServer(t *testing.T) (*pgxpool.Pool, *Server) {
 	t.Helper()
 	pool := database(t)
 	s := newServerWithBank(t, pool, contestBank)
+	s.editorials = map[string]editorials.Editorial{"cf-101-a": contestEditorial}
 	s.now = func() time.Time { return contestNow }
 	return pool, s
 }
@@ -554,7 +567,7 @@ func TestContestSubmission(t *testing.T) {
 			name: "problem view before the end", contests: active(easy), role: "parent", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
 			wantBody: map[string]any{
 				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": "<p>Выведите ответ.</p>", "ignoreCase": true,
-				"examples": []map[string]any{{"input": "1\n", "output": "1\n"}}, "code": "", "solved": false, "submissions": []any{}, "url": nil,
+				"examples": []map[string]any{{"input": "1\n", "output": "1\n"}}, "code": "", "solved": false, "submissions": []any{}, "url": nil, "editorial": nil,
 				"endsAt": "2026-11-20T13:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
 			},
 		},
@@ -565,7 +578,25 @@ func TestContestSubmission(t *testing.T) {
 			method:     http.MethodGet,
 			path:       "/problems/1",
 			wantStatus: http.StatusOK,
-			wantView:   map[string]any{"url": "https://codeforces.com/problemset/problem/101/A"},
+			wantView:   map[string]any{"url": "https://codeforces.com/problemset/problem/101/A", "editorial": contestEditorialBody},
+		},
+		{
+			name: "no Editorial one millisecond before the end", contests: []contestSeed{{start: -(90*time.Minute - time.Millisecond), problems: []problemSeed{easy}}}, role: "parent", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
+			wantBody: map[string]any{
+				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": "<p>Выведите ответ.</p>", "ignoreCase": true,
+				"examples": []map[string]any{{"input": "1\n", "output": "1\n"}}, "code": "", "solved": false, "submissions": []any{}, "url": nil, "editorial": nil,
+				"endsAt": "2026-11-20T12:00:00.001Z", "now": "2026-11-20T12:00:00.000Z",
+			},
+			wantView: map[string]any{"url": nil, "editorial": nil},
+		},
+		{
+			name: "Editorial at the end", contests: []contestSeed{{start: -90 * time.Minute, problems: []problemSeed{easy}}}, role: "parent", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
+			wantBody: map[string]any{
+				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": "<p>Выведите ответ.</p>", "ignoreCase": true,
+				"examples": []map[string]any{{"input": "1\n", "output": "1\n"}}, "code": "", "solved": false, "submissions": []any{}, "url": "https://codeforces.com/problemset/problem/101/A", "editorial": contestEditorialBody,
+				"endsAt": "2026-11-20T12:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
+			},
+			wantView: map[string]any{"url": "https://codeforces.com/problemset/problem/101/A", "editorial": contestEditorialBody},
 		},
 		{name: "check gives the hidden inputs", contests: active(easy), role: "student", method: http.MethodPost, path: "/problems/1/check", wantStatus: http.StatusOK, wantBody: map[string]any{"inputs": []string{"hidden-input-7731\n", "2\n"}}},
 		{
@@ -625,7 +656,7 @@ func TestContestSubmission(t *testing.T) {
 			name: "removed problem", contests: active(removed), role: "student", method: http.MethodGet, path: "/problems/1", wantStatus: http.StatusOK,
 			wantBody: map[string]any{
 				"position": 1, "title": "Problem 1", "difficulty": "easy", "points": 3, "topic": "Math", "statement": nil, "ignoreCase": false,
-				"examples": []any{}, "code": "", "solved": false, "submissions": []any{}, "url": nil, "endsAt": "2026-11-20T13:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
+				"examples": []any{}, "code": "", "solved": false, "submissions": []any{}, "url": nil, "editorial": nil, "endsAt": "2026-11-20T13:00:00.000Z", "now": "2026-11-20T12:00:00.000Z",
 			},
 		},
 		{name: "check of a removed problem", contests: active(removed), role: "student", method: http.MethodPost, path: "/problems/1/check", wantStatus: http.StatusNotFound, wantCode: "problem_removed"},

@@ -14,6 +14,7 @@ import (
 
 	"github.com/rustatian/redlamp.me/backend/internal/answers"
 	"github.com/rustatian/redlamp.me/backend/internal/bank"
+	"github.com/rustatian/redlamp.me/backend/internal/editorials"
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 )
 
@@ -85,22 +86,23 @@ type contestSubmission struct {
 }
 
 // contestProblemView is a contest problem with its statement, the last code and the submissions in the form of the API.
-// Statement is null and Examples is empty for a problem that is not in the bank. URL is null while the contest is active. Now is the server time.
+// Statement is null and Examples is empty for a problem that is not in the bank. URL and Editorial are null while the contest is active. Now is the server time.
 type contestProblemView struct {
-	Position    int                 `json:"position"`
-	Title       string              `json:"title"`
-	Difficulty  string              `json:"difficulty"`
-	Points      int                 `json:"points"`
-	Topic       string              `json:"topic"`
-	Statement   *string             `json:"statement"`
-	IgnoreCase  bool                `json:"ignoreCase"`
-	Examples    []bank.Test         `json:"examples"`
-	Code        string              `json:"code"`
-	Solved      bool                `json:"solved"`
-	Submissions []contestSubmission `json:"submissions"`
-	URL         *string             `json:"url"`
-	EndsAt      string              `json:"endsAt"`
-	Now         string              `json:"now"`
+	Position    int                   `json:"position"`
+	Title       string                `json:"title"`
+	Difficulty  string                `json:"difficulty"`
+	Points      int                   `json:"points"`
+	Topic       string                `json:"topic"`
+	Statement   *string               `json:"statement"`
+	IgnoreCase  bool                  `json:"ignoreCase"`
+	Examples    []bank.Test           `json:"examples"`
+	Code        string                `json:"code"`
+	Solved      bool                  `json:"solved"`
+	Submissions []contestSubmission   `json:"submissions"`
+	URL         *string               `json:"url"`
+	Editorial   *editorials.Editorial `json:"editorial"`
+	EndsAt      string                `json:"endsAt"`
+	Now         string                `json:"now"`
 }
 
 var contestsPath = regexp.MustCompile(`^/leetcode/api/contests(?:/([^/]+)(?:/problems/([1-4])(?:/(code|check|submissions))?)?)?$`)
@@ -271,6 +273,9 @@ func (s *Server) contestProblemRoute(w http.ResponseWriter, r *http.Request, use
 	if !active {
 		url := sets.URL(slug)
 		view.URL = &url
+		if editorial, ok := s.editorials[slug]; ok {
+			view.Editorial = &editorial
+		}
 	}
 	return writeJSON(w, r, http.StatusOK, view)
 }

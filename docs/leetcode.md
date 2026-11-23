@@ -90,6 +90,7 @@ A local server has no speech service, so dictation answers "Распознава
 - The **Homework** page shows the tasks of all homework in three sections. **В процессе** has the active tasks of the homework with the earliest due date. **Будущее** has the active tasks of the other homework, by due date. **Принятое** has the completed tasks, with the newest first. The page does not show cancelled tasks.
 - In **Принятое**, use **Распределить повторения на 30 дней**. Each problem of a completed task gets a random review date from tomorrow to 30 days after today. Two problems get the same date only when there are more than 30 problems. A problem with a review date in this period keeps its date. On the review date, **Today** shows the problem in **Пора повторить**. The link opens the recall page of a pick, so the student solves the problem again without the saved work.
 - The parent can link learning sets to problems and homework in **Materials**. **Materials** also shows the set chapters that contain the problem. For homework, it shows assigned chapters and the chapters of its problems and quizzes.
+- A task of a learning set can have an Editorial: its solutions with their explanations and figures. Then the problem page shows **Показать разбор** under the statement. The press opens the panel **Разбор**, and **Скрыть разбор** closes it. Both roles see the button. See [Editorials](#editorials).
 - A problem task opens the problem page. The page shows the homework, the due date, the review state, and the newest attempt. As the student, open a task from **Today** or the homework page. **Решено** submits the attempt for review. The parent can request another attempt or complete the task. An attempt that passes the hidden tests completes the task. The parent can still return a completed problem task.
 - A red dot before a homework or a task shows a message or a review decision from the other account that you did not read. Open the discussion of the task or the problem to remove the dot.
 - Use **Recall this problem** to practise before revealing saved work. Record the result. Choose the next review date. When revealing saved work, use **Старые попытки** and **Новые попытки** to page through the saved attempts.
@@ -123,7 +124,7 @@ The **Квиз** page shows one deck for each chapter. An attempt answers all ca
 A learning set is a Go package in `backend/internal/sets/<name>/`. The model of a set is in `backend/internal/sets/model.go`. To add a set:
 
 1. Create the folder `backend/internal/sets/<name>/`. A Go package name has no dashes, so the folder name can be different from the slug of the set, for example `twopointers` for `two-pointers`. Use lowercase letters, digits, and dashes in the slug.
-2. Write `chapter<N>.html` for each chapter as an HTML fragment. The chapter page inserts it without changes. Start with `<p class="lead">` and one sentence. Then write sections that start with `<h2 id="sN">`. Use only these elements: `h2 h3 p ul ol li table caption thead tbody tr th td pre code strong em sup blockquote details summary a br figure`, and `<div class="rule">` for a rule. Put a picture as `<figure data-figure="<id>"></figure>` on its own line. Do not use scripts, styles, `style` attributes or event attributes. Write code blocks as `<pre><code class="language-python">`. Write a hint as `<details><summary>Подсказка 1</summary>...</details>`. Give external links `target="_blank" rel="noopener noreferrer"`.
+2. Write `chapter<N>.html` for each chapter as an HTML fragment. The chapter page inserts it without changes. Start with `<p class="lead">` and one sentence. Then write sections that start with `<h2 id="sN">`. Use only these elements: `h2 h3 p ul ol li table caption thead tbody tr th td pre code strong em sup sub blockquote details summary a br figure`, and `<div class="rule">` for a rule. Put a picture as `<figure data-figure="<id>"></figure>` on its own line. Do not use scripts, styles, `style` attributes or event attributes. Write code blocks as `<pre><code class="language-python">`. Write a hint as `<details><summary>Подсказка 1</summary>...</details>`. Give external links `target="_blank" rel="noopener noreferrer"`.
 3. Write `set.go`. Embed each lesson with `//go:embed chapter<N>.html` in a `string` variable. Export `var Set = sets.LearningSet{...}` with the `Slug`, `Title`, `Summary`, `Topics` and `Chapters` of the set, with the chapters in reading order. Give each chapter a `Title`, a `Summary`, its `Lesson`, `Tasks`, `Cards`, `Links` and `Figures`. For each task, give the problem `URL` on LeetCode or Codeforces, its `Number`, `Title`, `Difficulty`, `Topics`, `Note` and `Statement`, and the standard tests in `Tests`. Do not change the slug of a published set. The quiz attempts keep the deck as `<set slug>-<chapter number>`.
 4. Describe each picture in `Figures` of its chapter, in the order of the placeholders in the lesson. A figure has an ID, a Russian title and one or more frames. A frame has a Russian caption and rows of cells. A row can have a label, marked cells, dimmed cells, pointers under the cells and a window bracket. A row with `Tree: true` draws its cells as a binary tree in `heapq` order: the children of place i are places 2i + 1 and 2i + 2. An empty string is an empty place. A tree row has no pointers and no window. A marked cell is a cell that the step works on. A dimmed cell holds a value that a move removed. Do not show a pointer that is past the end of its row. Say in the caption where that pointer is. Make each frame from a trace of the algorithm on the numbers of the picture.
 5. Write `solutions.go`. Export `var References = map[string]sets.Reference{...}` with a reference solution for each task, by task slug. A `call` reference has `Arity` and `Call`, and `Call` returns the value that the tests compare. The arguments and the result of `Call` are Python values of the package `answers`: make the result from a Go number or a Go slice with `sets.Py`. A `stdio` reference has `Stdio`, and `Stdio` returns the standard output. First check the constraints of the statement with the helpers in `backend/internal/sets/constraints.go`, for example `sets.Int`, `sets.Ints` and `sets.NewReader`. A failed check panics with `sets.ErrConstraints` from `backend/internal/sets/reference.go`. The references stay on the server, so the student cannot read them.
@@ -137,7 +138,8 @@ A learning set is a Go package in `backend/internal/sets/<name>/`. The model of 
    ```
 
 10. Each chapter has one quiz deck. Add the decks of the new chapters to the expected list of `TestQuizDecks` in `backend/internal/notebook/quiz_test.go`. Increase the deck count in `e2e/quiz.spec.ts`.
-11. Run the checks, see [Checks](#checks). In `backend/`, `go test ./...` runs the content checks of `backend/internal/notebook/content_checks_test.go` and `backend/internal/notebook/sets_references_test.go`. They check content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, English technical names, problem cost notes, and reference answers. `bun run test` checks the glossary coverage. `bun run test:browser` checks executable lesson outputs, figures, and navigation.
+11. Write the Editorial of each new task, see [Editorials](#editorials).
+12. Run the checks, see [Checks](#checks). In `backend/`, `go test ./...` runs the content checks of `backend/internal/notebook/content_checks_test.go` and `backend/internal/notebook/sets_references_test.go`. They check content identities, problem counts, links, lesson size and format, figure placeholders and indexes, quiz cards, English technical names, problem cost notes, and reference answers. `go test ./...` also runs the checks of the Editorials. `bun run test` checks the glossary coverage. `bun run test:browser` checks executable lesson outputs, figures, and navigation.
 
 The file `backend/internal/sets/settest/references.json` has recorded hidden tests of earlier tasks. A task without recorded hidden tests needs no entry there. When you change the standard tests or the generator of a recorded task, change its entry in this file or remove the entry.
 
@@ -147,7 +149,8 @@ To add a chapter to a published set:
 2. In `set.go` of the set, embed the new lesson and add the chapter at the end of `Chapters`. Add a new chapter only after the last chapter, because the quiz attempts keep the deck as `<set slug>-<chapter number>`.
 3. For each new task, add a reference to `References` in `solutions.go` and a generator to `Generators` in `generators.go`.
 4. Add the missing hard words, as in step 8 of the list above.
-5. Write `sets.json` again and run the checks, as in steps 9 and 10 of the list above.
+5. Write the Editorial of each new task, as in step 11 of the list above.
+6. Write `sets.json` again, add the quiz deck of the new chapter and run the checks, as in steps 9, 10 and 12 of the list above.
 
 ## Мясорубка
 
@@ -180,7 +183,7 @@ To add a chapter to a published set:
 | **Ошибка выполнения на тесте N** | The code stops with an error on test N. The verdict also shows the error message. |
 
 - At the end, the editor becomes read-only. The server refuses a code save and the start of a check. A check that started before the end continues. A submission in the 60 seconds after the end counts, so a check that starts in the last second also counts. The server keeps no record of the check start for such a submission. The hidden inputs do not change, so a student who has the hidden inputs before the end can get at most 60 more seconds.
-- After the end, the problem page shows "Контест закончился." with the link **Результат**, the last code as read-only text, the submissions and the link **Задача на Codeforces ↗**. The parent sees the contest pages without the runner and cannot change the code.
+- After the end, the problem page shows "Контест закончился." with the link **Результат**, the last code as read-only text, the submissions and the link **Задача на Codeforces ↗**. When the problem has an Editorial, the button **Показать разбор** shows next to the link. The server sends the Editorial only after the end, see [Editorials](#editorials). The parent sees the contest pages without the runner and cannot change the code.
 - When a problem is removed from the bank, its problem page shows "Задача убрана из банка" in place of the statement, and the server refuses its check. A finished contest keeps its result and its rating change.
 
 The score is the sum of the points of the solved problems. The finish time is the time from the start to the latest first accepted submission, plus 5 minutes for each wrong submission before the first accepted submission of a solved problem. Wrong answer, time limit and error verdicts are all wrong submissions. The wrong submissions of an unsolved problem add no time. A contest without a solved problem has the finish time 0, and the pages do not show it.
@@ -242,7 +245,8 @@ The batch tooling is not in the repository. A new batch must meet these rules:
 5. Check each problem with a real accepted solution from `open-r1/codeforces-submissions`, with a `programmingLanguage` that starts with `Python 3` or `PyPy 3`. Take the first such submission of the configuration `selected_accepted`. When the problem has none, take the first such submission of the configuration `default` with the verdict `OK`. The submissions are code from the internet, so run them in a container without network, for example `podman run --rm --network none python:3.13-slim`. Run each submission with CPython on the examples and the hidden tests, with 1 second for each test, so the problem is also fast enough for Pyodide in the browser. Compare the outputs with the official answers by the rule of the server. Leave out a problem without such a submission or with a different output. When an output is the same only with a different letter case, keep the problem only when its statement lets the answer use any letter case.
 6. Translate the statement into Russian HTML. The title stays English. Use only the elements `h3 p ul ol li table thead tbody tr th td pre code strong em sup sub`, without attributes. Write the description, `<h3>Входные данные</h3>` and `<h3>Выходные данные</h3>`. For each example, write `<h3>Пример N</h3>` with `<p><strong>Входные данные:</strong></p><pre>...</pre><p><strong>Выходные данные:</strong></p><pre>...</pre>`. Write `<h3>Примечание</h3>` when the dataset has a note. Write `<h3>Ограничения</h3>` with a list of the constraints of the input section. Do not write the time limit or the memory limit. In the `pre` elements of the statement, escape `<`, `>` and `&`. Do not use LaTeX: use `code`, `sup`, `sub` and the signs ≤ ≥ · ×. Algorithm and data-structure names stay English. Set `ignoreCase` to true only when the output section lets the answer use any letter case. Copy the `examples` and the `tests` without changes. When the statement allows more than one correct answer, leave out the problem.
 7. Write the problems to new files `problems-NNN.json` with the next numbers. Keep each file below 2 MB. Do not change a published problem. To correct a wrong problem, remove it from the bank.
-8. Run the content checks in `backend/`:
+8. Write the Editorial of each new problem, see [Editorials](#editorials).
+9. Run the content checks in `backend/`:
 
    ```bash
    go test ./internal/notebook -run TestBank
@@ -263,6 +267,29 @@ The batch tooling is not in the repository. A new batch must meet these rules:
    - A number of tests that is not 5 to 16.
    - A test input that is longer than 4096 bytes or has no line break at the end.
    - A test answer that is empty or longer than 4096 bytes.
+
+## Editorials
+
+An Editorial is the solutions of one problem with their explanations and figures. A learning set task or a bank problem can have one Editorial. The Editorials are content in the repository. A deployment publishes them.
+
+- The page of a learning set task shows **Показать разбор** under the statement when the task has an Editorial. The panel **Разбор** renders only after the press. Both roles see the button. A problem outside the learning sets shows no button, also when it is a bank problem in the library.
+- The page of a contest problem shows **Показать разбор** only after the end of the contest, next to the link **Задача на Codeforces ↗**. The server sends the Editorial of a contest problem only when the contest is not active. No other route sends the Editorial of a bank problem, so the student cannot read it before the contest of the problem.
+- A submission in the 60 seconds after the end still counts, see [Мясорубка](#мясорубка). A student who has the hidden inputs from a check that started before the end can read the Editorial and send a hand-made submission in these 60 seconds. The web page cannot do this, because each submission starts a new check, and the server refuses a check after the end. The Codeforces link opens at the same time.
+- The repository is public, so the Editorials of the bank problems are readable on GitHub, as the hidden tests are.
+
+An Editorial is two files in `backend/internal/editorials/` with the slug of the problem: `<slug>.html` and `<slug>.json`. The Go server embeds them and reads them at start. A file without its pair or a figure file with an unknown field stops the start. To write an Editorial:
+
+1. Write `<slug>.html` as an HTML fragment in a free form. Use the elements of a lesson, see step 2 of [Learning sets](#learning-sets). Start the sections with `<h3>`, for example `<h3>Решение 1. Two Pointers</h3>`. Do not use `h2`: the panel has the heading `<h2>Разбор</h2>`. Write indexes as `a<sub>i</sub>` and math with `code`, `sub`, `sup` and the signs ≤ ≥ · ×. Do not use `$`, an en dash or an em dash. Keep the text below 12,000 characters. Algorithm and data-structure names stay English, also in the code comments and in the figures.
+2. Give a numeric example before each rule. Show why each solution is correct. Give each solution `<strong>Время:</strong>` and `<strong>Дополнительная память:</strong>` with its variables.
+3. Write each solution as one complete code block `<pre class="no-run"><code class="language-python">` in the form that the student submits. Each code block must pass the standard tests and the hidden tests. Describe a slow idea only in the text, with its cost. A solution has no run button, because a sample runs with an empty standard input.
+4. Write `<slug>.json`: a JSON array of the figures in the order of the placeholders `<figure data-figure="<id>"></figure>`. A figure has the form of a lesson figure, see step 4 of [Learning sets](#learning-sets). An Editorial has at least one figure. A figure ID must be unique in its Editorial. Make each frame with a script that runs the shown code on the input of the figure and records its variables. Do not type a number of a frame by hand.
+5. When the text uses a Codeforces tutorial of the dataset open-r1/codeforces, end it with `<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>`. A text that does not use a tutorial has no credit line.
+6. Add the missing hard words to `shared/glossary.ts` and `web/glossary.test.ts`, as in step 8 of [Learning sets](#learning-sets).
+7. Run the checks:
+
+   - `TestEditorialContent` in `backend/internal/notebook/editorial_checks_test.go` checks that the slug is a learning set task or a bank problem, the elements and the attributes, the figure placeholders and the figures, the start of each code block, the cost lines, the text length, `$` and the dashes, and the English names.
+   - `TestEditorialSolutions` in `backend/internal/editorials/solutions_test.go` runs each solution with `python3` through `web/harness.py`, as the browser runs it. A learning set task gets its standard tests and the hidden tests of the seeds 1 and 4294967295, with the answers of its reference solution. A bank problem gets its examples and its tests, with the official answers. An error, a wrong answer or more than 2 seconds for one test fails the check.
+   - `bun run test` checks that each hard word of an Editorial has a glossary tip.
 
 ## AI tutor
 
@@ -424,7 +451,7 @@ The sidebar shows the version from `package.json`. The versions follow [Semantic
 After [First deploy](#first-deploy), a push to `main` starts the pipeline `redlamp` in eu-central-1. An execution does not overtake an earlier one, so two pushes deploy in their order. It has three stages:
 
 1. Source: the connection `redlamp-github` gives the files of `main`.
-2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.16 in Docker and runs `go vet ./...` and `go test ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`.
+2. Build: the CodeBuild project `redlamp-build` runs `infra/buildspec-build.yml`. It starts PostgreSQL 16.16 in Docker and runs `go vet ./...` and `go test -skip TestEditorialSolutions ./...` in `backend/`. It builds the command `migrate`, runs `bun run lint`, `bun run typecheck` and `bun run test`, and runs `sam build` in `infra/`. The artifact has `build/`, `dist/` and `infra/`. The build skips `TestEditorialSolutions`: the workflow `Backend` runs it on each pull request.
 3. Deploy: the CodeBuild project `redlamp-deploy` runs `infra/buildspec-deploy.yml`. It deploys the stacks in this order: `redlamp-dns`, `redlamp-data`, the database migrations, `redlamp-api`, `redlamp-edge`. Then it uploads `dist/` to the site bucket and clears the cache of CloudFront.
 
 The migrations run before the new code of the function. They are the files of `backend/migrations/`, with one SQL statement in each file. `cmd/migrate` applies the files that the table `schema_migrations` does not have, in the order of their names. On AWS, it connects as the database role `admin` and maps the database role `app` to the IAM role of the function.
@@ -489,6 +516,12 @@ golangci-lint run ./...
 
 Without `TEST_DATABASE_URL`, `go test` skips the database tests. When the variable `CI` is set, a missing `TEST_DATABASE_URL` fails them.
 
+`TestEditorialSolutions` runs the Editorial solutions with `python3`. Use Python 3.14, the version of Pyodide 314.0.8 in the browser. Without `python3` the check skips, and with the variable `CI` it fails. To run only this check:
+
+```bash
+go test -count=1 -run TestEditorialSolutions ./internal/editorials
+```
+
 Run the browser tests in the repository root. Install Chromium for Playwright one time:
 
 ```bash
@@ -503,6 +536,6 @@ bun run test:browser
 
 `bun run test:browser` builds the site, builds the Go commands `api` and `migrate` to `.playwright/bin/`, and runs the Playwright tests in Chromium. Each test starts its own Go server with a new schema in the database of `TEST_DATABASE_URL`. These servers have no tutor key and no speech service, and they cannot reach leetcode.com. The report is in `.playwright/report/`. The results, with the screenshots of failed tests, are in `.playwright/results/`.
 
-The workflow `Checks` runs the web checks in the job `checks` and the browser tests in the job `browser`, for each push and pull request. The workflow `Backend` runs the Go checks in the job `go` when a change touches `backend/`, `shared/answers.cases.json` or the workflow file.
+The workflow `Checks` runs the web checks in the job `checks` and the browser tests in the job `browser`, for each push and pull request. The workflow `Backend` runs when a change touches `backend/`, `shared/answers.cases.json`, `web/harness.py` or the workflow file. The job `go` runs the Go checks with `-skip TestEditorialSolutions`. The job `editorials` runs `TestEditorialSolutions` with Python 3.14.
 
 The notebook assets in `/leetcode/assets/` are public. The server checks the session before it serves notebook data, lessons, or the application shell.

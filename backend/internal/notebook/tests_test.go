@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rustatian/redlamp.me/backend/internal/editorials"
 	"github.com/rustatian/redlamp.me/backend/internal/sets"
 	"github.com/rustatian/redlamp.me/backend/internal/sets/content"
 )
@@ -298,31 +299,43 @@ func testsStatement(t *testing.T, learningSets []sets.LearningSet, slug string) 
 	return ""
 }
 
+// testsEditorial is the Editorial of the statement tests. testsEditorialBody is its JSON in the statement response.
+var (
+	testsEditorial = editorials.Editorial{HTML: "<p>Разбор.</p>", Figures: []sets.Figure{{ID: "steps", Title: "Шаги", Frames: []sets.FigureFrame{
+		{Caption: "l = 0, r = 1.", Rows: []sets.FigureRow{{Label: "a", Cells: []any{2, 7}, Pointers: &sets.Pointers{{Name: "l", Cell: 0}, {Name: "r", Cell: 1}}}}},
+	}}}}
+	testsEditorialBody = map[string]any{"html": "<p>Разбор.</p>", "figures": []any{map[string]any{"id": "steps", "title": "Шаги", "frames": []any{
+		map[string]any{"caption": "l = 0, r = 1.", "rows": []any{map[string]any{"label": "a", "cells": []any{2, 7}, "pointers": map[string]any{"l": 0, "r": 1}}}},
+	}}}}
+)
+
 // The cases of test/tests.test.ts for GET /problems/{id}/statement.
+// Only a set task gets its Editorial: cf-1-a is a bank problem with an Editorial, and the library page does not show it.
 func TestTestsStatement(t *testing.T) {
 	const content = "<p>Find <code>nums[i] + nums[j] == target</code>.</p>\n<pre>\n<strong>Input:</strong> nums = [3,3], target = 6\n</pre>\n<ul><li><code>2 &lt;= nums.length</code></li></ul>"
 	learningSets := goldenSets(t)
 	tests := []struct {
-		name     string
-		slug     string
-		reply    func(titleSlug, fields string) (json.RawMessage, error)
-		wantHTML any
-		wantText any
+		name          string
+		slug          string
+		reply         func(titleSlug, fields string) (json.RawMessage, error)
+		wantHTML      any
+		wantText      any
+		wantEditorial any
 	}{
-		{name: "statement of a LeetCode task of a set", slug: "two-sum-ii-input-array-is-sorted", reply: nil, wantHTML: testsStatement(t, learningSets, "two-sum-ii-input-array-is-sorted"), wantText: nil},
-		{name: "statement of a Codeforces task of a set", slug: "cf-1821-a", reply: nil, wantHTML: testsStatement(t, learningSets, "cf-1821-a"), wantText: nil},
-		{name: "statement of a Codeforces problem outside the sets", slug: "cf-1-a", reply: nil, wantHTML: nil, wantText: nil},
-		{name: "statement of a LeetCode problem outside the sets", slug: "two-sum", reply: testsReply(map[string]any{"content": content}), wantHTML: nil, wantText: "Find nums[i] + nums[j] == target.\nInput: nums = [3,3], target = 6\n2 <= nums.length"},
-		{name: "statement of a paid-only LeetCode problem", slug: "meeting-rooms", reply: testsReply(map[string]any{"content": nil}), wantHTML: nil, wantText: nil},
-		{name: "statement of an unknown LeetCode problem", slug: "two-sum", reply: testsNoQuestion, wantHTML: nil, wantText: nil},
-		{name: "statement with a LeetCode error response", slug: "two-sum", reply: testsBusy, wantHTML: nil, wantText: nil},
-		{name: "statement with unreachable LeetCode", slug: "two-sum", reply: testsUnreachable, wantHTML: nil, wantText: nil},
+		{name: "statement of a LeetCode task of a set", slug: "two-sum-ii-input-array-is-sorted", reply: nil, wantHTML: testsStatement(t, learningSets, "two-sum-ii-input-array-is-sorted"), wantText: nil, wantEditorial: testsEditorialBody},
+		{name: "statement of a Codeforces task of a set", slug: "cf-1821-a", reply: nil, wantHTML: testsStatement(t, learningSets, "cf-1821-a"), wantText: nil, wantEditorial: nil},
+		{name: "statement and Editorial of a Codeforces problem outside the sets", slug: "cf-1-a", reply: nil, wantHTML: nil, wantText: nil, wantEditorial: nil},
+		{name: "statement of a LeetCode problem outside the sets", slug: "two-sum", reply: testsReply(map[string]any{"content": content}), wantHTML: nil, wantText: "Find nums[i] + nums[j] == target.\nInput: nums = [3,3], target = 6\n2 <= nums.length", wantEditorial: nil},
+		{name: "statement of a paid-only LeetCode problem", slug: "meeting-rooms", reply: testsReply(map[string]any{"content": nil}), wantHTML: nil, wantText: nil, wantEditorial: nil},
+		{name: "statement of an unknown LeetCode problem", slug: "two-sum", reply: testsNoQuestion, wantHTML: nil, wantText: nil, wantEditorial: nil},
+		{name: "statement with a LeetCode error response", slug: "two-sum", reply: testsBusy, wantHTML: nil, wantText: nil, wantEditorial: nil},
+		{name: "statement with unreachable LeetCode", slug: "two-sum", reply: testsUnreachable, wantHTML: nil, wantText: nil, wantEditorial: nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := database(t)
 			fake := &fakeLeetCode{reply: tt.reply}
-			s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: fake, Sets: learningSets})
+			s, err := New(Config{DB: pool, PublicOrigin: publicOrigin, Accounts: testAccounts, LeetCode: fake, Sets: learningSets, Editorials: map[string]editorials.Editorial{"two-sum-ii-input-array-is-sorted": testsEditorial, "cf-1-a": testsEditorial}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -333,7 +346,7 @@ func TestTestsStatement(t *testing.T) {
 			if w.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200; body %s", w.Code, w.Body.String())
 			}
-			testsSameJSON(t, w.Body.Bytes(), map[string]any{"html": tt.wantHTML, "text": tt.wantText})
+			testsSameJSON(t, w.Body.Bytes(), map[string]any{"html": tt.wantHTML, "text": tt.wantText, "editorial": tt.wantEditorial})
 			wantCalls := 0
 			if tt.reply != nil {
 				wantCalls = 1

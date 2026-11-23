@@ -7,7 +7,7 @@ import { points } from './Contests';
 import { clock } from './contestTime';
 import { difficultyLabels } from './Problems';
 import { failures, Runner } from './Runner';
-import { Lesson } from './Sets';
+import { EditorialPanel, Lesson } from './Sets';
 import { useResource } from './useResource';
 import { Panes } from './Workspace';
 
@@ -81,7 +81,7 @@ function ProblemEditor({ path, contestId, problem, student, reload }: { path: st
 		finally { setBusy(false); setProgress(''); reload(); }
 	}
 	const example = problem.examples[0]?.input.trimEnd(), placeholder = `Входные данные, как в условии${example ? `, например:\n${example}` : ''}`;
-	const left = <section className="stack"><h2>Условие</h2>{problem.statement === null ? <p className="notice">Задача убрана из банка</p> : <Lesson html={problem.statement} ref={statement} />}<p className="small">Источник: Codeforces, набор open-r1/codeforces (CC BY 4.0)</p>{problem.url && <p><a href={problem.url} target="_blank" rel="noopener noreferrer">Задача на Codeforces ↗</a></p>}</section>;
+	const left = <section className="stack"><h2>Условие</h2>{problem.statement === null ? <p className="notice">Задача убрана из банка</p> : <Lesson html={problem.statement} ref={statement} />}<p className="small">Источник: Codeforces, набор open-r1/codeforces (CC BY 4.0)</p>{problem.url && <p><a href={problem.url} target="_blank" rel="noopener noreferrer">Задача на Codeforces ↗</a></p>}{problem.editorial && <EditorialPanel editorial={problem.editorial} />}</section>;
 	// The tip of a button shows below it, so the verdict is beside the button.
 	const after = <>{editable && <button type="button" className="primary" disabled={busy || !code.trim()} onClick={() => void submit()} data-tip="Проверить решение на скрытых тестах. Тесты сайт не показывает.">Отправить</button>}{progress && <p role="status">{progress}</p>}{verdict && (verdict.verdict === 'accepted' ? <p role="status"><span className="tag good">Принято</span></p> : <p className="error" role="alert" aria-label="Результат проверки">{verdictText(verdict)}</p>)}</>;
 	const right = <div className="stack">
