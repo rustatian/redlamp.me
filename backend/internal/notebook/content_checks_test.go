@@ -72,7 +72,7 @@ const checkSpace = `\t\n\v\f\r\p{Z}\x{FEFF}`
 
 var (
 	checkSlug         = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	checkMethod       = regexp.MustCompile(`^[a-z][A-Za-z]*$`)
+	checkMethod       = regexp.MustCompile(`^[a-z][A-Za-z0-9]*$`)
 	checkFragmentTag  = regexp.MustCompile(`^(?:h2|h3|p|ul|ol|li|table|caption|thead|tbody|tr|th|td|pre|code|strong|em|sup|blockquote|details|summary|a|br|div|figure)$`)
 	checkStatementTag = regexp.MustCompile(`^(?:h3|p|ul|ol|li|table|thead|tbody|tr|th|td|pre|code|strong|em|sup|sub)$`)
 	checkTag          = regexp.MustCompile(`<([^` + checkSpace + `/>]+)([^>]*)>`)

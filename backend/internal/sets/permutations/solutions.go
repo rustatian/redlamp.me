@@ -57,6 +57,42 @@ func permutations(nums []int) [][]int {
 	return out
 }
 
+// mod is the prime modulus 10^9 + 7 of the answers of chapter 5.
+const mod = 1_000_000_007
+
+// powMod returns a^b % m for a, b >= 0 by Binary Exponentiation: O(log b) multiplications. The remainders are below m < 2^31, so a product of two of them fits in int.
+func powMod(a, b, m int) int {
+	r := 1 % m
+	a %= m
+	for ; b > 0; b /= 2 {
+		if b%2 == 1 {
+			r = r * a % m
+		}
+		a = a * a % m
+	}
+	return r
+}
+
+// binomial returns the function C(n, k) % m for 0 <= n <= top and a prime m > top. The tables of Factorial and inverse Factorial take O(top + log m) time, and each value takes O(1).
+func binomial(top, m int) func(n, k int) int {
+	fact := make([]int, top+1)
+	fact[0] = 1
+	for i := 1; i <= top; i++ {
+		fact[i] = fact[i-1] * i % m
+	}
+	invFact := make([]int, top+1)
+	invFact[top] = powMod(fact[top], m-2, m)
+	for i := top; i > 0; i-- {
+		invFact[i-1] = invFact[i] * i % m
+	}
+	return func(n, k int) int {
+		if k < 0 || k > n {
+			return 0
+		}
+		return fact[n] * invFact[k] % m * invFact[n-k] % m
+	}
+}
+
 // References are the reference solutions of the tasks by problem slug.
 var References = map[string]sets.Reference{
 	// O(t * |s|): the first '?' gives 9 digits, every other '?' gives 10.
@@ -353,5 +389,53 @@ var References = map[string]sets.Reference{
 		}
 		walk(0, 0, 0, 0)
 		return sets.Py(out)
+	}},
+	// O(K + t) for the largest k = K: the wrong formula gives C[n][k] = 2^k for 0 <= k < n, so a table of the powers of two answers each pair.
+	"cf-2025-b": {Stdio: func(stdin string) string {
+		input := sets.NewReader(stdin)
+		n := make([]int, input.Int(1, 1e5))
+		for i := range n {
+			n[i] = input.Int(2, 1e5)
+		}
+		power := []int{1}
+		out := make([]string, len(n))
+		for i := range out {
+			k := input.Int(1, n[i]-1)
+			for len(power) <= k {
+				power = append(power, power[len(power)-1]*2%mod)
+			}
+			out[i] = strconv.Itoa(power[k])
+		}
+		input.End()
+		return lines(out)
+	}},
+	// O(n + k + log M): after k seconds a[i] = C(i + k, k), as in Pascal's Triangle. The answer is C(n + k - 1, k).
+	"find-the-n-th-value-after-k-seconds": {Arity: 2, Call: func(args []any) any {
+		n, k := sets.Int(args[0], 1, 1000), sets.Int(args[1], 1, 1000)
+		return sets.Py(binomial(n+k-1, mod)(n+k-1, k))
+	}},
+	// O(k + log M): r = (k + d) / 2 of the k steps go to the end at the distance d. There is no way when d > k or k - d is odd.
+	"number-of-ways-to-reach-a-position-after-exactly-k-steps": {Arity: 3, Call: func(args []any) any {
+		start, end, k := sets.Int(args[0], 1, 1000), sets.Int(args[1], 1, 1000), sets.Int(args[2], 1, 1000)
+		d := max(end-start, start-end)
+		if d > k || (k-d)%2 == 1 {
+			return sets.Py(0)
+		}
+		return sets.Py(binomial(k, mod)(k, (k+d)/2))
+	}},
+	// O(n + k + log M): move the segment i to the right by i - 1. Then the 2k ends are different numbers from 0 to n + k - 2, and the answer is C(n + k - 1, 2k).
+	"number-of-sets-of-k-non-overlapping-line-segments": {Arity: 2, Call: func(args []any) any {
+		n := sets.Int(args[0], 2, 1000)
+		k := sets.Int(args[1], 1, n-1)
+		return sets.Py(binomial(n+k-1, mod)(n+k-1, 2*k))
+	}},
+	// O(n + log M): choose the k bricks with a new color in C(n - 1, k) ways. The first brick has m colors, and each of the k bricks has m - 1 colors.
+	"cf-1081-c": {Stdio: func(stdin string) string {
+		const prime = 998244353
+		input := sets.NewReader(stdin)
+		n, m := input.Int(1, 2000), input.Int(1, 2000)
+		k := input.Int(0, n-1)
+		input.End()
+		return strconv.Itoa(binomial(n-1, prime)(n-1, k)*m%prime*powMod(m-1, k, prime)%prime) + "\n"
 	}},
 }

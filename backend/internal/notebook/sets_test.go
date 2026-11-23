@@ -140,7 +140,7 @@ func TestSetsSummary(t *testing.T) {
 				}
 			}
 			setsEqual(t, "slugs", got, slugs)
-			setsEqual(t, "set summary", item, map[string]any{"slug": set.Slug, "title": set.Title, "summary": set.Summary, "topics": set.Topics, "chapterCount": 4, "taskCount": len(set.Tasks()), "acceptedCount": tt.acceptedCount})
+			setsEqual(t, "set summary", item, map[string]any{"slug": set.Slug, "title": set.Title, "summary": set.Summary, "topics": set.Topics, "chapterCount": 5, "taskCount": len(set.Tasks()), "acceptedCount": tt.acceptedCount})
 		})
 	}
 }
@@ -179,6 +179,7 @@ func TestSetsDetails(t *testing.T) {
 		map[string]any{"number": 2, "title": "Backtracking: Subsets, Permutations, Combinations", "summary": "Backtracking: выбрать, пойти глубже, отменить. start задаёт возрастающие индексы, used отмечает занятые. Считаем вызовы, проверки, копии и память Call Stack.", "tasks": []string{"letter-case-permutation", "subsets", "permutations", "combinations", "letter-combinations-of-a-phone-number"}},
 		map[string]any{"number": 3, "title": "Повторы и Pruning", "summary": "Sorting и пропуск убирают повторные ответы Backtracking. Pruning останавливает бесполезные ветки. Считаем вызовы, проверки, копии и память префиксов.", "tasks": []string{"subsets-ii", "permutations-ii", "combination-sum", "generate-parentheses", "cf-1097-b"}},
 		map[string]any{"number": 4, "title": "Порядок и номер", "summary": "Next Permutation, Dynamic Programming для путей, Permutation Sequence и N-Queens. Учитываем копии Python, вызовы Factorial и формат ответа.", "tasks": []string{"next-permutation", "unique-paths", "permutation-sequence", "n-queens"}},
+		map[string]any{"number": 5, "title": "Combinations по модулю", "summary": "Pascal's Triangle по модулю, C(n, k) через таблицы Factorial, Stars and Bars, пути на прямой и раскраски. Ответы по модулю 10⁹ + 7 и 998244353, стоимость таблиц и запросов.", "tasks": []string{"cf-2025-b", "find-the-n-th-value-after-k-seconds", "number-of-ways-to-reach-a-position-after-exactly-k-steps", "number-of-sets-of-k-non-overlapping-line-segments", "cf-1081-c"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -304,7 +305,7 @@ func TestSetsLesson(t *testing.T) {
 		{name: "student chapter 1 lesson", role: "student", slug: set.Slug, chapter: "1", body: setsLessonBody(set.Chapters[0])},
 		{name: "parent chapter 4 lesson", role: "parent", slug: set.Slug, chapter: "4", body: setsLessonBody(set.Chapters[3])},
 		{name: "lesson with figures", role: "student", slug: twoPointers.Slug, chapter: "1", body: setsLessonBody(twoPointers.Chapters[0])},
-		{name: "chapter 5 is missing", role: "parent", slug: set.Slug, chapter: "5", body: nil},
+		{name: "chapter 6 is missing", role: "parent", slug: set.Slug, chapter: "6", body: nil},
 		{name: "chapter 0 is missing", role: "parent", slug: set.Slug, chapter: "0", body: nil},
 		{name: "chapter x is missing", role: "parent", slug: set.Slug, chapter: "x", body: nil},
 		{name: "lesson without a chapter number is missing", role: "parent", slug: set.Slug, chapter: "", body: nil},

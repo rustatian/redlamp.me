@@ -60,6 +60,13 @@ it.each([
 	{ name: 'ambiguous корень stays plain', texts: ['Корень это пустой список.'], expected: ['Корень это пустой список.'] },
 	{ name: 'ambiguous место stays plain', texts: ['Число стоит на месте 2.'], expected: ['Число стоит на месте 2.'] },
 	{ name: 'ambiguous сочетание stays plain', texts: ['Любое сочетание двух разных букв.'], expected: ['Любое сочетание двух разных букв.'] },
+	{ name: 'класс остатков in an inflected form', texts: ['Числа одного класса остатков.'], expected: ['Числа одного [класса остатков].'] },
+	{ name: 'класс alone stays plain', texts: ['Метод класса Solution и класс 0.'], expected: ['[Метод класса] Solution и класс 0.'] },
+	{ name: 'обратный элемент in an inflected form', texts: ['Делите через обратный элемент.'], expected: ['Делите через [обратный элемент].'] },
+	{ name: 'малая теорема Ферма in an inflected form', texts: ['По малой теореме Ферма остаток равен 1.'], expected: ['По [малой теореме Ферма] остаток равен 1.'] },
+	{ name: 'малая теорема without the name', texts: ['Малая теорема верна для p = 7.'], expected: ['[Малая теорема] верна для p = 7.'] },
+	{ name: 'математическое ожидание in an inflected form', texts: ['Найдите математическое ожидание произведения.'], expected: ['Найдите [математическое ожидание] произведения.'] },
+	{ name: 'combinatorics models are one term each', texts: ["Pascal's Triangle и Stars and Bars."], expected: ["[Pascal's Triangle] и [Stars and Bars]."] },
 	{ name: 'text without hard words', texts: ['Два указателя идут навстречу.'], expected: ['Два указателя идут навстречу.'] },
 	{ name: 'empty text', texts: [''], expected: [''] },
 ])('$name', ({ texts, expected }) => {
@@ -71,7 +78,7 @@ const sets = content as unknown as { slug: string; summary: string; chapters: { 
 
 // The hard words that need a tip in shared/glossary.ts. The list also has words that no set uses yet, so a new set with such a word fails until the word gets a tip.
 // An English name of a data structure is a word of its own: heapq, dequeue, collections.deque, deque(...) and deque.popleft are code.
-const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination|anagram)s?|kadane|monotonic|priority|hash\s+table|two\s+pointers|linear\s+scan|binary\s+search|lower\s+bound|upper\s+bound|ternary\s+search|sliding\s+window|dynamic\s+programming|brute\s+force|prefix\s+product|difference\s+array|matri(?:x|ces)|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|медиан|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|анаграмм|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|64-бит|префикс|суффикс|включени\p{L}*\s+и\s+исключени|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|треугольн\p{L}*\s+чис|повёрнут|граф|бинарн)/giu;
+const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination|anagram)s?|kadane|monotonic|priority|hash\s+table|two\s+pointers|linear\s+scan|binary\s+search|lower\s+bound|upper\s+bound|ternary\s+search|modular\s+arithmetic|binary\s+exponentiation|pascal's\s+triangle|stars\s+and\s+bars|sliding\s+window|dynamic\s+programming|brute\s+force|prefix\s+product|difference\s+array|matri(?:x|ces)|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|медиан|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|анаграмм|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|64-бит|префикс|суффикс|включени\p{L}*\s+и\s+исключени|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|треугольн\p{L}*\s+чис|повёрнут|граф|бинарн|класс\p{L}*\s+остатк|обратн\p{L}*\s+элемент|мал\p{L}*\s+теорем|математическ\p{L}*\s+ожидани)/giu;
 // The hard words of the text that no match of the patterns covers.
 const untipped = (text: string, patterns: RegExp[]) => [...text.matchAll(hardWord)].filter(word => !patterns.some(pattern => [...text.matchAll(pattern)].some(match => match.index <= word.index && word.index < match.index + match[0].length))).map(word => word[0]);
 // Code is not prose. The text of the other tags stays.

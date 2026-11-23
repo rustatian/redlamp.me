@@ -6307,10 +6307,160 @@
 						"updated_at": "2026-10-13T12:00:00.000Z",
 						"saved_at": "2026-10-13T12:00:00.000Z"
 					}
+				},
+				{
+					"table": "problems",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000073",
+						"slug": "cf-2025-b",
+						"title": "Problem 73",
+						"difficulty": "easy",
+						"topics": "[]",
+						"summary": "",
+						"search_text": "",
+						"archived_at": null,
+						"created_at": "2026-10-03T12:00:00.000Z",
+						"updated_at": "2026-10-03T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "attempts",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000074",
+						"problem_id": "00000000-0000-4000-8000-000000000073",
+						"state": "saved",
+						"document": "{}",
+						"search_text": "",
+						"acceptance": "accepted",
+						"understanding": "with_help",
+						"created_at": "2026-10-13T12:00:00.000Z",
+						"updated_at": "2026-10-13T12:00:00.000Z",
+						"saved_at": "2026-10-13T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "problems",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000075",
+						"slug": "find-the-n-th-value-after-k-seconds",
+						"title": "Problem 75",
+						"difficulty": "easy",
+						"topics": "[]",
+						"summary": "",
+						"search_text": "",
+						"archived_at": null,
+						"created_at": "2026-10-03T12:00:00.000Z",
+						"updated_at": "2026-10-03T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "attempts",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000076",
+						"problem_id": "00000000-0000-4000-8000-000000000075",
+						"state": "saved",
+						"document": "{}",
+						"search_text": "",
+						"acceptance": "accepted",
+						"understanding": "with_help",
+						"created_at": "2026-10-13T12:00:00.000Z",
+						"updated_at": "2026-10-13T12:00:00.000Z",
+						"saved_at": "2026-10-13T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "problems",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000077",
+						"slug": "number-of-ways-to-reach-a-position-after-exactly-k-steps",
+						"title": "Problem 77",
+						"difficulty": "easy",
+						"topics": "[]",
+						"summary": "",
+						"search_text": "",
+						"archived_at": null,
+						"created_at": "2026-10-03T12:00:00.000Z",
+						"updated_at": "2026-10-03T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "attempts",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000078",
+						"problem_id": "00000000-0000-4000-8000-000000000077",
+						"state": "saved",
+						"document": "{}",
+						"search_text": "",
+						"acceptance": "accepted",
+						"understanding": "with_help",
+						"created_at": "2026-10-13T12:00:00.000Z",
+						"updated_at": "2026-10-13T12:00:00.000Z",
+						"saved_at": "2026-10-13T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "problems",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000079",
+						"slug": "number-of-sets-of-k-non-overlapping-line-segments",
+						"title": "Problem 79",
+						"difficulty": "easy",
+						"topics": "[]",
+						"summary": "",
+						"search_text": "",
+						"archived_at": null,
+						"created_at": "2026-10-03T12:00:00.000Z",
+						"updated_at": "2026-10-03T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "attempts",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000080",
+						"problem_id": "00000000-0000-4000-8000-000000000079",
+						"state": "saved",
+						"document": "{}",
+						"search_text": "",
+						"acceptance": "accepted",
+						"understanding": "with_help",
+						"created_at": "2026-10-13T12:00:00.000Z",
+						"updated_at": "2026-10-13T12:00:00.000Z",
+						"saved_at": "2026-10-13T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "problems",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000081",
+						"slug": "cf-1081-c",
+						"title": "Problem 81",
+						"difficulty": "easy",
+						"topics": "[]",
+						"summary": "",
+						"search_text": "",
+						"archived_at": null,
+						"created_at": "2026-10-03T12:00:00.000Z",
+						"updated_at": "2026-10-03T12:00:00.000Z"
+					}
+				},
+				{
+					"table": "attempts",
+					"values": {
+						"id": "00000000-0000-4000-8000-000000000082",
+						"problem_id": "00000000-0000-4000-8000-000000000081",
+						"state": "saved",
+						"document": "{}",
+						"search_text": "",
+						"acceptance": "accepted",
+						"understanding": "with_help",
+						"created_at": "2026-10-13T12:00:00.000Z",
+						"updated_at": "2026-10-13T12:00:00.000Z",
+						"saved_at": "2026-10-13T12:00:00.000Z"
+					}
 				}
 			],
 			"game": {
-				"xp": 360,
+				"xp": 410,
 				"level": 3,
 				"levelXp": 300,
 				"nextLevelXp": 600,

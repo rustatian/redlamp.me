@@ -19,6 +19,9 @@ var lesson3 string
 //go:embed chapter4.html
 var lesson4 string
 
+//go:embed chapter5.html
+var lesson5 string
+
 func number(value int64) *int64 { return &value }
 
 func text(value string) *string { return &value }
@@ -27,7 +30,7 @@ func text(value string) *string { return &value }
 var Set = sets.LearningSet{
 	Slug:    "permutations-and-combinations",
 	Title:   "Permutations и Combinations",
-	Summary: "Вы учитесь считать варианты: Permutations, Combinations и Subsets. Затем Backtracking строит ответы, убирает повторы и применяет Pruning. Считаем операции, рабочую память и размер ответа.",
+	Summary: "Вы учитесь считать варианты: Permutations, Combinations и Subsets. Затем Backtracking строит ответы, убирает повторы и применяет Pruning. В конце считаете Combinations по модулю 10⁹ + 7. Считаем операции, рабочую память и размер ответа.",
 	Topics:  []string{"Combinatorics", "Recursion", "Backtracking"},
 	Chapters: []sets.Chapter{
 		{
@@ -862,6 +865,279 @@ a[i + 1:] = a[i + 1:][::-1]`, Options: []string{"a[j] < a[i]", "a[j] >= a[i]", "
 						{Caption: "Третья строка, j = 2: 3 сверху + 3 слева = 6. Ответ 6. Всего 4 сложения и 3 рабочие ячейки. Полная таблица потребовала бы 9 ячеек при тех же 4 сложениях.", Rows: []sets.FigureRow{
 							{Label: "row", Cells: []any{1, 3, 6}, Marked: []int{2}, Pointers: &sets.Pointers{{Name: "j", Cell: 2}}, Window: &[2]int{0, 2}},
 							{Label: "Сложения", Cells: []any{4}},
+						}},
+					},
+				},
+			},
+		},
+		{
+			Title:   "Combinations по модулю",
+			Summary: "Pascal's Triangle по модулю, C(n, k) через таблицы Factorial, Stars and Bars, пути на прямой и раскраски. Ответы по модулю 10⁹ + 7 и 998244353, стоимость таблиц и запросов.",
+			Lesson:  lesson5,
+			Tasks: []sets.Task{
+				{
+					URL:        "https://codeforces.com/problemset/problem/2025/B",
+					Title:      "Binomial Coefficients, Kind Of",
+					Difficulty: "easy",
+					Topics:     []string{"Math", "Combinatorics", "Dynamic Programming"},
+					Note:       "Codeforces, рейтинг 1100. Выпишите маленькую таблицу по неверной формуле и найдите закономерность: C[n][k] = 2ᵏ. Заранее посчитайте p[k] = 2ᵏ % (10⁹ + 7) для k до 10⁵. t - число пар, K - наибольшее k. Время: O(K + t). Память: O(K) для степеней. Таблица по формуле до n = 10⁵ содержит около 5 · 10⁹ чисел.",
+					Statement: `<p>Недавно akshiM встретил задачу, для решения которой нужны были числа Combinations C[n][k]. Он написал код, который пишет обычно. Код выглядел так (запись на Python):</p><pre>for n in range(N):
+    C[n][0] = 1
+    C[n][n] = 1
+    for k in range(1, n):
+        C[n][k] = C[n][k - 1] + C[n - 1][k - 1]</pre><p>К сожалению, он ошибся, потому что правильная формула такая:</p><pre>C[n][k] = C[n - 1][k] + C[n - 1][k - 1]</pre><p>Но его товарищу по команде keblidA интересны значения, которые получаются по неверной формуле. Помогите ему посчитать эти числа для <code>t</code> разных пар <code>(n<sub>i</sub>, k<sub>i</sub>)</code>. Обратите внимание: считать их нужно по первой (неверной) формуле.</p><p>Значения <code>C[n<sub>i</sub>][k<sub>i</sub>]</code> могут быть очень большими, поэтому выведите их по модулю <code>10<sup>9</sup> + 7</code>.</p><h3>Входные данные</h3><p>В первой строке записано одно целое число <code>t</code> (<code>1 ≤ t ≤ 10<sup>5</sup></code>): количество пар. Дальше <code>t</code> пар записаны в двух строках.</p><p>Во второй строке записаны <code>t</code> целых чисел <code>n<sub>1</sub>, n<sub>2</sub>, ..., n<sub>t</sub></code> (<code>2 ≤ n<sub>i</sub> ≤ 10<sup>5</sup></code>).</p><p>В третьей строке записаны <code>t</code> целых чисел <code>k<sub>1</sub>, k<sub>2</sub>, ..., k<sub>t</sub></code> (<code>1 ≤ k<sub>i</sub> &lt; n<sub>i</sub></code>).</p><h3>Выходные данные</h3><p>Выведите <code>t</code> целых чисел <code>C[n<sub>i</sub>][k<sub>i</sub>]</code> по модулю <code>10<sup>9</sup> + 7</code>.</p><h3>Пример 1</h3><p><strong>Входные данные:</strong></p><pre>7
+2 5 5 100000 100000 100000 100000
+1 2 3 1 33333 66666 99999</pre><p><strong>Выходные данные:</strong></p><pre>2
+4
+8
+2
+326186014
+984426998
+303861760</pre><h3>Ограничения</h3><ul><li><code>1 ≤ t ≤ 10<sup>5</sup></code></li><li><code>2 ≤ n<sub>i</sub> ≤ 10<sup>5</sup></code></li><li><code>1 ≤ k<sub>i</sub> &lt; n<sub>i</sub></code></li><li>Ограничение по времени: 2 секунды на тест.</li><li>Ограничение по памяти: 512 мегабайт на тест.</li></ul>`,
+					Tests: &sets.TaskTests{TestSpec: sets.TestSpec{Mode: "stdio"}, Cases: []sets.TestCase{
+						{Input: `7
+2 5 5 100000 100000 100000 100000
+1 2 3 1 33333 66666 99999
+`, Expected: text(`2
+4
+8
+2
+326186014
+984426998
+303861760
+`)},
+						{Input: `1
+2
+1
+`, Expected: text(`2
+`)},
+						{Input: `3
+3 4 4
+2 1 3
+`, Expected: text(`4
+2
+8
+`)},
+						{Input: `2
+31 31
+30 29
+`, Expected: text(`73741817
+536870912
+`)},
+						{Input: `3
+6 6 6
+3 4 5
+`, Expected: text(`8
+16
+32
+`)},
+					}},
+				},
+				{
+					URL:        "https://leetcode.com/problems/find-the-n-th-value-after-k-seconds/",
+					Number:     number(3179),
+					Title:      "Find the N-th Value After K Seconds",
+					Difficulty: "medium",
+					Topics:     []string{"Array", "Math", "Simulation", "Combinatorics", "Prefix Sum"},
+					Note:       "После k секунд a[i] = C(i + k, k): новое число равно сумме соседа слева и числа выше, как в Pascal's Triangle. Ответ C(n + k − 1, k) % (10⁹ + 7). Время: O(n + k + log M) для таблиц и O(1) на ответ; Simulation делает (n − 1) · k сложений. Память: O(n + k) для таблиц, Simulation хранит n чисел. Для n = 4, k = 5: C(8, 5) = 56. При n, k ≤ 1000 Simulation с % тоже успевает: 999 000 сложений.",
+					Statement: `<p>Даны два целых числа <code>n</code> и <code>k</code>.</p><p>Сначала есть Array <code>a</code> из <code>n</code> целых чисел, в котором <code>a[i] = 1</code> для всех <code>0 ≤ i ≤ n - 1</code>. Каждую секунду все элементы обновляются одновременно: каждый элемент становится равен сумме всех элементов перед ним плюс сам элемент. Например, через одну секунду <code>a[0]</code> остаётся прежним, <code>a[1]</code> становится равен <code>a[0] + a[1]</code>, <code>a[2]</code> становится равен <code>a[0] + a[1] + a[2]</code>, и так далее.</p><p>Верните <strong>значение</strong> <code>a[n - 1]</code> через <code>k</code> секунд.</p><p>Ответ может быть очень большим, поэтому верните его <strong>по модулю</strong> <code>10<sup>9</sup> + 7</code>.</p><p>Метод класса <code>Solution</code>: <code>def valueAfterKSeconds(self, n: int, k: int) -&gt; int</code>.</p><h3>Пример 1</h3><pre><strong>Вход:</strong> n = 4, k = 5
+<strong>Выход:</strong> 56
+<strong>Пояснение:</strong> состояние Array после каждой секунды:</pre><table><thead><tr><th>Секунда</th><th>Состояние после</th></tr></thead><tbody><tr><td>0</td><td>[1,1,1,1]</td></tr><tr><td>1</td><td>[1,2,3,4]</td></tr><tr><td>2</td><td>[1,3,6,10]</td></tr><tr><td>3</td><td>[1,4,10,20]</td></tr><tr><td>4</td><td>[1,5,15,35]</td></tr><tr><td>5</td><td>[1,6,21,56]</td></tr></tbody></table><h3>Пример 2</h3><pre><strong>Вход:</strong> n = 5, k = 3
+<strong>Выход:</strong> 35
+<strong>Пояснение:</strong> состояние Array после каждой секунды:</pre><table><thead><tr><th>Секунда</th><th>Состояние после</th></tr></thead><tbody><tr><td>0</td><td>[1,1,1,1,1]</td></tr><tr><td>1</td><td>[1,2,3,4,5]</td></tr><tr><td>2</td><td>[1,3,6,10,15]</td></tr><tr><td>3</td><td>[1,4,10,20,35]</td></tr></tbody></table><h3>Ограничения</h3><ul><li><code>1 ≤ n, k ≤ 1000</code></li></ul>`,
+					Tests: &sets.TaskTests{TestSpec: sets.TestSpec{Mode: "call", Method: "valueAfterKSeconds"}, Cases: []sets.TestCase{
+						{Input: "[4,5]", Expected: text("56")},
+						{Input: "[5,3]", Expected: text("35")},
+						{Input: "[1,1000]", Expected: text("1")},
+						{Input: "[1000,1]", Expected: text("1000")},
+						{Input: "[2,2]", Expected: text("3")},
+						{Input: "[1000,1000]", Expected: text("36237869")},
+					}},
+				},
+				{
+					URL:        "https://leetcode.com/problems/number-of-ways-to-reach-a-position-after-exactly-k-steps/",
+					Number:     number(2400),
+					Title:      "Number of Ways to Reach a Position After Exactly k Steps",
+					Difficulty: "medium",
+					Topics:     []string{"Math", "Dynamic Programming", "Combinatorics", "Combinations"},
+					Note:       "Пусть d = |endPos − startPos|. Нужно r шагов в сторону конца и k − r обратно: r − (k − r) = d, r = (k + d)/2. Если d > k или k − d нечётно, ответ 0. Иначе C(k, r) % (10⁹ + 7). Время: O(k + log M) для таблиц. Память: O(k). Для 1 → 2 за 3 шага: d = 1, r = 2, C(3, 2) = 3. Dynamic Programming по шагам и позициям стоит O(k²) времени и O(k) памяти. Brute Force проверяет 2ᵏ путей.",
+					Statement: `<p>Даны два <strong>положительных</strong> целых числа <code>startPos</code> и <code>endPos</code>. Сначала вы стоите в позиции <code>startPos</code> на <strong>бесконечной</strong> числовой прямой. За один шаг можно сдвинуться на одну позицию влево или на одну позицию вправо.</p><p>Дано положительное целое число <code>k</code>. Верните <em>число <strong>разных</strong> способов попасть из позиции </em><code>startPos</code><em> в позицию </em><code>endPos</code><em>, если сделать <strong>ровно</strong> </em><code>k</code><em> шагов</em>. Ответ может быть очень большим, поэтому верните его <strong>по модулю</strong> <code>10<sup>9</sup> + 7</code>.</p><p>Два способа разные, если порядок шагов в них не совпадает полностью.</p><p><strong>Обратите внимание:</strong> на числовой прямой есть и отрицательные числа.</p><p>Метод класса <code>Solution</code>: <code>def numberOfWays(self, startPos: int, endPos: int, k: int) -&gt; int</code>.</p><h3>Пример 1</h3><pre><strong>Вход:</strong> startPos = 1, endPos = 2, k = 3
+<strong>Выход:</strong> 3
+<strong>Пояснение:</strong> из позиции 1 в позицию 2 ровно за 3 шага можно попасть тремя способами:
+- 1 -&gt; 2 -&gt; 3 -&gt; 2.
+- 1 -&gt; 2 -&gt; 1 -&gt; 2.
+- 1 -&gt; 0 -&gt; 1 -&gt; 2.
+Можно доказать, что других способов нет, поэтому ответ 3.</pre><h3>Пример 2</h3><pre><strong>Вход:</strong> startPos = 2, endPos = 5, k = 10
+<strong>Выход:</strong> 0
+<strong>Пояснение:</strong> из позиции 2 нельзя попасть в позицию 5 ровно за 10 шагов.</pre><h3>Ограничения</h3><ul><li><code>1 ≤ startPos, endPos, k ≤ 1000</code></li></ul>`,
+					Tests: &sets.TaskTests{TestSpec: sets.TestSpec{Mode: "call", Method: "numberOfWays"}, Cases: []sets.TestCase{
+						{Input: "[1,2,3]", Expected: text("3")},
+						{Input: "[2,5,10]", Expected: text("0")},
+						{Input: "[5,5,2]", Expected: text("2")},
+						{Input: "[1,1000,999]", Expected: text("1")},
+						{Input: "[7,3,6]", Expected: text("6")},
+						{Input: "[500,500,1000]", Expected: text("159835829")},
+					}},
+				},
+				{
+					URL:        "https://leetcode.com/problems/number-of-sets-of-k-non-overlapping-line-segments/",
+					Number:     number(1621),
+					Title:      "Number of Sets of K Non-Overlapping Line Segments",
+					Difficulty: "medium",
+					Topics:     []string{"Math", "Dynamic Programming", "Combinatorics", "Combinations"},
+					Note:       "Сдвиньте i-й отрезок вправо на i − 1: тогда 2k концов станут разными числами от 0 до n + k − 2. Ответ C(n + k − 1, 2k) % (10⁹ + 7). Время: O(n + k + log M). Память: O(n + k) для таблиц. Для n = 4, k = 2: C(5, 4) = 5. Dynamic Programming по точкам и числу отрезков с Prefix Sum стоит O(nk), без Prefix Sum O(n²k).",
+					Statement: `<p>На прямой даны <code>n</code> точек. Точка с номером <code>i</code> (от <code>0</code> до <code>n - 1</code>) стоит в <code>x = i</code>. Найдите число способов нарисовать <strong>ровно</strong> <code>k</code> <strong>неперекрывающихся</strong> отрезков так, чтобы каждый отрезок покрывал две или больше точек. Концы каждого отрезка должны иметь <strong>целые координаты</strong>. Эти <code>k</code> отрезков <strong>не обязаны</strong> покрывать все <code>n</code> точек, и им <strong>можно</strong> иметь общие концы.</p><p>Верните <em>число способов нарисовать </em><code>k</code><em> неперекрывающихся отрезков</em>. Это число может быть огромным, поэтому верните его <strong>по модулю</strong> <code>10<sup>9</sup> + 7</code>.</p><p>Метод класса <code>Solution</code>: <code>def numberOfSets(self, n: int, k: int) -&gt; int</code>.</p><h3>Пример 1</h3><pre><strong>Вход:</strong> n = 4, k = 2
+<strong>Выход:</strong> 5
+<strong>Пояснение:</strong> есть 5 разных способов: {(0,2),(2,3)}, {(0,1),(1,3)}, {(0,1),(2,3)}, {(1,2),(2,3)}, {(0,1),(1,2)}.</pre><h3>Пример 2</h3><pre><strong>Вход:</strong> n = 3, k = 1
+<strong>Выход:</strong> 3
+<strong>Пояснение:</strong> 3 способа: {(0,1)}, {(0,2)}, {(1,2)}.</pre><h3>Пример 3</h3><pre><strong>Вход:</strong> n = 30, k = 7
+<strong>Выход:</strong> 796297179
+<strong>Пояснение:</strong> всего есть 3796297200 способов нарисовать 7 отрезков. Остаток от деления этого числа на 10<sup>9</sup> + 7 равен 796297179.</pre><h3>Ограничения</h3><ul><li><code>2 ≤ n ≤ 1000</code></li><li><code>1 ≤ k ≤ n - 1</code></li></ul>`,
+					Tests: &sets.TaskTests{TestSpec: sets.TestSpec{Mode: "call", Method: "numberOfSets"}, Cases: []sets.TestCase{
+						{Input: "[4,2]", Expected: text("5")},
+						{Input: "[3,1]", Expected: text("3")},
+						{Input: "[30,7]", Expected: text("796297179")},
+						{Input: "[2,1]", Expected: text("1")},
+						{Input: "[1000,1]", Expected: text("499500")},
+						{Input: "[1000,500]", Expected: text("70047606")},
+					}},
+				},
+				{
+					URL:        "https://codeforces.com/problemset/problem/1081/C",
+					Title:      "Colorful Bricks",
+					Difficulty: "medium",
+					Topics:     []string{"Math", "Combinatorics", "Dynamic Programming", "Combinations"},
+					Note:       "Codeforces, рейтинг 1500. Выберите k мест смены цвета из n − 1: C(n − 1, k). Первый кирпич красят m способами, каждый кирпич смены m − 1 способами. Ответ C(n − 1, k) · m · (m − 1)ᵏ по модулю M = 998244353. Время: O(n + log M). Память: O(n) для таблиц Factorial. Для n = 3, m = 2, k = 1: 2 · 2 · 1 = 4. Dynamic Programming f[i][j] = f[i − 1][j] + f[i − 1][j − 1] · (m − 1) стоит O(nk) времени: при n = 2000 это до 4 · 10⁶ шагов, тоже успевает.",
+					Statement:  `<p>В свободное время Чоути любит заниматься домашними делами. У него появилось новое задание: покрасить кирпичи во дворе.</p><p>На земле в ряд лежат <code>n</code> кирпичей. У Чоути под рукой <code>m</code> вёдер с красками разных цветов, и он покрасил каждый кирпич в один из этих <code>m</code> цветов.</p><p>Закончив покраску, Чоути остался доволен. Он отошёл назад и решил найти в кирпичах что-нибудь интересное. Он посчитал и нашёл <code>k</code> кирпичей, цвет которых отличается от цвета кирпича слева от них (первый кирпич, конечно, не считается).</p><p>Как обычно, ему нужна ваша помощь: посчитайте, сколькими способами он мог покрасить кирпичи. Два способа покраски разные, если хотя бы один кирпич в них покрашен в разные цвета. Ответ может быть довольно большим, поэтому выведите только число способов по модулю <code>998 244 353</code>.</p><h3>Входные данные</h3><p>В первой и единственной строке записаны три целых числа <code>n</code>, <code>m</code> и <code>k</code> (<code>1 ≤ n, m ≤ 2000</code>, <code>0 ≤ k ≤ n - 1</code>): число кирпичей, число цветов и число кирпичей, цвет которых отличается от цвета кирпича слева от них.</p><h3>Выходные данные</h3><p>Выведите одно целое число: число способов покрасить кирпичи по модулю <code>998 244 353</code>.</p><h3>Пример 1</h3><p><strong>Входные данные:</strong></p><pre>3 3 0</pre><p><strong>Выходные данные:</strong></p><pre>3</pre><h3>Пример 2</h3><p><strong>Входные данные:</strong></p><pre>3 2 1</pre><p><strong>Выходные данные:</strong></p><pre>4</pre><h3>Примечание</h3><p>В первом примере <code>k = 0</code>, поэтому все кирпичи должны быть одного цвета. Значит, способов ровно <code>m = 3</code>.</p><p>Во втором примере пусть в вёдрах жёлтая и салатовая краска. Вот все <code>4</code> возможные раскраски (Ж - жёлтый кирпич, С - салатовый): ЖЖС, ЖСС, ССЖ, СЖЖ.</p><h3>Ограничения</h3><ul><li><code>1 ≤ n, m ≤ 2000</code></li><li><code>0 ≤ k ≤ n - 1</code></li><li>Ограничение по времени: 2 секунды на тест.</li><li>Ограничение по памяти: 256 мегабайт на тест.</li></ul>`,
+					Tests: &sets.TaskTests{TestSpec: sets.TestSpec{Mode: "stdio"}, Cases: []sets.TestCase{
+						{Input: `3 3 0
+`, Expected: text(`3
+`)},
+						{Input: `3 2 1
+`, Expected: text(`4
+`)},
+						{Input: `1 1 0
+`, Expected: text(`1
+`)},
+						{Input: `2000 1 1
+`, Expected: text(`0
+`)},
+						{Input: `4 3 2
+`, Expected: text(`36
+`)},
+						{Input: `2000 2000 1000
+`, Expected: text(`161680257
+`)},
+					}},
+				},
+			},
+			Cards: []sets.Card{
+				{ID: "pc5-row-mod", Type: "short", Prompt: "Строка n = 5 Pascal's Triangle по модулю 4: 1, 1, 2, 2, 1, 1. Постройте из неё строку n = 6 по модулю 4, % после каждого сложения. Запишите числа строки без пробелов.", Answer: "1230321", Explain: "Края равны 1. Внутри: 1 + 1 = 2, 1 + 2 = 3, 2 + 2 = 4 даёт остаток 0, 2 + 1 = 3, 1 + 1 = 2. Проверка без модуля: строка 6 равна 1, 6, 15, 20, 15, 6, 1, и 6 % 4 = 2, 15 % 4 = 3, 20 % 4 = 0. Без % после сложения в середине останется 4, а остаток по модулю 4 всегда меньше 4. Строка требует 5 сложений, как и без модуля."},
+				{ID: "pc5-pascal-cost", Type: "choice", Prompt: "Сколько примерно сложений нужно, чтобы построить Pascal's Triangle по модулю для всех строк от 0 до N = 3 · 10⁴?", Options: []string{"около 3 · 10⁴", "около 4,5 · 10⁸", "около 9 · 10⁸"}, Answer: 1, Explain: "Строка n требует n − 1 сложений, всего N(N − 1)/2 = 30 000 · 29 999 / 2 = 449 985 000, около 4,5 · 10⁸. 9 · 10⁸ - это N², но строка n короче N. 3 · 10⁴ - это число строк, а не сложений. По оценке 10⁷ шагов в секунду это около 45 с при 3 с на тест. Таблицы Factorial дают O(N + log M) подготовки и O(1) на каждое C(n, k)."},
+				{ID: "pc5-stars", Type: "short", Prompt: "Сколько способов разложить 4 одинаковых шара по 3 разным коробкам, если коробки могут быть пустыми?", Answer: "15", Explain: "4 звезды и 2 палочки занимают 6 мест; выбираем места палочек: C(6, 2) = 15. Это формула C(n + k − 1, k − 1) при n = 4, k = 3. Ответ C(3, 2) = 3 считает только раскладки без пустых коробок. Brute Force по тройкам (a, b, c) с a + b + c = 4 даёт те же 15 вариантов, но число троек растёт с n и k."},
+				{ID: "pc5-stars-min", Type: "choice", Prompt: "9 одинаковых конфет делят между 3 детьми, каждому хотя бы одну. Какая формула даёт число способов?", Options: []string{"C(11, 2)", "C(9, 3)", "C(8, 2)"}, Answer: 2, Explain: "Сначала дайте каждому по конфете. Остаются 6 конфет без ограничений: C(6 + 3 − 1, 2) = C(8, 2) = 28. C(11, 2) = 55 считает и пустые доли для 9 конфет. C(9, 3) = 84 выбирает 3 конфеты из 9, а не 2 границы. То же число 28 даёт выбор 2 из 8 промежутков между 9 конфетами."},
+				{ID: "pc5-line", Type: "short", Prompt: "Путь на прямой из 0 в 3 ровно за 5 шагов, каждый шаг на 1 влево или вправо. Сколько путей?", Answer: "5", Explain: "Шагов вправо r, влево 5 − r, и r − (5 − r) = 3, значит r = 4. Выбираем место одного шага влево: C(5, 1) = 5. Ответ C(5, 3) = 10 неверен: 3 - это смещение, а не число шагов вправо. При чётном числе шагов в 3 не попасть, тогда ответ 0."},
+				{ID: "pc5-parity", Type: "choice", Prompt: "startPos = 1, endPos = 4, k = 6. Что вернёт LeetCode 2400?", Options: []string{"0", "C(6, 5) = 6", "C(6, 3) = 20"}, Answer: 0, Explain: "Каждый шаг меняет чётность позиции. За 6 шагов чётность возвращается, а 1 и 4 разной чётности: ответ 0. Формула r = (k + d)/2 = (6 + 3)/2 = 4,5 не целая. C(6, 5) получится, если округлить 4,5 до 5, но 5 шагов вправо и 1 влево ведут из 1 в 5, а не в 4. C(6, 3) считает пути длины 6 в ту же позицию."},
+				{ID: "pc5-code", Type: "code", Prompt: "Функция C(n, k) по таблицам. Что стоит на месте ___?", Language: "python", Code: `def C(n, k):
+    if k < 0 or k > n:
+        return 0
+    return fact[n] * inv_fact[k] % M * ___ % M`, Options: []string{"fact[n - k]", "inv_fact[n - k]", "inv_fact[n]"}, Answer: 1, Explain: "C(n, k) = n! / (k! · (n − k)!), деление на (n − k)! - это умножение на inv_fact[n − k]. С fact[n − k] получится n! · (n − k)! / k!, неверно. С inv_fact[n] деление на n! отменяет n!, и ответ равен 1 / k!. После подготовки таблиц вызов делает 2 умножения и 2 операции %: O(1)."},
+				{ID: "pc5-flags", Type: "short", Prompt: "Ряд из 4 флажков, 2 цвета. Ровно 2 раза соседние флажки разного цвета. Сколько раскрасок?", Answer: "6", Explain: "Места смены: 2 из 3 промежутков, C(3, 2) = 3. Первый флажок: 2 цвета, после каждой смены 2 − 1 = 1 цвет. Ответ 3 · 2 · 1 = 6: ABAA, ABBA, AABA и три раскраски с B в начале. Ответ 3 забывает цвет первого флажка. Это C(n − 1, k) · m · (m − 1) в степени k."},
+			},
+			Links: []sets.Link{
+				{Title: "Биномиальный коэффициент", URL: "https://ru.wikipedia.org/wiki/Биномиальный_коэффициент", Source: "Википедия"},
+				{Title: "Комбинаторные объекты", URL: "https://neerc.ifmo.ru/wiki/index.php?title=Комбинаторные_объекты", Source: "Викиконспекты ИТМО"},
+				{Title: "Деление по модулю и таблицы Factorial", URL: "https://redlamp.me/leetcode/sets/modular-arithmetic/3", Source: "Лекции"},
+				{Title: "Stars and Bars", URL: "https://cp-algorithms.com/combinatorics/stars_and_bars.html", Source: "cp-algorithms (англ.)"},
+				{Title: "Binomial Coefficients по модулю", URL: "https://cp-algorithms.com/combinatorics/binomial-coefficients.html", Source: "cp-algorithms (англ.)"},
+			},
+			Figures: []sets.Figure{
+				{
+					ID:    "pc5-pascal",
+					Title: "Pascal's Triangle по модулю 7",
+					Frames: []sets.FigureFrame{
+						{Caption: "Строки от 0 до 4: каждое внутреннее число равно сумме двух чисел над ним. Все числа меньше 7.", Rows: []sets.FigureRow{
+							{Label: "n = 0", Cells: []any{1}},
+							{Label: "n = 1", Cells: []any{1, 1}},
+							{Label: "n = 2", Cells: []any{1, 2, 1}},
+							{Label: "n = 3", Cells: []any{1, 3, 3, 1}},
+							{Label: "n = 4", Cells: []any{1, 4, 6, 4, 1}},
+						}},
+						{Caption: "Строки 5 и 6 по модулю 7: 10 даёт остаток 3, 15 даёт остаток 1, 20 даёт остаток 6. Остатки складывают тоже по модулю: 5 + 3 = 8 даёт остаток 1.", Rows: []sets.FigureRow{
+							{Label: "n = 0", Cells: []any{1}},
+							{Label: "n = 1", Cells: []any{1, 1}},
+							{Label: "n = 2", Cells: []any{1, 2, 1}},
+							{Label: "n = 3", Cells: []any{1, 3, 3, 1}},
+							{Label: "n = 4", Cells: []any{1, 4, 6, 4, 1}},
+							{Label: "n = 5", Cells: []any{1, 5, 3, 3, 5, 1}, Marked: []int{2, 3}},
+							{Label: "n = 6", Cells: []any{1, 6, 1, 6, 1, 6, 1}, Marked: []int{2, 3, 4}},
+						}},
+						{Caption: "Строка 7: 6 + 1 = 7 и 1 + 6 = 7 дают остаток 0. Все внутренние C(7, k) делятся на 7. Строки до 7 потребовали 21 сложение.", Rows: []sets.FigureRow{
+							{Label: "n = 0", Cells: []any{1}},
+							{Label: "n = 1", Cells: []any{1, 1}},
+							{Label: "n = 2", Cells: []any{1, 2, 1}},
+							{Label: "n = 3", Cells: []any{1, 3, 3, 1}},
+							{Label: "n = 4", Cells: []any{1, 4, 6, 4, 1}},
+							{Label: "n = 5", Cells: []any{1, 5, 3, 3, 5, 1}},
+							{Label: "n = 6", Cells: []any{1, 6, 1, 6, 1, 6, 1}},
+							{Label: "n = 7", Cells: []any{1, 0, 0, 0, 0, 0, 0, 1}, Marked: []int{1, 2, 3, 4, 5, 6}},
+						}},
+					},
+				},
+				{
+					ID:    "pc5-stars",
+					Title: "Stars and Bars: 5 конфет, 3 ребёнка",
+					Frames: []sets.FigureFrame{
+						{Caption: "★★|★|★★: палочки на местах 3 и 5. Доли 2, 1, 2.", Rows: []sets.FigureRow{
+							{Label: "место", Cells: []any{1, 2, 3, 4, 5, 6, 7}},
+							{Label: "запись", Cells: []any{"★", "★", "|", "★", "|", "★", "★"}, Marked: []int{2, 4}},
+							{Label: "доли", Cells: []any{2, 1, 2}},
+						}},
+						{Caption: "|★★★★★|: палочки на местах 1 и 7. Доли 0, 5, 0: пустая доля разрешена.", Rows: []sets.FigureRow{
+							{Label: "место", Cells: []any{1, 2, 3, 4, 5, 6, 7}},
+							{Label: "запись", Cells: []any{"|", "★", "★", "★", "★", "★", "|"}, Marked: []int{0, 6}},
+							{Label: "доли", Cells: []any{0, 5, 0}},
+						}},
+						{Caption: "★★★★★||: палочки на местах 6 и 7. Каждый выбор 2 мест из 7 даёт одну раздачу: C(7, 2) = 21.", Rows: []sets.FigureRow{
+							{Label: "место", Cells: []any{1, 2, 3, 4, 5, 6, 7}},
+							{Label: "запись", Cells: []any{"★", "★", "★", "★", "★", "|", "|"}, Marked: []int{5, 6}},
+							{Label: "доли", Cells: []any{5, 0, 0}},
+						}},
+					},
+				},
+				{
+					ID:    "pc5-line",
+					Title: "Пути на прямой: из 0 за 4 шага",
+					Frames: []sets.FigureFrame{
+						{Caption: "Шаг 0: один путь стоит в 0.", Rows: []sets.FigureRow{
+							{Label: "позиция", Cells: []any{-4, -3, -2, -1, 0, 1, 2, 3, 4}},
+							{Label: "шаг 0", Cells: []any{"", "", "", "", 1, "", "", "", ""}, Marked: []int{4}},
+						}},
+						{Caption: "Шаг 1: в −1 и в 1 по одному пути.", Rows: []sets.FigureRow{
+							{Label: "позиция", Cells: []any{-4, -3, -2, -1, 0, 1, 2, 3, 4}},
+							{Label: "шаг 0", Cells: []any{"", "", "", "", 1, "", "", "", ""}},
+							{Label: "шаг 1", Cells: []any{"", "", "", 1, "", 1, "", "", ""}, Marked: []int{3, 5}},
+						}},
+						{Caption: "Шаг 2: в 0 ведут 2 пути. Число в клетке равно сумме двух соседей шагом раньше.", Rows: []sets.FigureRow{
+							{Label: "позиция", Cells: []any{-4, -3, -2, -1, 0, 1, 2, 3, 4}},
+							{Label: "шаг 0", Cells: []any{"", "", "", "", 1, "", "", "", ""}},
+							{Label: "шаг 1", Cells: []any{"", "", "", 1, "", 1, "", "", ""}},
+							{Label: "шаг 2", Cells: []any{"", "", 1, "", 2, "", 1, "", ""}, Marked: []int{2, 4, 6}},
+						}},
+						{Caption: "Шаг 3: 1, 3, 3, 1, как строка 3 Pascal's Triangle.", Rows: []sets.FigureRow{
+							{Label: "позиция", Cells: []any{-4, -3, -2, -1, 0, 1, 2, 3, 4}},
+							{Label: "шаг 0", Cells: []any{"", "", "", "", 1, "", "", "", ""}},
+							{Label: "шаг 1", Cells: []any{"", "", "", 1, "", 1, "", "", ""}},
+							{Label: "шаг 2", Cells: []any{"", "", 1, "", 2, "", 1, "", ""}},
+							{Label: "шаг 3", Cells: []any{"", 1, "", 3, "", 3, "", 1, ""}, Marked: []int{1, 3, 5, 7}},
+						}},
+						{Caption: "Шаг 4: 1, 4, 6, 4, 1. В позицию 2 ведут 4 пути: C(4, 1) = 4. В нечётные позиции за 4 шага не попасть.", Rows: []sets.FigureRow{
+							{Label: "позиция", Cells: []any{-4, -3, -2, -1, 0, 1, 2, 3, 4}},
+							{Label: "шаг 0", Cells: []any{"", "", "", "", 1, "", "", "", ""}},
+							{Label: "шаг 1", Cells: []any{"", "", "", 1, "", 1, "", "", ""}},
+							{Label: "шаг 2", Cells: []any{"", "", 1, "", 2, "", 1, "", ""}},
+							{Label: "шаг 3", Cells: []any{"", 1, "", 3, "", 3, "", 1, ""}},
+							{Label: "шаг 4", Cells: []any{1, "", 4, "", 6, "", 4, "", 1}, Marked: []int{0, 2, 4, 6, 8}, Pointers: &sets.Pointers{{Name: "конец", Cell: 6}}},
 						}},
 					},
 				},
