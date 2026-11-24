@@ -1,0 +1,315 @@
+[
+	{
+		"id": "calls",
+		"title": "Решение 1 на примере 1: 10 вызовов dfs",
+		"frames": [
+			{
+				"caption": "Вызов 1: dfs(0, 7), path = []. Цикл кладёт в path 2, 3, 6 и 7. Все числа от индекса 0 не больше 7, break нет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"marked": [
+							0,
+							1,
+							2,
+							3
+						],
+						"pointers": {
+							"start": 0
+						},
+						"window": [
+							0,
+							3
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"",
+							"",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 2: dfs(0, 5), path = [2]. Цикл кладёт в path 2 и 3. 6 > 5: break, число 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"marked": [
+							0,
+							1
+						],
+						"pointers": {
+							"start": 0
+						},
+						"window": [
+							0,
+							2
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							2,
+							"",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 3: dfs(0, 3), path = [2, 2]. Цикл кладёт в path 2 и 3. 6 > 3: break, число 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"marked": [
+							0,
+							1
+						],
+						"pointers": {
+							"start": 0
+						},
+						"window": [
+							0,
+							2
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							2,
+							2,
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 4: dfs(0, 1), path = [2, 2, 2]. 2 > 1: break, числа 3, 6 и 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 0
+						},
+						"window": [
+							0,
+							0
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							2,
+							2,
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 5: dfs(1, 0), path = [2, 2, 3]. 2 + 2 + 3 = 7: копия path идёт в res, это ответ 1.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 1
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							2,
+							2,
+							3
+						],
+						"marked": [
+							0,
+							1,
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 6: dfs(1, 2), path = [2, 3]. 3 > 2: break, числа 6 и 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 1
+						},
+						"window": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							2,
+							3,
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 7: dfs(1, 4), path = [3]. Цикл кладёт в path 3. 6 > 4: break, число 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"start": 1
+						},
+						"window": [
+							1,
+							2
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							3,
+							"",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 8: dfs(1, 1), path = [3, 3]. 3 > 1: break, числа 6 и 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 1
+						},
+						"window": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							3,
+							3,
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 9: dfs(2, 1), path = [6]. 6 > 1: break, число 7 цикл не проверяет.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 2
+						},
+						"window": [
+							2,
+							2
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							6,
+							"",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "Вызов 10: dfs(3, 0), path = [7]. Число 7 равно target: копия path идёт в res, это ответ 2.",
+				"rows": [
+					{
+						"label": "candidates",
+						"cells": [
+							2,
+							3,
+							6,
+							7
+						],
+						"pointers": {
+							"start": 3
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							7,
+							"",
+							""
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			}
+		]
+	}
+]

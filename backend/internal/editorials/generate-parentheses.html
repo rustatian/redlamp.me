@@ -1,0 +1,58 @@
+<p>Ответ: все правильные String длины 2n из <code>(</code> и <code>)</code>, каждая один раз. Порядок ответов не важен.</p>
+<h3>Решение 1. Backtracking с Pruning</h3>
+<p>При n = 3 String ответа имеет 6 символов, и на каждом месте стоит <code>(</code> или <code>)</code>. Всех String из 6 таких символов 2<sup>6</sup> = 64, а правильных из них только 5. Backtracking строит String слева направо в list <code>path</code> и не продолжает префикс, который уже нельзя закончить правильно.</p>
+<p>Возьмите префикс <code>())</code>. В нём одна скобка <code>(</code> и две скобки <code>)</code>. У второй <code>)</code> нет своей <code>(</code> левее, и символы правее этого не исправят. Префикс <code>((((</code> при n = 3 тоже не годится: в нём уже 4 скобки <code>(</code>, а в правильной String их ровно 3.</p>
+<p>Вызов <code>dfs(opened, closed)</code> знает, сколько скобок <code>(</code> и <code>)</code> уже стоит в <code>path</code>. Новый символ добавляется только после проверки:</p>
+<div class="rule"><p><code>(</code> можно добавить, если <code>opened &lt; n</code>. <code>)</code> можно добавить, если <code>closed &lt; opened</code>.</p></div>
+<p>Поэтому в каждом префиксе <code>path</code> скобок <code>)</code> не больше, чем скобок <code>(</code>, а скобок <code>(</code> не больше n. При n = 3 полный <code>path</code> имеет длину 6. В нём <code>opened</code> не больше 3, <code>closed</code> не больше <code>opened</code>, а вместе их 6. Это возможно только при <code>opened = closed = 3</code>. Значит, каждая String, которую код кладёт в <code>res</code>, правильная.</p>
+<p>Возьмите правильную String <code>(())()</code>. Каждый её префикс проходит проверку, поэтому <code>dfs</code> добавляет её символы один за другим и доходит до длины 6. Так <code>dfs</code> находит каждую правильную String. Повторов нет: две разные String различаются на первом месте, где у них разные символы, и на этом месте <code>dfs</code> идёт в разные ветки.</p>
+<p>Рисунок показывает все 8 вызовов <code>dfs</code> при n = 2. После ответа <code>(())</code> три <code>path.pop()</code> оставляют в <code>path</code> только <code>(</code>. Вызов с этим префиксом пробует вторую ветку, <code>)</code>, и строит второй ответ <code>()()</code>.</p>
+<figure data-figure="calls"></figure>
+<p>Возьмите префикс <code>(()</code> при n = 3: <code>opened = 2</code>, <code>closed = 1</code>. Добавьте 3 − 2 = 1 скобку <code>(</code>, затем 3 − 1 = 2 скобки <code>)</code>. Получится правильная String <code>(()())</code>. Так же можно закончить любой префикс, который прошёл проверки. Поэтому в поиске нет веток без ответа.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def generateParenthesis(self, n: int) -&gt; list[str]:
+        res = []
+        path = []
+
+        def dfs(opened, closed):
+            if len(path) == 2 * n:
+                res.append(''.join(path))
+                return
+            if opened &lt; n:  # ещё не все n скобок '(' стоят в path
+                path.append('(')
+                dfs(opened + 1, closed)
+                path.pop()
+            if closed &lt; opened:  # у новой ')' есть своя '(' левее
+                path.append(')')
+                dfs(opened, closed + 1)
+                path.pop()
+
+        dfs(0, 0)
+        return res</code></pre>
+<p><strong>Время:</strong> пусть R это число ответов. Каждый вызов лежит на пути от <code>dfs(0, 0)</code> к какому-то ответу. На каждом таком пути 2n + 1 вызовов, по одному для каждой длины <code>path</code> от 0 до 2n. Поэтому вызовов не больше (2n + 1) · R. Вызов с длиной <code>path</code> меньше 2n делает не больше двух <code>append</code> и двух <code>pop</code>, а вызов с длиной 2n делает <code>join</code> из 2n символов. Всего O(nR). При n = 3 вызовов 22, и это не больше 7 · 5 = 35. При n = 8 ответов 1430, вызовов 6917, а <code>join</code> пишет 16 · 1430 = 22 880 символов. Перебор всех String из <code>(</code> и <code>)</code> при n = 8 проверяет 2<sup>16</sup> = 4<sup>8</sup> = 65 536 String, в каждой до 16 символов: O(n · 4<sup>n</sup>).</p>
+<p><strong>Дополнительная память:</strong> <code>path</code> хранит до 2n символов, а Call Stack держит до 2n + 1 вызовов <code>dfs</code>: O(n). Ответ занимает 2n · R символов. Код главы с <code>s + '('</code> создаёт новую String в каждом вызове, и каждый вызов в Call Stack держит свою String. На пути к первому ответу это String длины 0, 1, ..., 2n: при n = 3 всего 0 + 1 + ... + 6 = 21 символ, O(n<sup>2</sup>). Общий <code>path</code> при n = 3 хранит не больше 6 символов.</p>
+<h3>Решение 2. Dynamic Programming</h3>
+<p>Возьмите правильную String <code>(())()</code>. Первая <code>(</code> стоит на месте 0. Её пара это <code>)</code> на месте 3: после префикса <code>(())</code> впервые <code>closed</code> равно <code>opened</code>, 2 и 2. Внутри этой пары стоит <code>()</code>, после неё тоже <code>()</code>. Обе части правильные, в каждой 1 пара, а всего 1 + 1 + 1 = 3 пары.</p>
+<p>Так устроена каждая правильная String с k парами: <code>'(' + a + ')' + b</code>. Здесь a это правильная String с i парами, b это правильная String с k − 1 − i парами, а i от 0 до k − 1. Первая <code>(</code> и её пара <code>)</code> не входят в a: в <code>(())</code> по 2 скобки <code>(</code> и <code>)</code>, а в a = <code>()</code> по 2 − 1 = 1 скобке. До места пары <code>closed</code> меньше <code>opened</code>, поэтому без первой <code>(</code> в каждом префиксе a скобок <code>)</code> не больше, чем скобок <code>(</code>. На месте пары <code>closed = opened</code>, поэтому в a поровну скобок <code>(</code> и <code>)</code>, и a правильная. Часть b начинается при <code>closed = opened</code>, поэтому b тоже правильная. Обратно, сборка из правильных a и b всегда даёт правильную String. Место пары первой скобки у String одно, поэтому разные i, a и b дают разные String.</p>
+<p>Значит, list <code>dp[k]</code> всех правильных String с k парами собирается из списков <code>dp[0]</code>, ..., <code>dp[k - 1]</code>. Начало <code>dp[0] = ['']</code>: одна пустая String. Дальше <code>dp[1] = ['()']</code> и <code>dp[2] = ['()()', '(())']</code>. При k = 3 сборка даёт 2 String при i = 0, 1 String при i = 1 и 2 String при i = 2: всего 5, как в примере 1.</p>
+<figure data-figure="dp"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def generateParenthesis(self, n: int) -&gt; list[str]:
+        dp = [['']]  # dp[k]: все правильные String с k парами
+        for k in range(1, n + 1):
+            cur = []
+            for i in range(k):
+                # i пар внутри первой пары скобок, k - 1 - i пар после неё
+                for a in dp[i]:
+                    for b in dp[k - 1 - i]:
+                        cur.append('(' + a + ')' + b)
+            dp.append(cur)
+        return dp[n]</code></pre>
+<p><strong>Время:</strong> числа String в <code>dp[1]</code>, ..., <code>dp[8]</code> равны 1, 2, 5, 14, 42, 132, 429 и 1430. Каждое следующее число хотя бы вдвое больше. Из String s в <code>dp[k]</code> при k ≥ 1 получаются две разные String в <code>dp[k + 1]</code>: <code>'()' + s</code> при i = 0 и <code>'(' + s + ')'</code> при i = k. Для разных s эти String тоже разные, потому что у них разные i, a или b. Значит, в <code>dp[n - 1]</code> не больше R/2 String, в <code>dp[n - 2]</code> не больше R/4, и так далее. Списки от <code>dp[1]</code> до <code>dp[n - 1]</code> вместе содержат не больше R/2 + R/4 + ... String, а эта сумма меньше R. При n = 8 это 1 + 2 + 5 + 14 + 42 + 132 + 429 = 625 String. Всего код собирает меньше 2R String, при n = 8 это 2055. Каждая сборка копирует O(n) символов, всего O(nR).</p>
+<p><strong>Дополнительная память:</strong> <code>dp</code> хранит все списки до <code>dp[n - 1]</code>: не больше R String длины меньше 2n, O(nR). При n = 8 это 626 String и 8162 символа. Ответ <code>dp[n]</code> занимает 2n · R символов. Решение 1 при n = 8 хранит в <code>path</code> не больше 16 символов.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Проверка <code>closed &lt; n</code> вместо <code>closed &lt; opened</code>. При n = 2 код вернёт все 6 String с двумя <code>(</code> и двумя <code>)</code>, среди них <code>))((</code>.</li>
+<li><code>elif</code> перед второй проверкой. Тогда вызов с <code>opened &lt; n</code> не пробует <code>)</code>, и при n = 3 ответ только <code>((()))</code>.</li>
+<li><code>res.append(path)</code> без <code>join</code>. В <code>res</code> попадает один и тот же list, и после всех <code>pop</code> он пустой: при n = 2 ответ <code>[[], []]</code>.</li>
+</ul>
