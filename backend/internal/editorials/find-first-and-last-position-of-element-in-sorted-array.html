@@ -1,0 +1,45 @@
+<p>Нужны индексы первого и последнего <code>target</code> в упорядоченном <code>nums</code>, а поиск должен занимать O(log n), где n - длина <code>nums</code>.</p>
+<p>Brute Force проходит <code>nums</code> слева направо и сравнивает каждое число с <code>target</code>. Для <code>nums = [5, 7, 7, 8, 8, 10]</code> и <code>target = 8</code> это 6 сравнений: восьмёрки стоят в индексах 3 и 4. При n = 10<sup>5</sup> это 100 000 сравнений, то есть O(n), а нужно O(log n). Brute Force не использует порядок чисел.</p>
+<h3>Решение 1. Binary Search</h3>
+<p>Возьмём тот же <code>nums = [5, 7, 7, 8, 8, 10]</code>, n = 6, и <code>target = 8</code>. Условие <code>nums[i] ≥ 8</code> в индексах 0, 1, 2, 3, 4, 5 даёт: нет, нет, нет, да, да, да. Первое «да» стоит в индексе 3: это первая восьмёрка. Условие <code>nums[i] &gt; 8</code> даёт: нет, нет, нет, нет, нет, да. Первое «да» стоит в индексе 5: это число 10, первое число больше 8. Array упорядочен, поэтому после первого «да» идут только «да»: оба условия идут «нет, ..., нет, да, ..., да». Восьмёрки стоят в индексах 3 и 4, и их 5 − 3 = 2.</p>
+<div class="rule"><p><strong>Правило.</strong> Пусть <code>left</code> - первый индекс <code>i</code> с <code>nums[i] ≥ target</code> (Lower Bound), а <code>right</code> - первый индекс <code>i</code> с <code>nums[i] &gt; target</code> (Upper Bound). Если такого индекса нет, он равен n. Чисел, равных <code>target</code>, ровно <code>right - left</code>. При <code>left &lt; right</code> ответ <code>[left, right - 1]</code>, иначе <code>[-1, -1]</code>.</p></div>
+<p>В примере 1 <code>left = 3</code> и <code>right = 5</code>. Индексы 0, 1, 2 левее <code>left</code>: там 5, 7, 7, и это меньше 8. Индексы 5 и правее: там 10, и это больше 8. В индексах 3 и 4 условие <code>nums[i] ≥ 8</code> даёт «да», а <code>nums[i] &gt; 8</code> даёт «нет». Значит, там стоят числа, равные 8, и ответ <code>[3, 4]</code>.</p>
+<p>Для <code>target = 6</code> первое число не меньше 6 - это 7 в индексе 1. Первое число больше 6 - тоже 7 в индексе 1. Тогда <code>left = right = 1</code>, между ними нет индексов, и ответ <code>[-1, -1]</code>. Для <code>target = 11</code> оба индекса равны n = 6, для пустого <code>nums</code> оба равны 0. Во всех этих случаях <code>left = right</code> и ответ <code>[-1, -1]</code>.</p>
+<p>Числа целые, поэтому <code>nums[i] &gt; 8</code> - то же самое, что <code>nums[i] ≥ 9</code>: в индексах 0, 1, 2, 3, 4, 5 оба условия дают нет, нет, нет, нет, нет, да. Значит, <code>right</code> - это <code>left</code> для <code>target + 1</code>. Одна функция <code>lower(x)</code> ищет первый индекс с <code>nums[i] ≥ x</code>, и тогда <code>left = lower(target)</code>, а <code>right = lower(target + 1)</code>.</p>
+<p>Binary Search находит первое «да» без проверки каждого индекса. Возьмём <code>lower(8)</code>. Ответ - одно из n + 1 = 7 мест от 0 до 6, поэтому <code>lo = 0</code> и <code>hi = 6</code>: ответ лежит от <code>lo</code> до <code>hi</code> включительно. Середина <code>mid = (0 + 6) // 2 = 3</code>, и 8 ≥ 8: «да». Первое «да» стоит в <code>mid</code> или левее, поэтому <code>hi = 3</code>. Теперь <code>mid = (0 + 3) // 2 = 1</code>, и 7 ≥ 8: «нет». Первое «да» правее <code>mid</code>, поэтому <code>lo = 2</code>. Теперь <code>mid = 2</code>, и 7 ≥ 8: «нет», поэтому <code>lo = 3</code>. Теперь <code>lo = hi = 3</code>: ответ 3. Это 3 проверки.</p>
+<figure data-figure="first"></figure>
+<p>Для <code>lower(9)</code> проверки идут так: <code>mid = 3</code>, 8 ≥ 9 «нет», <code>lo = 4</code>; <code>mid = 5</code>, 10 ≥ 9 «да», <code>hi = 5</code>; <code>mid = 4</code>, 8 ≥ 9 «нет», <code>lo = 5</code>. Ответ 5, это <code>right</code>.</p>
+<figure data-figure="last"></figure>
+<p>Для <code>target = 6</code> поиск <code>lower(6)</code> тоже делает 3 проверки: 8 ≥ 6 «да», 7 ≥ 6 «да», 5 ≥ 6 «нет», ответ 1. Поиск <code>lower(7)</code> идёт так же: 8 ≥ 7 «да», 7 ≥ 7 «да», 5 ≥ 7 «нет», ответ тоже 1.</p>
+<figure data-figure="absent"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def searchRange(self, nums: list[int], target: int) -&gt; list[int]:
+        def lower(x):
+            lo, hi = 0, len(nums)
+            while lo &lt; hi:
+                mid = (lo + hi) // 2
+                if nums[mid] &gt;= x:
+                    hi = mid  # mid может быть первым «да»
+                else:
+                    lo = mid + 1  # mid и числа левее него меньше x
+            return lo
+
+        left = lower(target)
+        right = lower(target + 1)  # индекс первого числа больше target
+        if left == right:
+            return [-1, -1]
+        return [left, right - 1]</code></pre>
+<p>Середина с «да» может быть первым «да», поэтому <code>hi = mid</code>, а не <code>mid - 1</code>. Середина с «нет» и числа левее неё меньше <code>x</code>, поэтому <code>lo = mid + 1</code>. Начальное <code>hi = len(nums)</code>, а не <code>len(nums) - 1</code>, потому что ответ n возможен. Цикл не читает <code>nums[n]</code>: из <code>lo &lt; hi</code> следует <code>mid &lt; hi</code>, а <code>hi</code> не больше n. Например, при <code>lo = 4</code> и <code>hi = 6</code> середина <code>mid = (4 + 6) // 2 = 5</code>, и <code>nums[6]</code> не читается.</p>
+<p><strong>Время:</strong> каждая проверка оставляет не больше половины отрезка длины <code>hi - lo</code>: из длины 6 получается 3 или 2. Поэтому один вызов <code>lower</code> делает не больше ⌊log<sub>2</sub> n⌋ + 1 проверок при n ≥ 1. Для n = 6 это 3, для n = 10<sup>5</sup> это 17. Два вызова дают не больше 2 · 17 = 34 проверок: O(log n) в худшем случае. <strong>Дополнительная память:</strong> числа <code>lo</code>, <code>hi</code>, <code>mid</code>, <code>left</code> и <code>right</code>, O(1) в худшем случае.</p>
+<h3>Готовая функция</h3>
+<p>Модуль bisect даёт те же два числа: <code>bisect_left(nums, target)</code> равно <code>left</code>, а <code>bisect_right(nums, target)</code> равно <code>right</code>. Для примера 1 это 3 и 5, для примера 2 это 1 и 1. Время каждого вызова O(log n) в худшем случае, дополнительная память O(1) в худшем случае.</p>
+<h3>Другой способ: одно число target и шаги в стороны</h3>
+<p>Binary Search находит любое число, равное <code>target</code>, а затем цикл идёт от него влево и вправо, пока числа равны <code>target</code>. Возьмём <code>nums</code> из 10<sup>5</sup> семёрок и <code>target = 7</code>. Этот поиск начинается с <code>lo = 0</code> и <code>hi = n - 1 = 99999</code>. В первой середине <code>(0 + 99999) // 2 = 49999</code> уже стоит 7. Цикл делает 49 999 шагов влево и 50 000 шагов вправо, всего 99 999 шагов: O(n) в худшем случае, а нужно O(log n). Шагов на 1 меньше, чем чисел, равных <code>target</code>. Больше всего их, когда все n чисел равны.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>return [left, right]</code> без «- 1». Для примера 1 функция возвращает <code>[3, 5]</code>, а нужен ответ <code>[3, 4]</code>: индекс 5 хранит число 10, а не восьмёрку.</li>
+<li>Проверка «target нет» как <code>left == len(nums)</code>. Для <code>target = 6</code> в примере 2 получается <code>left = right = 1</code>, условие ложно, и функция возвращает <code>[1, 0]</code> вместо <code>[-1, -1]</code>.</li>
+<li><code>if nums[left] != target</code> без проверки <code>left &lt; len(nums)</code>. Для <code>nums = [1, 2, 3]</code> и <code>target = 4</code> получается <code>left = 3</code>, и <code>nums[3]</code> вызывает IndexError. Для пустого <code>nums</code> ошибка уже при <code>nums[0]</code>.</li>
+<li><code>hi = len(nums) - 1</code> в <code>lower</code>. Для <code>nums = [5, 7, 7, 8, 8, 10]</code> и <code>target = 10</code> поиск <code>lower(11)</code> возвращает 5 вместо 6. Тогда <code>left = right = 5</code>, и функция возвращает <code>[-1, -1]</code> вместо <code>[5, 5]</code>.</li>
+<li><code>hi = mid - 1</code> при «да». Для примера 1 первая проверка <code>lower(8)</code> даёт <code>hi = 2</code>, и первая восьмёрка в индексе 3 выпадает из отрезка. Тогда <code>lower(8)</code> возвращает 2 вместо 3, <code>lower(9)</code> возвращает 4 вместо 5, и функция возвращает <code>[2, 3]</code> вместо <code>[3, 4]</code>.</li>
+</ul>

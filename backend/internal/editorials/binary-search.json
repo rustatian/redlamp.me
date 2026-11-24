@@ -1,0 +1,200 @@
+[
+	{
+		"id": "hit",
+		"title": "Binary Search, target = 9: 2 проверки",
+		"frames": [
+			{
+				"caption": "lo = 0, hi = 5, mid = 2. nums[2] = 3 меньше 9, индексы 0, 1, 2 отброшены: lo = 3.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"lo": 0,
+							"hi": 5,
+							"mid": 2
+						},
+						"window": [
+							0,
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "lo = 3, hi = 5, mid = 4. nums[4] = 9 равно target: ответ 4.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"marked": [
+							4
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						],
+						"pointers": {
+							"lo": 3,
+							"hi": 5,
+							"mid": 4
+						},
+						"window": [
+							3,
+							5
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "miss",
+		"title": "Binary Search, target = 2: 3 проверки",
+		"frames": [
+			{
+				"caption": "lo = 0, hi = 5, mid = 2. nums[2] = 3 больше 2, индексы 2, 3, 4, 5 отброшены: hi = 1.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"lo": 0,
+							"hi": 5,
+							"mid": 2
+						},
+						"window": [
+							0,
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "lo = 0, hi = 1, mid = 0. nums[0] = −1 меньше 2, индекс 0 отброшен: lo = 1.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"marked": [
+							0
+						],
+						"dimmed": [
+							2,
+							3,
+							4,
+							5
+						],
+						"pointers": {
+							"lo": 0,
+							"hi": 1,
+							"mid": 0
+						},
+						"window": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "lo = 1, hi = 1, mid = 1. nums[1] = 0 меньше 2, индекс 1 отброшен: lo = 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0,
+							2,
+							3,
+							4,
+							5
+						],
+						"pointers": {
+							"lo": 1,
+							"hi": 1,
+							"mid": 1
+						},
+						"window": [
+							1,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "lo = 2 больше hi = 1: отрезок пуст, цикл закончился. Ответ −1.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							-1,
+							0,
+							3,
+							5,
+							9,
+							12
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4,
+							5
+						],
+						"pointers": {
+							"lo": 2,
+							"hi": 1
+						}
+					}
+				]
+			}
+		]
+	}
+]

@@ -692,7 +692,7 @@ return lo`, Options: []string{"(lo + hi) // 2", "(lo + hi) // 2 - 1", "(lo + hi 
 					Title:      "Peak Index in a Mountain Array",
 					Difficulty: "medium",
 					Topics:     []string{"Array", "Binary Search"},
-					Note:       "Условие arr[i] > arr[i + 1] идёт «нет, ..., нет, да, ..., да»; вершина - первый индекс «да». Ищите его на [0, n − 1]. Время: O(log n), не больше 17 проверок для n = 10⁵. Память: O(1) дополнительно. Linear Scan даёт O(n). Ternary Search делает около 28 шагов для n = 10⁵. Для [1, 3, 6, 9, 7, 4, 2]: середины 9, 3, 6, ответ 3.",
+					Note:       "Условие arr[i] > arr[i + 1] идёт «нет, ..., нет, да, ..., да»; вершина - первый индекс «да». Ищите его на [0, n − 1]. Время: O(log n), не больше 17 проверок для n = 10⁵. Память: O(1) дополнительно. Linear Scan даёт O(n). Ternary Search делает около 28 шагов для n = 10⁵. Для [1, 3, 6, 9, 7, 4, 2]: середины 3, 1, 2, ответ 3.",
 					Statement: `<p>Дан Array целых чисел <code>arr</code> длины <code>n</code>, который является <strong>горой</strong>: значения растут до <strong>вершины</strong>, а потом убывают. Точнее, <code>arr[0] &lt; arr[1] &lt; ... &lt; arr[p] &gt; arr[p + 1] &gt; ... &gt; arr[n − 1]</code> для некоторого индекса <code>p</code>, <code>0 &lt; p &lt; n − 1</code>.</p><p>Верните индекс вершины.</p><p>Нужен алгоритм со временем <code>O(log(n))</code>.</p><p>Метод класса <code>Solution</code>: <code>def peakIndexInMountainArray(self, arr: list[int]) -&gt; int</code>.</p><h3>Пример 1</h3><pre><strong>Вход:</strong> arr = [0,1,0]
 <strong>Выход:</strong> 1</pre><h3>Пример 2</h3><pre><strong>Вход:</strong> arr = [0,2,1,0]
 <strong>Выход:</strong> 1</pre><h3>Пример 3</h3><pre><strong>Вход:</strong> arr = [0,10,5,2]
