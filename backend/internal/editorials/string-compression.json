@@ -1,0 +1,307 @@
+[
+	{
+		"id": "scan",
+		"title": "Пример 3: 4 записи, write не обгоняет read",
+		"frames": [
+			{
+				"caption": "Группа \"a\": start = 0, read = 1, count = 1.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"start": 0,
+							"write": 0,
+							"read": 1
+						}
+					},
+					{
+						"label": "count",
+						"cells": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "Код пишет \"a\" в ячейку 0, write = 1. Длина 1 не пишется. Скобка отмечает записанную часть ответа: первые write ячеек.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"write": 1,
+							"read": 1
+						},
+						"window": [
+							0,
+							0
+						]
+					},
+					{
+						"label": "count",
+						"cells": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "Группа \"b\": start = 1, read = 13 за концом chars, count = 12. Ячейки от 1 до 12 прочитаны.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							1,
+							2,
+							3,
+							4,
+							5,
+							6,
+							7,
+							8,
+							9,
+							10,
+							11,
+							12
+						],
+						"pointers": {
+							"start": 1,
+							"write": 1
+						},
+						"window": [
+							0,
+							0
+						]
+					},
+					{
+						"label": "count",
+						"cells": [
+							12
+						]
+					}
+				]
+			},
+			{
+				"caption": "Код пишет \"b\" в ячейку 1, write = 2. Цикл power даёт 10: число 100 больше 12. read = 13 за концом chars.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							2,
+							3,
+							4,
+							5,
+							6,
+							7,
+							8,
+							9,
+							10,
+							11,
+							12
+						],
+						"pointers": {
+							"write": 2
+						},
+						"window": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "count",
+						"cells": [
+							12
+						]
+					},
+					{
+						"label": "power",
+						"cells": [
+							10
+						]
+					}
+				]
+			},
+			{
+				"caption": "Цифра 12 // 10 % 10 = 1 идёт в ячейку 2, write = 3, power = 1. read = 13 за концом chars.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"1",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							3,
+							4,
+							5,
+							6,
+							7,
+							8,
+							9,
+							10,
+							11,
+							12
+						],
+						"pointers": {
+							"write": 3
+						},
+						"window": [
+							0,
+							2
+						]
+					},
+					{
+						"label": "count",
+						"cells": [
+							12
+						]
+					},
+					{
+						"label": "power",
+						"cells": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "Цифра 12 // 1 % 10 = 2 идёт в ячейку 3, write = 4, power = 0. Цикл цифр заканчивается. Индекс read = 13 за концом chars, поэтому метод возвращает 4.",
+				"rows": [
+					{
+						"label": "chars",
+						"cells": [
+							"a",
+							"b",
+							"1",
+							"2",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b",
+							"b"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							4,
+							5,
+							6,
+							7,
+							8,
+							9,
+							10,
+							11,
+							12
+						],
+						"pointers": {
+							"write": 4
+						},
+						"window": [
+							0,
+							3
+						]
+					},
+					{
+						"label": "count",
+						"cells": [
+							12
+						]
+					},
+					{
+						"label": "power",
+						"cells": [
+							0
+						]
+					}
+				]
+			}
+		]
+	}
+]

@@ -1,0 +1,51 @@
+<p>Буквы s нужно найти в t слева направо: каждую букву на своём месте t, правее места предыдущей буквы.</p>
+<h3>Решение 1. Two Pointers</h3>
+<p>Возьмите пример 1: <code>s = "abc"</code>, <code>t = "ahbgdc"</code>. Указатель <code>i</code> стоит на букве s, которую код ищет. Указатель <code>j</code> стоит на месте t, которое код смотрит. Сначала <code>i = 0</code> и <code>j = 0</code>.</p>
+<p>На месте 0 стоит a, это <code>s[0]</code>. Буква a нашлась, и <code>i</code> становится 1. Теперь код ищет b. На месте 1 стоит h, а на месте 2 стоит b: <code>i</code> становится 2. На местах 3 и 4 стоят g и d, это не c. На месте 5 стоит c, и <code>i</code> становится 3.</p>
+<div class="rule"><p><strong>Правило.</strong> Сравните <code>s[i]</code> и <code>t[j]</code>. При совпадении сдвиньте <code>i</code>. Указатель <code>j</code> сдвигайте на каждом шаге. Ответ True, когда <code>i</code> дошёл до <code>n = len(s)</code>.</p></div>
+<figure data-figure="scan"></figure>
+<p>В примере 1 код делает 6 сравнений и находит 3 совпадения. Теперь <code>i = 3 = n</code>, ответ True. В примере 2 <code>s = "axc"</code>. Буква a нашлась на месте 0, а буквы x в t нет. Цикл заканчивается при <code>j = 6 = m = len(t)</code>, и <code>i = 1</code> меньше <code>n = 3</code>. Ответ False.</p>
+<p>Цикл останавливается и при <code>i = n</code>: остаток t уже не нужен. Для <code>s = "ah"</code> и t из примера 1 код делает 2 сравнения. Для пустой s цикл не делает ни одного шага, и <code>i == n</code> даёт True.</p>
+<p>Код берёт для каждой буквы s самое левое место, которое ещё можно взять. Это не мешает следующим буквам. Пример: <code>s = "ab"</code>, <code>t = "aabb"</code>. Буквы s можно взять на местах 1 и 3. Код ищет a с места <code>j = 0</code> и находит её на месте 0, а 0 не правее 1. После этого <code>j = 1</code>, и место 3 буквы b не левее <code>j</code>. Код находит b на месте 2, а 2 не правее 3.</p>
+<p>Так в каждом случае. Пусть буквы s можно взять на местах p<sub>0</sub> &lt; p<sub>1</sub> &lt; p<sub>2</sub> и так далее. Перед поиском <code>s[i]</code> верно <code>j</code> ≤ p<sub>i</sub>: сначала <code>j = 0</code>. Место p<sub>i</sub> не левее <code>j</code>, и на нём стоит <code>s[i]</code>. Поэтому код находит <code>s[i]</code> на месте не правее p<sub>i</sub>. После этого <code>j</code> на 1 больше этого места, поэтому <code>j</code> ≤ p<sub>i</sub> + 1 ≤ p<sub>i + 1</sub>. Значит, код найдёт все буквы и вернёт True. Если код вернул False, таких мест нет.</p>
+<p><strong>Время:</strong> каждый шаг цикла делает одно сравнение и сдвигает <code>j</code> на 1. Цикл идёт, пока <code>j &lt; m</code>, поэтому сравнений не больше <code>m = len(t)</code>: O(m) в худшем случае. При m = 10<sup>4</sup> это не больше 10<sup>4</sup> сравнений. <strong>Дополнительная память:</strong> <code>n</code>, <code>m</code>, <code>i</code> и <code>j</code>, O(1) для любого входа.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def isSubsequence(self, s: str, t: str) -&gt; bool:
+        n, m = len(s), len(t)
+        i = j = 0
+        while i &lt; n and j &lt; m:
+            if s[i] == t[j]:
+                i += 1  # буква s[i] нашлась на месте j
+            j += 1
+        return i == n</code></pre>
+<h3>Решение 2. Binary Search по местам букв</h3>
+<p>Это ответ на дополнительный вопрос: одна t и очень много s. Решение 1 для каждой s проходит t заново, до m = 10<sup>4</sup> сравнений. При 10<sup>9</sup> запросах это до 10<sup>13</sup> сравнений.</p>
+<p>Запишите для каждой буквы t её места по порядку. Это Hash Table <code>places</code>: ключ это буква, значение это list её мест. Пример: <code>t = "abcabcab"</code>. Тогда <code>places["a"] = [0, 3, 6]</code>, <code>places["b"] = [1, 4, 7]</code>, <code>places["c"] = [2, 5]</code>.</p>
+<p>Binary Search делает функция <code>bisect_left(row, j)</code> из модуля bisect. Например, <code>bisect_left([2, 5], 3) = 1</code>: число 2 меньше 3, а число 5 с индексом 1 не меньше 3. Функция возвращает индекс <code>k</code> первого числа в list <code>row</code>, которое не меньше <code>j</code>. Если такого числа нет, <code>k = len(row)</code>.</p>
+<p>Возьмите <code>s = "cbac"</code>. <code>j</code> это первое место t, которое ещё можно взять, сначала <code>j = 0</code>. Для c Binary Search в [2, 5] находит первое место не левее 0, это 2. Теперь <code>j = 3</code>. Для b в [1, 4, 7] первое место не левее 3 это 4, и <code>j = 5</code>. Для a в [0, 3, 6] это 6, и <code>j = 7</code>. Для c в [2, 5] места не левее 7 нет, и <code>k = 2 = len(row)</code>. Ответ False.</p>
+<figure data-figure="places"></figure>
+<p>Решение 2 берёт те же места, что и решение 1: самое левое место буквы не левее <code>j</code>. Поэтому довод решения 1 верен и здесь.</p>
+<p><strong>Время:</strong> ожидаемое для Hash Table. <code>places</code> строится за m добавлений, O(m). Каждая буква s делает один Binary Search в list длины не больше m. При m = 10<sup>4</sup> это не больше 14 шагов. Итого O(m + n log(m + 1)). В дополнительном вопросе <code>places</code> строится один раз, а каждый запрос стоит O(n log(m + 1)). При n = 100 это не больше 100 · 14 = 1400 шагов вместо 10<sup>4</sup> сравнений решения 1. Для одного запроса решение 2 не быстрее решения 1: оно тоже читает всю t. <strong>Дополнительная память:</strong> <code>places</code> хранит ровно m мест, не больше чем в 26 list: O(m) для любого входа.</p>
+<pre class="no-run"><code class="language-python">from bisect import bisect_left
+
+
+class Solution:
+    def isSubsequence(self, s: str, t: str) -&gt; bool:
+        places = {}
+        for p, c in enumerate(t):
+            places.setdefault(c, []).append(p)
+        j = 0  # первое место t, которое ещё можно взять
+        for c in s:
+            row = places.get(c, [])
+            k = bisect_left(row, j)  # первое место буквы c не левее j
+            if k == len(row):
+                return False
+            j = row[k] + 1
+        return True</code></pre>
+<h3>Что не подходит</h3>
+<p>Brute Force перебирает все наборы из n мест t и сравнивает буквы s с буквами на этих местах. C(m, n) это число способов выбрать n мест из m. Если ответ False, Brute Force проверяет все C(m, n) наборов. В примере 2 это C(6, 3) = 20 наборов. При m = 10<sup>4</sup> и n = 100 наборов больше 10<sup>241</sup>: слишком долго.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Проверить только, что каждая буква s есть в t, например через <code>c in t</code>. Для <code>s = "ba"</code> и <code>t = "ab"</code> обе буквы есть, но b стоит правее a. Такой код вернёт True, а ответ False.</li>
+<li>Не сдвигать <code>j</code> при совпадении. Тогда одно место t служит двум буквам s. Для <code>s = "aa"</code> и <code>t = "a"</code> такой код вернёт True, а ответ False. В решении 2 та же ошибка: <code>j = row[k]</code> без <code>+ 1</code>.</li>
+</ul>

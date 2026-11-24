@@ -1,0 +1,45 @@
+<p>Ответ строится прямо в начале <code>chars</code>: для каждой группы её символ, а для группы длиннее 1 ещё и цифры длины. Ниже n это длина <code>chars</code>.</p>
+<h3>Решение 1. Two Pointers</h3>
+<p>Возьмите пример 1: <code>chars = ["a", "a", "b", "b", "c", "c", "c"]</code>. Индекс <code>read</code> читает ячейки слева направо. Индекс <code>write</code> показывает ячейку для следующего символа ответа. В начале группы код запоминает её первую ячейку в <code>start</code>. Потом <code>read</code> идёт вправо, пока <code>chars[read]</code> равен <code>chars[start]</code>. Когда <code>read</code> останавливается, длина группы равна <code>count = read - start</code>.</p>
+<ul>
+<li>Группа "aa": <code>start = 0</code>, <code>read = 2</code>, <code>count = 2</code>. Код пишет "a" в ячейку 0 и "2" в ячейку 1, <code>write = 2</code>.</li>
+<li>Группа "bb": <code>start = 2</code>, <code>read = 4</code>, <code>count = 2</code>. Символы "b" и "2" идут в ячейки 2 и 3, <code>write = 4</code>.</li>
+<li>Группа "ccc": <code>start = 4</code>, <code>read = 7</code>, <code>count = 3</code>. Символы "c" и "3" идут в ячейки 4 и 5, <code>write = 6</code>.</li>
+</ul>
+<p>Теперь <code>read = 7 = n</code>, и внешний цикл заканчивается. Метод возвращает 6, первые 6 ячеек содержат <code>["a", "2", "b", "2", "c", "3"]</code>.</p>
+<p><strong>Цифры длины без временной String.</strong> В примере 3 у группы "b" длина <code>count = 12</code>. Её цифры идут слева направо: сначала 1, потом 2. Код ищет <code>power</code>, наибольшую степень 10, которая не больше <code>count</code>. Сначала <code>power = 1</code>. Число 10 не больше 12, поэтому <code>power = 10</code>. Число 100 больше 12, и поиск заканчивается. Здесь <code>//</code> это деление нацело, а <code>% 10</code> оставляет последнюю цифру. Первая цифра <code>12 // 10 % 10 = 1</code>. Потом <code>power = 10 // 10 = 1</code> и вторая цифра <code>12 // 1 % 10 = 2</code>. Потом <code>power = 1 // 10 = 0</code>, и цикл цифр заканчивается. Без остатка <code>% 10</code> вторая цифра была бы <code>12 // 1 = 12</code>.</p>
+<p>Рисунок показывает пример 3 по шагам. После группы "b" индекс <code>read = 13</code> стоит за концом <code>chars</code>. Ячейки от 4 до 12 хранят старые "b": <code>read</code> их уже прочитал, и в ответ они не входят. Метод возвращает 4.</p>
+<figure data-figure="scan"></figure>
+<p><strong>Почему запись не портит непрочитанные символы.</strong> Код пишет группу только после того, как <code>read</code> прошёл её целиком. Группа длины 1 занимает в ответе 1 ячейку: в примере 3 группа "a" даёт только "a" в ячейке 0. Группа длины <code>count ≥ 2</code> занимает 1 ячейку для символа и по одной ячейке для каждой цифры <code>count</code>. При n ≤ 2000 длина группы имеет не больше четырёх цифр. Длина из одной цифры здесь не меньше 2, из двух цифр не меньше 10, из трёх цифр не меньше 100, из четырёх цифр не меньше 1000. Такие группы занимают 2, 3, 4 и 5 ячеек, и это не больше их длины.</p>
+<p>Значит, если перед группой <code>write ≤ start</code>, то после неё <code>write ≤ start + count = read</code>. В начале <code>write = read = 0</code>. Поэтому <code>write</code> никогда не обгоняет <code>read</code>, и код пишет только в ячейки, которые <code>read</code> уже прошёл. Все сравнения с <code>chars[start]</code> идут до первой записи группы, поэтому символ группы ещё не изменён. В примере 1 после группы "ccc" <code>write = 6</code>, а <code>read = 7</code>.</p>
+<div class="rule"><p><strong>Инвариант.</strong> Перед каждой группой первые <code>write</code> ячеек содержат сжатую запись символов левее <code>read</code>, и <code>write ≤ read</code>. В примере 1 перед группой "ccc" <code>write = read = 4</code>, а первые 4 ячейки содержат <code>["a", "2", "b", "2"]</code>.</p></div>
+<p><strong>Время:</strong> <code>read</code> проходит каждую из n ячеек один раз. Пусть g это число групп. Сравнение <code>chars[read] == chars[start]</code> выполняется n + g − 1 раз: n раз оно верно и g − 1 раз неверно. Последняя группа останавливается на условии <code>read &lt; n</code> без сравнения. Записей столько, сколько символов в ответе, не больше n. Для длины из d цифр цикл <code>power</code> проверяет условие d раз и делает d − 1 шагов <code>power *= 10</code>, а цикл цифр делает d записей. У каждой группы длины <code>count ≥ 2</code> цифр меньше, чем <code>count</code>, поэтому всех цифр меньше n. Итого O(n) в худшем случае. В примере 1 n = 7 и g = 3: 7 + 3 − 1 = 9 сравнений и 6 записей. <strong>Дополнительная память:</strong> числа <code>n</code>, <code>read</code>, <code>write</code>, <code>start</code>, <code>count</code> и <code>power</code>, O(1) для любого входа. Вызов <code>str</code> от одной цифры даёт один символ. Ответ лежит в самом <code>chars</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def compress(self, chars: list[str]) -&gt; int:
+        n = len(chars)
+        read = write = 0
+        while read &lt; n:
+            start = read
+            while read &lt; n and chars[read] == chars[start]:
+                read += 1
+            count = read - start
+            chars[write] = chars[start]  # write ≤ start: эту ячейку read уже прошёл
+            write += 1
+            if count &gt; 1:
+                power = 1
+                while power * 10 &lt;= count:  # наибольшая степень 10, не больше count
+                    power *= 10
+                while power &gt; 0:
+                    chars[write] = str(count // power % 10)  # цифры слева направо
+                    write += 1
+                    power //= 10
+        return write</code></pre>
+<h3>Другие способы</h3>
+<p>Цикл <code>for c in str(count)</code> тоже пишет верные цифры. Но <code>str(count)</code> создаёт временную String из всех цифр <code>count</code>: O(log(n + 1)) дополнительной памяти. При <code>count = 2000</code> это 4 символа, а условие требует постоянную память и для цифр.</p>
+<p>Можно собрать ответ в новой String и потом скопировать её в <code>chars</code>. Ответ будет верным, но новая String хранит до n символов: для <code>["a", "b", "c"]</code> все 3 символа. Это O(n) дополнительной памяти.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Цифры с конца. Цикл <code>while count &gt; 0</code> пишет <code>count % 10</code> и делит <code>count</code> нацело на 10, поэтому младшая цифра идёт первой. В примере 3 такой код оставляет <code>["a", "b", "2", "1"]</code>.</li>
+<li>Длина 1 тоже записана. Тогда группа длины 1 занимает 2 ячейки, и <code>write</code> обгоняет <code>read</code>. Для <code>["a", "b"]</code> код пишет "1" в ячейку 1 поверх непрочитанной "b". Потом <code>read</code> читает "1" как новую группу, и запись в ячейку 2 даёт IndexError.</li>
+<li>Последняя группа потеряна. Код пишет группу, только когда видит следующий символ другой группы. После цикла последняя группа остаётся незаписанной. В примере 1 такой код возвращает 4: группы "ccc" нет в ответе.</li>
+</ul>

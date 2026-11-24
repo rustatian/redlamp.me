@@ -1,0 +1,40 @@
+<p>Ответ зависит только от букв и цифр String <code>s</code>. Их сравнивают парами с двух концов, а заглавная буква равна своей строчной.</p>
+<h3>Решение 1. Two Pointers</h3>
+<p>Возьмите пример 2: <code>s = "race a car"</code>, n = 10. Указатель <code>l</code> стоит на месте 0, указатель <code>r</code> на месте 9. Символы <code>s[0] = "r"</code> и <code>s[9] = "r"</code> равны, и оба указателя идут внутрь. Так же совпадают пары <code>"a"</code> на местах 1 и 8 и <code>"c"</code> на местах 2 и 7.</p>
+<p>Теперь <code>l = 3</code> и <code>r = 6</code>. Символ <code>s[6]</code> это пробел. Его нет в очищенной String <code>"raceacar"</code>, поэтому <code>r -= 1</code> без сравнения. На местах 3 и 5 стоят <code>"e"</code> и <code>"a"</code>. Они разные, и ответ <code>False</code>.</p>
+<p>Одной разной пары достаточно. Левее места 3 стоят 3 буквы <code>"rac"</code>, правее места 5 тоже 3 буквы <code>"car"</code>. Значит, <code>"e"</code> это буква номер 4 от начала String <code>"raceacar"</code>, а <code>"a"</code> это буква номер 4 от конца. В Palindrome эти буквы равны.</p>
+<p>Так на каждом шаге: левее <code>l</code> и правее <code>r</code> одинаковое число букв и цифр. Совпала пара: оба символа уходят из окна, и каждое число растёт на 1. Пропуск убирает символ, который не буква и не цифра, и числа не меняются. Поэтому, когда <code>s[l]</code> и <code>s[r]</code> буквы или цифры, у них один номер: у <code>s[l]</code> от начала очищенной String, у <code>s[r]</code> от конца.</p>
+<p>Метод <code>lower()</code> заменяет заглавную букву на строчную. В примере 1 первая пара это <code>s[0] = "A"</code> и <code>s[29] = "a"</code>. После <code>lower()</code> обе дают <code>"a"</code>, и пара совпадает. Метод <code>isalnum()</code> даёт <code>True</code> для буквы или цифры. Среди 95 печатаемых символов ASCII таких 62: 26 заглавных букв, 26 строчных и 10 цифр.</p>
+<p>Цикл заканчивается, когда <code>l ≥ r</code>: все пары проверены. В примере 1 после 19 шагов <code>l = r = 17</code>. Там стоит <code>"c"</code>, середина String <code>"amanaplanacanalpanama"</code>, и у неё нет пары. Ответ <code>True</code>. В примере 3 n = 1, <code>l = r = 0</code>, и цикл не делает ни одного шага.</p>
+<div class="rule"><p><strong>Правило.</strong> <code>s[l]</code> не буква и не цифра: <code>l += 1</code>. <code>s[r]</code> не буква и не цифра: <code>r -= 1</code>. Иначе сравните <code>s[l].lower()</code> и <code>s[r].lower()</code>. Разные символы дают <code>False</code>, равные дают <code>l += 1</code> и <code>r -= 1</code>.</p></div>
+<p>На рисунке пробел показан знаком ␣.</p>
+<figure data-figure="scan"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def isPalindrome(self, s: str) -&gt; bool:
+        l, r = 0, len(s) - 1
+        while l &lt; r:
+            if not s[l].isalnum():
+                l += 1  # этого символа нет в очищенной String
+            elif not s[r].isalnum():
+                r -= 1
+            elif s[l].lower() != s[r].lower():
+                return False
+            else:
+                l += 1  # пара совпала, идём внутрь
+                r -= 1
+        return True</code></pre>
+<p><strong>Время:</strong> n - длина <code>s</code>. Сначала <code>r - l</code> равно n − 1. Пропуск уменьшает эту разность на 1, совпавшая пара на 2. Цикл идёт, только пока разность не меньше 1, поэтому шагов не больше n − 1: O(n) в худшем случае. В примере 1 n = 30, а шагов 19: 10 пар и 9 пропусков. Если в <code>s</code> нет букв и цифр, <code>l</code> идёт от 0 до n − 1, и шагов ровно n − 1. <strong>Дополнительная память:</strong> <code>l</code> и <code>r</code>, O(1). Ответ - одно значение <code>True</code> или <code>False</code>.</p>
+<h3>Решение 2. Очищенная копия и разворот</h3>
+<p>Можно построить очищенную String целиком. Array <code>t</code> получает каждую букву и цифру <code>s</code> по порядку, и заглавная буква попадает в <code>t</code> строчной. Для примера 2 в <code>t</code> 8 символов: <code>r a c e a c a r</code>. Срез <code>t[::-1]</code> даёт те же символы в обратном порядке: <code>r a c a e c a r</code>. Palindrome означает <code>t == t[::-1]</code>. Здесь <code>t</code> и <code>t[::-1]</code> различаются на месте 3: <code>"e"</code> и <code>"a"</code>. Это та же пара, что нашло решение 1 на местах 3 и 5 String <code>s</code>.</p>
+<figure data-figure="copy"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def isPalindrome(self, s: str) -&gt; bool:
+        t = [c.lower() for c in s if c.isalnum()]
+        return t == t[::-1]</code></pre>
+<p><strong>Время:</strong> построение <code>t</code> проходит n символов <code>s</code>. Срез и сравнение проходят не больше k символов, где k - число букв и цифр в <code>s</code>, k ≤ n. Всего O(n) в худшем случае. <strong>Дополнительная память:</strong> <code>t</code> и копия <code>t[::-1]</code> хранят по k символов, O(n). В примере 2 это 8 + 8 = 16 символов. При n = 2 · 10<sup>5</sup> и <code>s</code> только из букв это 4 · 10<sup>5</sup> символов.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Сравнение без <code>lower()</code>. В примере 1 уже первая пара окажется разной, и ответ будет <code>False</code> вместо <code>True</code>.</li>
+<li><code>isalpha()</code> вместо <code>isalnum()</code>. Метод <code>isalpha()</code> даёт <code>False</code> для цифры. Для <code>s = "0P"</code> останется одна буква, и ответ будет <code>True</code>. Правильный ответ <code>False</code>: <code>"0"</code> и <code>"p"</code> разные символы.</li>
+<li>Пропуск во внутреннем цикле без проверки <code>l &lt; r</code>. Код <code>while not s[l].isalnum(): l += 1</code> для <code>s = ".,"</code> проходит места 0 и 1 и читает <code>s[2]</code>. Такого места нет, и Python даёт <code>IndexError</code>. В решении 1 каждый шаг делает один ход, и перед каждым шагом цикл проверяет <code>l &lt; r</code>.</li>
+</ul>

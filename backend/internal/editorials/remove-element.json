@@ -1,0 +1,515 @@
+[
+	{
+		"id": "scan",
+		"title": "Решение 1, пример 2: 8 проверок и 5 записей",
+		"frames": [
+			{
+				"caption": "read = 0: 0 ≠ val. Код пишет 0 в ту же ячейку 0, write = 1.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"read": 0,
+							"write": 1
+						},
+						"window": [
+							0,
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 1: 1 ≠ val. Код пишет 1 в ту же ячейку 1, write = 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"read": 1,
+							"write": 2
+						},
+						"window": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 2: 2 = val, код пропускает число. write = 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"read": 2,
+							"write": 2
+						},
+						"window": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 3: 2 = val, код пропускает число. write = 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							2
+						],
+						"pointers": {
+							"read": 3,
+							"write": 2
+						},
+						"window": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 4: 3 ≠ val. Число 3 встаёт в ячейку 2, write = 3.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							3,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							2,
+							4
+						],
+						"dimmed": [
+							3
+						],
+						"pointers": {
+							"read": 4,
+							"write": 3
+						},
+						"window": [
+							0,
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 5: 0 ≠ val. Число 0 встаёт в ячейку 3, write = 4.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							3,
+							0,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							3,
+							5
+						],
+						"dimmed": [
+							4
+						],
+						"pointers": {
+							"read": 5,
+							"write": 4
+						},
+						"window": [
+							0,
+							3
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 6: 4 ≠ val. Число 4 встаёт в ячейку 4, write = 5.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							3,
+							0,
+							4,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							4,
+							6
+						],
+						"dimmed": [
+							5
+						],
+						"pointers": {
+							"read": 6,
+							"write": 5
+						},
+						"window": [
+							0,
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "read = 7: 2 = val, код пропускает число. write = 5. Ответ k = 5, проверок 8, записей 5.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							3,
+							0,
+							4,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							7
+						],
+						"dimmed": [
+							5,
+							6
+						],
+						"pointers": {
+							"read": 7,
+							"write": 5
+						},
+						"window": [
+							0,
+							4
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "ends",
+		"title": "Решение 2, пример 2: 8 шагов и 3 записи",
+		"frames": [
+			{
+				"caption": "Ячейка 0: 0 ≠ val, i = 1. end = 8: это место сразу за последней ячейкой.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 1
+						},
+						"window": [
+							1,
+							7
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 1: 1 ≠ val, i = 2. end = 8: это место сразу за последней ячейкой.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 2
+						},
+						"window": [
+							2,
+							7
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 2: 2 = val. end = 7, в ячейку 2 встаёт 2 из ячейки 7. i остаётся 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							2,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							2,
+							7
+						],
+						"pointers": {
+							"i": 2,
+							"end": 7
+						},
+						"window": [
+							2,
+							6
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 2: 2 = val. end = 6, в ячейку 2 встаёт 4 из ячейки 6. i остаётся 2.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							4,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							2,
+							6
+						],
+						"dimmed": [
+							7
+						],
+						"pointers": {
+							"i": 2,
+							"end": 6
+						},
+						"window": [
+							2,
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 2: 4 ≠ val, i = 3.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							4,
+							2,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							6,
+							7
+						],
+						"pointers": {
+							"i": 3,
+							"end": 6
+						},
+						"window": [
+							3,
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 3: 2 = val. end = 5, в ячейку 3 встаёт 0 из ячейки 5. i остаётся 3.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							4,
+							0,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							3,
+							5
+						],
+						"dimmed": [
+							6,
+							7
+						],
+						"pointers": {
+							"i": 3,
+							"end": 5
+						},
+						"window": [
+							3,
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 3: 0 ≠ val, i = 4.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							4,
+							0,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							5,
+							6,
+							7
+						],
+						"pointers": {
+							"i": 4,
+							"end": 5
+						},
+						"window": [
+							4,
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "Ячейка 4: 3 ≠ val, i = 5. i = end = 5, ответ k = 5.",
+				"rows": [
+					{
+						"label": "nums",
+						"cells": [
+							0,
+							1,
+							4,
+							0,
+							3,
+							0,
+							4,
+							2
+						],
+						"marked": [
+							4
+						],
+						"dimmed": [
+							5,
+							6,
+							7
+						],
+						"pointers": {
+							"i": 5,
+							"end": 5
+						}
+					}
+				]
+			}
+		]
+	}
+]

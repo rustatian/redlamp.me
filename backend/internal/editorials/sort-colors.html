@@ -1,0 +1,57 @@
+<p>Числа надо переставить внутри самого <code>nums</code>: сначала все 0, потом все 1, потом все 2.</p>
+<h3>Решение 1. Two Pointers: Dutch National Flag</h3>
+<p>Возьмите пример 1: <code>nums = [2, 0, 2, 1, 1, 0]</code>, n = 6. Код хранит три индекса. Индекс <code>mid</code> читает числа, а <code>low</code> и <code>high</code> показывают, куда код ставит следующий 0 и следующую 2. Сначала <code>low = 0</code>, <code>mid = 0</code> и <code>high = 5</code>. Ячейки от <code>mid</code> до <code>high</code> код ещё не проверил: сейчас это все 6 ячеек. На каждом шаге код смотрит на число <code>nums[mid]</code>:</p>
+<ul>
+<li>0: обмен ячеек <code>low</code> и <code>mid</code>, затем <code>low += 1</code> и <code>mid += 1</code>;</li>
+<li>1: только <code>mid += 1</code>;</li>
+<li>2: обмен ячеек <code>mid</code> и <code>high</code>, затем <code>high -= 1</code>, а <code>mid</code> не меняется.</li>
+</ul>
+<p>Шаг 1: <code>nums[0] = 2</code>. Обмен ячеек 0 и 5 даёт <code>[0, 0, 2, 1, 1, 2]</code> и <code>high = 4</code>. Шаги 2 и 3: в ячейках 0 и 1 стоит 0, и <code>low = mid</code>. Каждый из этих обменов меняет ячейку саму с собой. После шага 3 <code>low = mid = 2</code>. Шаг 4: <code>nums[2] = 2</code>. Обмен ячеек 2 и 4 даёт <code>[0, 0, 1, 1, 2, 2]</code> и <code>high = 3</code>. Шаги 5 и 6: в ячейках 2 и 3 стоит 1, и <code>mid</code> растёт до 4. Теперь <code>mid = 4</code> больше <code>high = 3</code>, и цикл кончается. Это ответ.</p>
+<figure data-figure="flag"></figure>
+<p>После шага 4 <code>low = 2</code>, <code>mid = 2</code> и <code>high = 3</code>. Ячейки 0 и 1 хранят нули. Часть единиц от <code>low</code> до <code>mid − 1</code> пока пустая. Ячейки 2 и 3 код ещё не проверил. Ячейки 4 и 5 хранят двойки.</p>
+<div class="rule"><p><strong>Инвариант.</strong> Перед каждым шагом ячейки от 0 до <code>low − 1</code> хранят 0, ячейки от <code>low</code> до <code>mid − 1</code> хранят 1, ячейки от <code>mid</code> до <code>high</code> не проверены, а ячейки от <code>high + 1</code> до <code>n − 1</code> хранят 2.</p></div>
+<p>Каждый шаг сохраняет эти четыре части.</p>
+<ul>
+<li>Число 2. Обмен ставит 2 в ячейку <code>high</code>, и после <code>high -= 1</code> эта ячейка входит в часть двоек. В ячейку <code>mid</code> приходит число из ячейки <code>high</code>. Код его ещё не проверил, поэтому <code>mid</code> не растёт. На шаге 1 в ячейку 0 пришёл 0 из ячейки 5, и его проверил только шаг 2.</li>
+<li>Число 0 при <code>low &lt; mid</code>. В ячейке <code>low</code> стоит 1: это первая ячейка части единиц. Обмен ставит 0 в ячейку <code>low</code>, а 1 в ячейку <code>mid</code>. После <code>low += 1</code> и <code>mid += 1</code> обе части снова верны. В <code>[1, 0]</code> шаг 1 даёт <code>mid = 1</code>. Шаг 2 меняет ячейки 0 и 1: <code>[0, 1]</code>, <code>low = 1</code>, <code>mid = 2</code>.</li>
+<li>Число 0 при <code>low = mid</code>. Часть единиц пустая, и обмен меняет ячейку саму с собой, как на шагах 2 и 3 примера 1.</li>
+<li>Число 1 стоит в ячейке <code>mid</code>, сразу после части единиц, поэтому хватает <code>mid += 1</code>.</li>
+</ul>
+<p>Каждый шаг делает ровно одно из двух: <code>mid += 1</code> или <code>high -= 1</code>. Поэтому число непроверенных ячеек <code>high − mid + 1</code> уменьшается ровно на 1. В примере 1 оно идёт 6, 5, 4, 3, 2, 1, 0. Цикл кончается при <code>mid = high + 1</code>, когда непроверенных ячеек нет. Тогда <code>nums</code> состоит из нулей, единиц и двоек в этом порядке. Обмен только меняет два числа местами, поэтому ни одно число не пропадает.</p>
+<p><strong>Время:</strong> n это длина <code>nums</code>. Цикл делает ровно n шагов. На каждом шаге код делает не больше двух сравнений <code>nums[mid]</code> (с 0 и с 1) и не больше одного обмена: O(n). В примере 1 это 6 шагов, 10 сравнений <code>nums[mid]</code> и 4 обмена, из них 2 обмена ячейки с самой собой. Код проходит <code>nums</code> один раз, как просит дополнительный вопрос. <strong>Дополнительная память:</strong> <code>low</code>, <code>mid</code>, <code>high</code> и два числа на время обмена, O(1). Ответ лежит в самом <code>nums</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def sortColors(self, nums: list[int]) -&gt; None:
+        low, mid, high = 0, 0, len(nums) - 1
+        while mid &lt;= high:
+            if nums[mid] == 0:
+                # в ячейке low стоит 1, или low == mid
+                nums[low], nums[mid] = nums[mid], nums[low]
+                low += 1
+                mid += 1
+            elif nums[mid] == 1:
+                mid += 1
+            else:
+                # число из ячейки high ещё не проверено, поэтому mid не растёт
+                nums[mid], nums[high] = nums[high], nums[mid]
+                high -= 1</code></pre>
+<h3>Решение 2. Counting Sort</h3>
+<p>Ответ зависит только от количества нулей, единиц и двоек. Первый цикл считает их в list <code>count</code>. Для примера 1 получается <code>count = [2, 2, 2]</code>. Второй цикл пишет в <code>nums</code> слева направо <code>count[0]</code> нулей, потом <code>count[1]</code> единиц, потом <code>count[2]</code> двоек. В примере 1 код пишет 0 в ячейки 0 и 1, 1 в ячейки 2 и 3, 2 в ячейки 4 и 5.</p>
+<figure data-figure="count"></figure>
+<p>Второй цикл стирает старые числа, но они уже не нужны: первый цикл прочитал все n чисел до первой записи. Всего код пишет <code>count[0] + count[1] + count[2]</code> = n чисел, поэтому каждая ячейка получает ровно одну запись.</p>
+<p><strong>Время:</strong> n добавлений в <code>count</code> и n записей в <code>nums</code>: O(n). В примере 1 это 6 добавлений и 6 записей. Код проходит <code>nums</code> два раза, а решение 1 один раз. <strong>Дополнительная память:</strong> <code>count</code> из 3 чисел и переменные <code>x</code>, <code>i</code>, <code>color</code> и <code>_</code>, O(1).</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def sortColors(self, nums: list[int]) -&gt; None:
+        count = [0, 0, 0]
+        for x in nums:
+            count[x] += 1
+        i = 0
+        for color in range(3):
+            for _ in range(count[color]):
+                nums[i] = color
+                i += 1</code></pre>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>mid += 1</code> после обмена с <code>high</code>. Примеры 1 и 2 такой код проходит, а <code>[1, 2, 0]</code> даёт <code>[1, 0, 2]</code>. Шаг 1 видит 1, и <code>mid = 1</code>. Шаг 2 меняет ячейки 1 и 2: <code>[1, 0, 2]</code>, <code>high = 1</code>, но <code>mid = 2</code>. Цикл кончается, и 0 в ячейке 1 остаётся без проверки.</li>
+<li>Условие <code>while mid &lt; high</code>. Ячейка <code>mid = high</code> тоже не проверена, а цикл её пропускает. Пример 2 даёт <code>[1, 0, 2]</code>: после двух шагов <code>mid = high = 1</code>, и 0 в ячейке 1 остаётся на месте.</li>
+<li><code>nums = [0] * nums.count(0) + [1] * nums.count(1) + [2] * nums.count(2)</code>. Эта строка создаёт новый list, и имя <code>nums</code> внутри метода указывает на него. Старый list, который передал тест, не меняется: для примера 1 тест получает <code>[2, 0, 2, 1, 1, 0]</code>. Запись по индексу, как <code>nums[i] = color</code> в решении 2, меняет сам старый list.</li>
+</ul>

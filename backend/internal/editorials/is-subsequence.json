@@ -1,0 +1,540 @@
+[
+	{
+		"id": "scan",
+		"title": "Two Pointers на примере 1: 6 сравнений, 3 совпадения",
+		"frames": [
+			{
+				"caption": "i = 0, j = 0. s[0] = a, t[0] = a: совпадение, i += 1 и j += 1.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 0
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"j": 0
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 1, j = 1. s[1] = b, t[1] = h: не совпадает, только j += 1.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"j": 1
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 1, j = 2. s[1] = b, t[2] = b: совпадение, i += 1 и j += 1.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"j": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 2, j = 3. s[2] = c, t[3] = g: не совпадает, только j += 1.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"i": 2
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						],
+						"pointers": {
+							"j": 3
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 2, j = 4. s[2] = c, t[4] = d: не совпадает, только j += 1.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"i": 2
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							4
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3
+						],
+						"pointers": {
+							"j": 4
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 2, j = 5. s[2] = c, t[5] = c: совпадение, i += 1 и j += 1. Теперь i = 3 = n: ответ True.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"i": 2
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"h",
+							"b",
+							"g",
+							"d",
+							"c"
+						],
+						"marked": [
+							5
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4
+						],
+						"pointers": {
+							"j": 5
+						}
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "places",
+		"title": "Binary Search по местам букв: s = cbac, t = abcabcab",
+		"frames": [
+			{
+				"caption": "places хранит места каждой буквы t по порядку: a: [0, 3, 6], b: [1, 4, 7], c: [2, 5].",
+				"rows": [
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"a",
+							"b",
+							"c",
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "места a",
+						"cells": [
+							0,
+							3,
+							6
+						]
+					},
+					{
+						"label": "места b",
+						"cells": [
+							1,
+							4,
+							7
+						]
+					},
+					{
+						"label": "места c",
+						"cells": [
+							2,
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "Буква c, j = 0. В [2, 5] первое место не левее 0 это 2, k = 0. Теперь j = 3.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"c"
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "места c",
+						"cells": [
+							2,
+							5
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"k": 0
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"a",
+							"b",
+							"c",
+							"a",
+							"b"
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"j": 0
+						}
+					}
+				]
+			},
+			{
+				"caption": "Буква b, j = 3. В [1, 4, 7] первое место не левее 3 это 4, k = 1. Теперь j = 5.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"c"
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						]
+					},
+					{
+						"label": "места b",
+						"cells": [
+							1,
+							4,
+							7
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"k": 1
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"a",
+							"b",
+							"c",
+							"a",
+							"b"
+						],
+						"marked": [
+							4
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						],
+						"pointers": {
+							"j": 3
+						}
+					}
+				]
+			},
+			{
+				"caption": "Буква a, j = 5. В [0, 3, 6] первое место не левее 5 это 6, k = 2. Теперь j = 7.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"c"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "места a",
+						"cells": [
+							0,
+							3,
+							6
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"k": 2
+						}
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"a",
+							"b",
+							"c",
+							"a",
+							"b"
+						],
+						"marked": [
+							6
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4
+						],
+						"pointers": {
+							"j": 5
+						}
+					}
+				]
+			},
+			{
+				"caption": "Буква c, j = 7. В [2, 5] нет места не левее 7: k = 2 = len(row). Ответ False.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"c"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						]
+					},
+					{
+						"label": "места c",
+						"cells": [
+							2,
+							5
+						],
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "t",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"a",
+							"b",
+							"c",
+							"a",
+							"b"
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4,
+							5,
+							6
+						],
+						"pointers": {
+							"j": 7
+						}
+					}
+				]
+			}
+		]
+	}
+]

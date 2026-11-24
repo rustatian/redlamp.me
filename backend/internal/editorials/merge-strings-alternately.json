@@ -1,0 +1,244 @@
+[
+	{
+		"id": "merge",
+		"title": "Two Pointers на примере 2: 4 шага цикла, 6 добавлений в out",
+		"frames": [
+			{
+				"caption": "Шаг 1: i = 0, j = 0. Код кладёт в out word1[0] = a и word2[0] = p. Теперь i = 1, j = 1.",
+				"rows": [
+					{
+						"label": "word1",
+						"cells": [
+							"a",
+							"b"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 0
+						}
+					},
+					{
+						"label": "word2",
+						"cells": [
+							"p",
+							"q",
+							"r",
+							"s"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"j": 0
+						}
+					},
+					{
+						"label": "out",
+						"cells": [
+							"a",
+							"p"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "Шаг 2: i = 1, j = 1. Код кладёт в out word1[1] = b и word2[1] = q. Теперь i = 2, j = 2.",
+				"rows": [
+					{
+						"label": "word1",
+						"cells": [
+							"a",
+							"b"
+						],
+						"dimmed": [
+							0
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "word2",
+						"cells": [
+							"p",
+							"q",
+							"r",
+							"s"
+						],
+						"dimmed": [
+							0
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"j": 1
+						}
+					},
+					{
+						"label": "out",
+						"cells": [
+							"a",
+							"p",
+							"b",
+							"q"
+						],
+						"marked": [
+							2,
+							3
+						]
+					}
+				]
+			},
+			{
+				"caption": "Шаг 3: i = 2 = n, в word1 букв больше нет. Код кладёт в out только word2[2] = r. Теперь j = 3.",
+				"rows": [
+					{
+						"label": "word1",
+						"cells": [
+							"a",
+							"b"
+						],
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "word2",
+						"cells": [
+							"p",
+							"q",
+							"r",
+							"s"
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"j": 2
+						}
+					},
+					{
+						"label": "out",
+						"cells": [
+							"a",
+							"p",
+							"b",
+							"q",
+							"r"
+						],
+						"marked": [
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "Шаг 4: i = 2 = n, в word1 букв больше нет. Код кладёт в out только word2[3] = s. Теперь j = 4.",
+				"rows": [
+					{
+						"label": "word1",
+						"cells": [
+							"a",
+							"b"
+						],
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "word2",
+						"cells": [
+							"p",
+							"q",
+							"r",
+							"s"
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						],
+						"marked": [
+							3
+						],
+						"pointers": {
+							"j": 3
+						}
+					},
+					{
+						"label": "out",
+						"cells": [
+							"a",
+							"p",
+							"b",
+							"q",
+							"r",
+							"s"
+						],
+						"marked": [
+							5
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 2 = n и j = 4 = m: цикл закончен. join собирает 6 букв out в ответ apbqrs.",
+				"rows": [
+					{
+						"label": "word1",
+						"cells": [
+							"a",
+							"b"
+						],
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "word2",
+						"cells": [
+							"p",
+							"q",
+							"r",
+							"s"
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3
+						]
+					},
+					{
+						"label": "out",
+						"cells": [
+							"a",
+							"p",
+							"b",
+							"q",
+							"r",
+							"s"
+						]
+					}
+				]
+			}
+		]
+	}
+]
