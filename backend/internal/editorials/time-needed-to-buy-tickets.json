@@ -1,0 +1,291 @@
+[
+	{
+		"id": "queue",
+		"title": "Simulation на примере 1: 6 продаж, ответ 6",
+		"frames": [
+			{
+				"caption": "Секунда 1, круг 1. Человек 0 покупает билет: tickets[0] = 2 − 1 = 1. Ему нужен ещё билет: q.append(0).",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							0,
+							1,
+							2
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							1,
+							3,
+							2
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "Секунда 2, круг 1. Человек 1 покупает билет: tickets[1] = 3 − 1 = 2. Ему нужен ещё билет: q.append(1).",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							1,
+							2,
+							0
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							1,
+							2,
+							2
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "Секунда 3, круг 1. Человек 2 покупает билет: tickets[2] = 2 − 1 = 1. Ему нужен ещё билет: q.append(2).",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							2,
+							0,
+							1
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							1,
+							2,
+							1
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "Секунда 4, круг 2. Человек 0 покупает билет: tickets[0] = 1 − 1 = 0. Билеты кончились: человек 0 уходит.",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							0,
+							1,
+							2
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							0,
+							2,
+							1
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "Секунда 5, круг 2. Человек 1 покупает билет: tickets[1] = 2 − 1 = 1. Ему нужен ещё билет: q.append(1).",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							1,
+							2
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							0,
+							1,
+							1
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			},
+			{
+				"caption": "Секунда 6, круг 2. Человек 2 покупает билет: tickets[2] = 1 − 1 = 0. p = k и tickets[2] = 0: ответ 6.",
+				"rows": [
+					{
+						"label": "q до продажи",
+						"cells": [
+							2,
+							1
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "tickets после",
+						"cells": [
+							0,
+							1,
+							0
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"k": 2
+						}
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "scan",
+		"title": "Linear Scan: tickets = [2, 3, 2], k = 0, T = 2",
+		"frames": [
+			{
+				"caption": "i = 0 ≤ k = 0: min(2, T) = min(2, 2) = 2. time = 0 + 2 = 2.",
+				"rows": [
+					{
+						"label": "tickets",
+						"cells": [
+							2,
+							3,
+							2
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 0,
+							"k": 0
+						}
+					},
+					{
+						"label": "куплено",
+						"cells": [
+							2,
+							"?",
+							"?"
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 1 > k = 0: min(3, T − 1) = min(3, 1) = 1. time = 2 + 1 = 3.",
+				"rows": [
+					{
+						"label": "tickets",
+						"cells": [
+							2,
+							3,
+							2
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1,
+							"k": 0
+						}
+					},
+					{
+						"label": "куплено",
+						"cells": [
+							2,
+							1,
+							"?"
+						],
+						"marked": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 2 > k = 0: min(2, T − 1) = min(2, 1) = 1. time = 3 + 1 = 4. Ответ 4.",
+				"rows": [
+					{
+						"label": "tickets",
+						"cells": [
+							2,
+							3,
+							2
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"i": 2,
+							"k": 0
+						}
+					},
+					{
+						"label": "куплено",
+						"cells": [
+							2,
+							1,
+							1
+						],
+						"marked": [
+							2
+						]
+					}
+				]
+			}
+		]
+	}
+]

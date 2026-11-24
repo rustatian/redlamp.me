@@ -1,0 +1,44 @@
+<p>После каждого хода набор камней меняется, поэтому на каждом ходу нужно снова найти два самых тяжёлых камня среди оставшихся.</p>
+<h3>Решение 1. Max-Heap на heapq</h3>
+<p>В примере 1 <code>stones = [2, 7, 4, 1, 8, 1]</code>. Код записывает веса со знаком минус: <code>h = [-2, -7, -4, -1, -8, -1]</code>. Функции <code>heapify</code>, <code>heappop</code> и <code>heappush</code> модуля <code>heapq</code> работают как Min-Heap: после <code>heapify</code> в <code>h[0]</code> стоит наименьшее число <code>-8</code>, и <code>heappop</code> удаляет и возвращает его. Это вес самого тяжёлого камня 8 со знаком минус: 8 больше 7, а −8 меньше −7.</p>
+<p>Первый <code>heappop</code> даёт <code>-8</code>, то есть <code>y = 8</code>. Второй <code>heappop</code> даёт наименьшее из оставшихся чисел, <code>-7</code>, то есть <code>x = 7</code>. Оно не меньше −8, поэтому x ≤ y. Веса разные, и <code>heappush</code> возвращает в <code>h</code> остаток 8 − 7 = 1 как <code>-1</code>. Теперь в <code>h[0]</code> стоит <code>-4</code>: камень 4 стал самым тяжёлым. Остальные ходы показывает рисунок. В конце в <code>h</code> остаётся <code>-1</code>, ответ 1.</p>
+<figure data-figure="heap"></figure>
+<p>После каждого <code>heappop</code> и <code>heappush</code> Min-Heap снова держит наименьшее число в <code>h[0]</code>. Поэтому на каждом ходу два <code>heappop</code> дают два самых тяжёлых камня из оставшихся, как требует условие. Цикл идёт, пока в <code>h</code> не меньше двух камней. В конце в <code>h</code> одно число или ни одного. В тесте <code>stones = [2, 2]</code> веса равны, оба камня разрушаются, <code>h</code> пуст, и код возвращает 0.</p>
+<pre class="no-run"><code class="language-python">import heapq
+
+
+class Solution:
+    def lastStoneWeight(self, stones: list[int]) -&gt; int:
+        h = [-s for s in stones]  # -h[0] равно весу самого тяжёлого камня
+        heapq.heapify(h)
+        while len(h) &gt; 1:
+            y = -heapq.heappop(h)  # самый тяжёлый камень
+            x = -heapq.heappop(h)  # второй по весу, x ≤ y
+            if y != x:
+                heapq.heappush(h, -(y - x))  # остаток y - x возвращается
+        return -h[0] if h else 0</code></pre>
+<p><strong>Время:</strong> n - число камней. Создание <code>h</code> и <code>heapify</code> стоят O(n). Каждый ход делает два <code>heappop</code> и не больше одного <code>heappush</code>, поэтому камней становится меньше хотя бы на 1. Значит, ходов не больше n − 1, при n = 30 не больше 29. Каждый <code>heappop</code> и <code>heappush</code> стоит O(log(n + 1)). Всего O(n log(n + 1)) в худшем случае. В примере 1 код делает 4 хода: 8 <code>heappop</code> и 3 <code>heappush</code>. <strong>Дополнительная память:</strong> <code>h</code> хранит не больше n чисел: O(n).</p>
+<h3>Решение 2. Sorting и Binary Search</h3>
+<p><code>a = sorted(stones)</code> ставит веса по возрастанию. В примере 1 <code>a = [1, 1, 2, 4, 7, 8]</code>: два самых тяжёлых камня стоят в конце. Два вызова <code>a.pop()</code> дают <code>y = 8</code> и <code>x = 7</code>, и <code>a = [1, 1, 2, 4]</code>. Остаток 1 нужно поставить так, чтобы <code>a</code> остался отсортированным. <code>bisect.insort(a, 1)</code> ищет место через Binary Search и находит место 2, после двух единиц. Затем вставляет туда 1: <code>a = [1, 1, 1, 2, 4]</code>.</p>
+<p>Перед каждым ходом <code>a</code> отсортирован. Два <code>pop</code> удаляют два последних числа, и остальные числа остаются по порядку. <code>insort</code> ставит остаток после всех чисел, которые не больше его, и перед всеми большими. Поэтому на каждом ходу <code>a[-1]</code> и <code>a[-2]</code> - два самых тяжёлых камня, и решение 2 делает те же ходы, что и решение 1.</p>
+<figure data-figure="sorted"></figure>
+<pre class="no-run"><code class="language-python">import bisect
+
+
+class Solution:
+    def lastStoneWeight(self, stones: list[int]) -&gt; int:
+        a = sorted(stones)  # веса по возрастанию: самые тяжёлые в конце
+        while len(a) &gt; 1:
+            y = a.pop()
+            x = a.pop()
+            if y != x:
+                bisect.insort(a, y - x)  # остаток встаёт на своё место
+        return a[0] if a else 0</code></pre>
+<p><strong>Время:</strong> <code>sorted</code> стоит O(n log(n + 1)). Каждый <code>pop</code> с конца стоит O(1). <code>insort</code> делает O(log(n + 1)) сравнений, но вставка сдвигает вправо все числа после места остатка. Каждый ход убирает хотя бы один камень, поэтому перед ходом k в <code>a</code> не больше n − k + 1 чисел, а после двух <code>pop</code> не больше n − k − 1. Значит, сдвигов всего не больше (n − 2) + (n − 3) + … + 1 + 0 = (n − 1)(n − 2)/2, и всё решение стоит O(n²) в худшем случае. При n = 30 это не больше 406 сдвигов. В примере 1 три вызова <code>insort</code> сдвигают 2 + 0 + 0 = 2 числа. <strong>Дополнительная память:</strong> копия <code>a</code> хранит n чисел: O(n).</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>heapq</code> без минуса: решение 1 с <code>h = list(stones)</code>, <code>y = heapq.heappop(h)</code>, <code>x = heapq.heappop(h)</code>, <code>heapq.heappush(h, y - x)</code> и <code>return h[0] if h else 0</code>. Тогда <code>heappop</code> даёт самый лёгкий камень. В примере 1 первый ход разбивает 1 и 1, а не 8 и 7. На втором ходу y = 2 и x = 4, и в <code>h</code> попадает 2 − 4 = −2. Ответ −17 вместо 1.</li>
+<li>Остаток без минуса: <code>heappush(h, y - x)</code>. Положительное число больше всех отрицательных чисел в <code>h</code>, поэтому <code>heappop</code> достаёт его последним, как самый лёгкий камень. В примере 1 ответ −1 вместо 1.</li>
+<li><code>return -h[0]</code> без проверки пустого <code>h</code>. В тесте <code>stones = [2, 2]</code> камней не остаётся, и <code>h[0]</code> даёт IndexError.</li>
+<li>Один Sorting и <code>a.append(y - x)</code> вместо <code>insort</code>. В примере 1 после первого хода <code>a = [1, 1, 2, 4, 1]</code>, и второй ход разбивает 1 и 4, а не 4 и 2. Здесь y = 1 и x = 4, и в <code>a</code> попадает 1 − 4 = −3. Ответ −7 вместо 1.</li>
+</ul>

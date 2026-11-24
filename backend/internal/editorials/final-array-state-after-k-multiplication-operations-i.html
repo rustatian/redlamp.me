@@ -1,0 +1,39 @@
+<p>Каждый шаг меняет одно число: наименьшее, а из равных наименьших - число с меньшим индексом.</p>
+<h3>Решение 1. Min-Heap пар</h3>
+<p>Возьмите пример 1: <code>nums = [2, 1, 3, 5, 6]</code>, <code>k = 5</code>, <code>multiplier = 2</code>. Код строит list пар <code>h = [(2, 0), (1, 1), (3, 2), (5, 3), (6, 4)]</code>: в паре число и его индекс. После <code>heapq.heapify(h)</code> в <code>h[0]</code> стоит наименьшая пара <code>(1, 1)</code>. Код берёт из неё <code>x = 1</code> и <code>i = 1</code> и пишет <code>nums[1] = 1 · 2 = 2</code>. Затем <code>heapq.heapreplace</code> удаляет пару из <code>h[0]</code> и добавляет <code>(2, 1)</code>.</p>
+<p>Теперь в <code>h</code> две пары с числом 2: <code>(2, 0)</code> и <code>(2, 1)</code>. Python сравнивает tuple по элементам слева направо до первого различия. Первые элементы равны, а вторые 0 &lt; 1, поэтому <code>(2, 0) &lt; (2, 1)</code>. На шаге 2 в <code>h[0]</code> стоит <code>(2, 0)</code>, и код меняет <code>nums[0]</code> на 2 · 2 = 4. Второй элемент пары, индекс, выбирает из равных чисел первое.</p>
+<figure data-figure="heap"></figure>
+<p>Пусть n - длина <code>nums</code>. В <code>h</code> всегда n пар, по одной для каждого индекса, и в паре индекса i стоит текущее <code>nums[i]</code>. В начале это так: пары взяты из <code>nums</code>. Шаг меняет только <code>nums[i]</code> для пары из <code>h[0]</code>. <code>heapreplace</code> удаляет именно эту старую пару и добавляет пару с новым числом. В примере 1 после шага 1 в <code>h</code> снова 5 пар, а у индекса 1 пара <code>(2, 1)</code>. Min-Heap держит наименьшую пару в <code>h[0]</code>: у неё наименьшее число, а из равных чисел наименьший индекс. Это то число, которое выбирает условие.</p>
+<p><strong>Время:</strong> создание <code>h</code> и <code>heapify</code> стоят O(n). Каждый из k шагов делает один <code>heapreplace</code> за O(log(n + 1)). Всего O(n + k log(n + 1)) в худшем случае. <strong>Дополнительная память:</strong> <code>h</code> хранит n пар, O(n): в примере 1 это 5 пар. Ответ код пишет прямо в <code>nums</code>, поэтому после вызова вход изменён.</p>
+<pre class="no-run"><code class="language-python">import heapq
+
+
+class Solution:
+    def getFinalState(self, nums: list[int], k: int, multiplier: int) -&gt; list[int]:
+        h = [(x, i) for i, x in enumerate(nums)]  # при равных x меньше пара с меньшим i
+        heapq.heapify(h)
+        for _ in range(k):
+            x, i = h[0]  # наименьшее число, из равных - первый индекс
+            nums[i] = x * multiplier
+            heapq.heapreplace(h, (nums[i], i))  # новое число того же индекса
+        return nums</code></pre>
+<h3>Решение 2. Linear Scan</h3>
+<p>По условию k ≤ 10 и n ≤ 100, поэтому каждый шаг может просмотреть все n чисел. Переменная <code>j</code> хранит индекс наименьшего из просмотренных чисел. Шаг 2 примера 1 начинается с <code>nums = [2, 2, 3, 5, 6]</code> и <code>j = 0</code>. При <code>i = 1</code> код проверяет 2 &lt; 2. Это ложь, и <code>j</code> остаётся 0. Числа 3, 5 и 6 тоже не меньше 2. Код меняет <code>nums[0]</code> на 2 · 2 = 4, как и решение 1.</p>
+<figure data-figure="scan"></figure>
+<p>После цикла <code>nums[j]</code> - наименьшее число: каждое число сравнивается с <code>nums[j]</code>, и <code>j</code> переходит на любое меньшее. Знак &lt; не переводит <code>j</code> на равное число. Поэтому <code>j</code> - первый индекс наименьшего числа.</p>
+<p><strong>Время:</strong> каждый шаг делает n − 1 сравнений, всего k(n − 1): O(k · n) в худшем случае. В примере 1 это 5 · 4 = 20 сравнений. При n = 100 и k = 10 это 10 · 99 = 990 сравнений, поэтому Linear Scan подходит для этих ограничений. <strong>Дополнительная память:</strong> три числа <code>_</code>, <code>j</code> и <code>i</code>, O(1). Ответ код тоже пишет в <code>nums</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def getFinalState(self, nums: list[int], k: int, multiplier: int) -&gt; list[int]:
+        for _ in range(k):
+            j = 0
+            for i in range(1, len(nums)):
+                if nums[i] &lt; nums[j]:  # строго меньше: из равных остаётся первый индекс
+                    j = i
+            nums[j] *= multiplier
+        return nums</code></pre>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Знак <code>&lt;=</code> вместо <code>&lt;</code> в решении 2. Тогда <code>j</code> переходит на последнее из равных чисел. В примере 1 шаг 2 меняет <code>nums[1]</code>, и ответ <code>[4, 8, 6, 5, 6]</code> вместо <code>[8, 4, 6, 5, 6]</code>.</li>
+<li><code>heappush</code> вместо <code>heapreplace</code> в решении 1. Старая пара <code>(1, 1)</code> остаётся в <code>h[0]</code>, и все 5 шагов снова берут <code>x = 1</code> и <code>i = 1</code>. Ответ <code>[2, 2, 3, 5, 6]</code>.</li>
+<li>Умножить по одному разу k наименьших чисел, например после Sorting. Один индекс может быть выбран несколько раз: в примере 1 пять шагов выбирают индексы 1, 0, 1, 2, 0. При k = n = 5 такой код умножит все числа и вернёт <code>[4, 2, 6, 10, 12]</code>.</li>
+</ul>
