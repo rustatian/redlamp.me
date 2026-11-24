@@ -288,7 +288,7 @@ An Editorial is two files in `backend/internal/editorials/` with the slug of the
 7. Run the checks:
 
    - `TestEditorialContent` in `backend/internal/notebook/editorial_checks_test.go` checks that the slug is a learning set task or a bank problem, the elements and the attributes, the figure placeholders and the figures, the start of each code block, the cost lines, the text length, `$` and the dashes, and the English names.
-   - `TestEditorialSolutions` in `backend/internal/editorials/solutions_test.go` runs each solution with `python3` through `web/harness.py`, as the browser runs it. A learning set task gets its standard tests and the hidden tests of the seeds 1 and 4294967295, with the answers of its reference solution. A bank problem gets its examples and its tests, with the official answers. An error, a wrong answer or more than 2 seconds for one test fails the check.
+   - `TestEditorialSolutions` in `backend/internal/editorials/solutions_test.go` runs each solution with `python3` through `web/harness.py`, as the browser runs it. A learning set task gets its standard tests and the hidden tests of the seeds 1 and 4294967295, with the answers of its reference solution. A bank problem gets its examples and its tests, with the official answers. An error, a wrong answer or more than 3 seconds for one test fails the check.
    - `bun run test` checks that each hard word of an Editorial has a glossary tip.
 
 ## AI tutor

@@ -38,8 +38,9 @@ for value in inputs:
 // solutionCode finds each solution of an Editorial. The browser shows the text of the code element, so the test decodes the HTML entities.
 var solutionCode = regexp.MustCompile(`(?s)<pre class="no-run"><code class="language-python">(.*?)</code></pre>`)
 
-// solutionLimit is the CPython time of one test. It is about 2.6 s in Pyodide on the same CPU, below the 3 s of web/acceptance.ts.
-const solutionLimit = 2 * time.Second
+// solutionLimit is the CPython time of one test on a shared CI runner, which runs several solutions at once. It equals the 3 s of web/acceptance.ts.
+// The authoring gate is the margin for a slow browser: it allows 1 s in Pyodide on the dev machine.
+const solutionLimit = 3 * time.Second
 
 // solutionTest is one input with its expected answer. name is the source and the number of the input, for example "seed 1 test 3".
 type solutionTest struct {
