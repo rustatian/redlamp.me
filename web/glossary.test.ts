@@ -36,6 +36,7 @@ it.each([
 	{ name: 'possessive algorithm name is one term', texts: ["Kadane's Algorithm находит сумму."], expected: ["[Kadane's Algorithm] находит сумму."] },
 	{ name: 'enumeration and recursion terms', texts: ['Backtracking строит Subsets через Recursion.'], expected: ['[Backtracking] строит [Subsets] через [Recursion].'] },
 	{ name: 'next permutation before permutations', texts: ['Next Permutation и Permutations.'], expected: ['[Next Permutation] и [Permutations].'] },
+	{ name: 'next combination before combinations', texts: ['Next Combination и Combinations.'], expected: ['[Next Combination] и [Combinations].'] },
 	{ name: 'merge variants before merge', texts: ['K-Way Merge, Merge Sort и Merge.'], expected: ['[K-Way Merge], [Merge Sort] и [Merge].'] },
 	{ name: 'code identifiers stay plain for new terms', texts: ['hash_table, array.array, dict(), set.add, nextPermutation и Array.'], expected: ['hash_table, array.array, dict(), set.add, nextPermutation и [Array].'] },
 	{ name: 'dynamic programming and pruning', texts: ['Dynamic Programming и Pruning.'], expected: ['[Dynamic Programming] и [Pruning].'] },
@@ -55,6 +56,7 @@ it.each([
 	{ name: 'связного is a form of связный', texts: ['Форма связного Graph.'], expected: ['Форма [связного] [Graph].'] },
 	{ name: 'поддеревьев is a form of поддерево', texts: ['Размеры поддеревьев.'], expected: ['Размеры [поддеревьев].'] },
 	{ name: 'диаметра is a form of диаметр', texts: ['Середина диаметра.'], expected: ['Середина [диаметра].'] },
+	{ name: 'битовая is a form of бит, 32-битный is its own term', texts: ['Битовая запись, 32-битный тип и биты.'], expected: ['[Битовая] запись, [32-битный] тип и биты.'] },
 	{ name: 'переполнение', texts: ['Целые числа не переполняются.'], expected: ['Целые числа не [переполняются].'] },
 	{ name: 'log inside O(n log n)', texts: ['Время O(n log n).'], expected: ['Время O(n [log] n).'] },
 	{ name: 'log before its base', texts: ['Около n · log2 n шагов.'], expected: ['Около n · [log]2 n шагов.'] },
@@ -85,7 +87,7 @@ const sets = content as unknown as { slug: string; summary: string; chapters: { 
 
 // The hard words that need a tip in shared/glossary.ts. The list also has words that no set uses yet, so a new set with such a word fails until the word gets a tip.
 // An English name of a data structure is a word of its own: heapq, dequeue, collections.deque, deque(...) and deque.popleft are code.
-const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination|anagram)s?|kadane|monotonic|priority|hash\s+table|binary\s+tree|two\s+pointers|linear\s+scan|binary\s+search|lower\s+bound|upper\s+bound|ternary\s+search|modular\s+arithmetic|binary\s+exponentiation|pascal's\s+triangle|stars\s+and\s+bars|sliding\s+window|dynamic\s+programming|brute\s+force|prefix\s+product|difference\s+array|matri(?:x|ces)|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|медиан|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|анаграмм|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|64-бит|префикс|суффикс|включени\p{L}*\s+и\s+исключени|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|треугольн\p{L}*\s+чис|повёрнут|граф|бинарн|класс\p{L}*\s+остатк|обратн\p{L}*\s+элемент|мал\p{L}*\s+теорем|математическ\p{L}*\s+ожидани|связн|двудольн|пет(?:л|ел)|кратн\p{L}*\s+р[её]б|поддерев|диаметр)/giu;
+const hardWord = /(?<!\p{L})(?:инвариант|O\(|log|метод|(?<![\d_.])(?:(?:heap|deque|queue|stack|array|string|subset|permutation|combination|anagram|bitmask)s?|kadane|monotonic|priority|hash\s+table|binary\s+tree|two\s+pointers|linear\s+scan|binary\s+search|lower\s+bound|upper\s+bound|ternary\s+search|modular\s+arithmetic|binary\s+exponentiation|pascal's\s+triangle|stars\s+and\s+bars|sliding\s+window|dynamic\s+programming|brute\s+force|prefix\s+product|difference\s+array|matri(?:x|ces)|backtracking|recursion|pruning|factorial|sorting|merge|greedy|simulation|quickselect|next\s+combination|pyodide|IndexError|DFS|BFS)(?![\p{L}\d_(]|\.\p{L})|монотонн|невозраст|медиан|жадн|моделир|кортеж|рекурс|перебор\p{L}*\s+с\s+возврат|отсеч|трассир|подмассив|подпоследовательн|анаграмм|лексикограф|ленив|индекс|факториал|перестановк|подмножеств|скользящ|ASCII|регистр|слияни|32-бит|64-бит|бит(?:ов\p{L}*|а|у|ом|е|ы|ам|ами|ах)?(?!\p{L})|двоичн|слагаем|префикс|суффикс|включени\p{L}*\s+и\s+исключени|линейн|переполн|амортиз|асимптот|мемоиз|итератор|компаратор|эвристик|коллизи|логарифм|треугольн\p{L}*\s+чис|повёрнут|граф|бинарн|класс\p{L}*\s+остатк|обратн\p{L}*\s+элемент|мал\p{L}*\s+теорем|математическ\p{L}*\s+ожидани|связн|двудольн|пет(?:л|ел)|кратн\p{L}*\s+р[её]б|поддерев|диаметр)/giu;
 // The hard words of the text that no match of the patterns covers.
 const untipped = (text: string, patterns: RegExp[]) => [...text.matchAll(hardWord)].filter(word => !patterns.some(pattern => [...text.matchAll(pattern)].some(match => match.index <= word.index && word.index < match.index + match[0].length))).map(word => word[0]);
 // Code is not prose. The text of the other tags stays.
@@ -102,7 +104,8 @@ it.each(sets.map(item => ({ name: item.slug, item })))('$name hard words have a 
 
 // The Editorials are repository files in backend/internal/editorials.
 const editorials = import.meta.glob<string>('../backend/internal/editorials/*.html', { query: '?raw', import: 'default', eager: true });
-it.each(Object.entries(editorials).map(([file, html]) => ({ name: file.replace(/^.*\/|\.html$/g, ''), html })))('$name hard words have a tip', ({ html }) => {
+// The title holds the whole slug: vitest cuts a long $name.
+it.each(Object.entries(editorials).map(([file, html]) => [`${file.replace(/^.*\/|\.html$/g, '')} hard words have a tip`, html]))('%s', (_, html) => {
 	expect(untipped(prose(html), glossary.map(entry => entry.pattern))).toEqual([]);
 });
 

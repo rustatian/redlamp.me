@@ -1,0 +1,41 @@
+<p>Нужно выписать каждый набор чисел с суммой <code>target</code> один раз. Порядок записи не важен: <code>[2, 2, 3]</code> и <code>[3, 2, 2]</code> это один набор.</p>
+<h3>Решение 1. Backtracking</h3>
+<p>Возьмите пример 1: <code>candidates = [2, 3, 6, 7]</code>, <code>target = 7</code>. Набор <code>[2, 2, 3]</code> можно записать тремя способами: <code>[2, 2, 3]</code>, <code>[2, 3, 2]</code> и <code>[3, 2, 2]</code>. Оставим одну запись, где каждое следующее число не меньше предыдущего. Для этого набора это <code>[2, 2, 3]</code>.</p>
+<p>Сначала код делает Sorting для <code>candidates</code>. Функция <code>dfs(start, remain)</code> работает с одним общим list по имени <code>path</code>. В <code>path</code> лежат уже выбранные числа, а <code>remain</code> равно target минус их сумма. Цикл перебирает индексы i от <code>start</code>: кладёт <code>candidates[i]</code> в <code>path</code>, вызывает <code>dfs(i, remain - candidates[i])</code> и убирает число через <code>path.pop()</code>.</p>
+<p>Следующий вызов получает i, а не i + 1. Поэтому число можно взять снова, и получается <code>[2, 2, 3]</code>. Индексы меньше i следующий вызов не берёт. После числа 3 с индексом 1 следующий вызов начинает с индекса 1, поэтому число 2 с индексом 0 после 3 не встанет. Записей <code>[2, 3, 2]</code> и <code>[3, 2, 2]</code> не будет.</p>
+<p>Когда <code>remain</code> равно 0, сумма <code>path</code> равна target. Вызов сохраняет копию <code>path</code> в <code>res</code> и возвращается.</p>
+<p>Теперь Pruning. Возьмите <code>path = [2, 2, 2]</code>: сумма 6, <code>remain = 1</code>. Число 2 больше 1: с ним сумма станет 8, больше 7. Числа, которые можно добавить потом, только увеличат сумму: каждое из них не меньше 2. Числа 3, 6 и 7 стоят после Sorting правее и тоже больше 1. Ни одно из них не даёт ответ, поэтому цикл заканчивается через <code>break</code>.</p>
+<p>Рисунок показывает все 10 вызовов на примере 1. Окно на строке candidates отмечает числа, которые проверяет цикл. Выделены числа, которые цикл кладёт в <code>path</code>. В кадре с ответом выделен весь <code>path</code>: его копия идёт в <code>res</code>. Ответы появляются в порядке <code>[2, 2, 3]</code>, <code>[7]</code>.</p>
+<figure data-figure="calls"></figure>
+<p>Возьмите <code>[2, 2, 3]</code>. Вызов <code>dfs(0, 7)</code> кладёт 2 и вызывает <code>dfs(0, 5)</code>. Тот кладёт 2 и вызывает <code>dfs(0, 3)</code>, а он кладёт 3 и вызывает <code>dfs(1, 0)</code>. Последний вызов сохраняет <code>[2, 2, 3]</code>. На каждом шаге нужное число не больше <code>remain</code>, поэтому break его не пропускает. Числа в <code>path</code> идут в порядке candidates, поэтому другого пути к этому набору нет. Так каждый набор появляется ровно один раз.</p>
+<p>Без Pruning цикл кладёт каждое число и делает вызов, а новый вызов сразу возвращается при <code>remain &lt; 0</code>. В примере 1 это 28 вызовов вместо 10. При <code>candidates = [5, 6, ..., 34]</code> (30 чисел) и <code>target = 35</code> ответов 149, а разница больше: 18 472 вызова без Pruning и 999 с ним.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def combinationSum(self, candidates: list[int], target: int) -&gt; list[list[int]]:
+        candidates.sort()  # Sorting: числа по возрастанию
+        res = []
+        path = []
+
+        def dfs(start, remain):
+            if remain == 0:
+                res.append(path[:])  # копия: path ещё изменится
+                return
+            for i in range(start, len(candidates)):
+                if candidates[i] &gt; remain:
+                    break  # дальше числа ещё больше
+                path.append(candidates[i])
+                dfs(i, remain - candidates[i])  # i: это число можно взять снова
+                path.pop()
+
+        dfs(0, target)
+        return res</code></pre>
+<p><strong>Время:</strong> пусть m - длина candidates, V - число вызовов dfs, R - число ответов, S - сумма их длин. Sorting стоит O(m log m). Каждый шаг цикла делает вызов dfs или break. Вызовов из цикла V − 1, потому что первый вызов <code>dfs(0, target)</code> идёт не из цикла. Break бывает не больше одного раза в вызове. Значит, шагов цикла не больше 2V − 1. В примере 1 это 9 шагов с вызовом и 7 с break, всего 16. Копии <code>path[:]</code> переписывают S чисел: в примере 1 это 3 + 1 = 4. Время O(m log m + V + S) в худшем случае. При <code>candidates = [5, 6, ..., 34]</code> и <code>target = 35</code>: V = 999, шагов цикла 1847, R = 149, S = 573.</p>
+<p>При <code>candidates = [4, 6, 8]</code> и <code>target = 39</code> ответов нет: сумма чётных чисел чётная, а 39 нечётное. Но вызовов 94: V может быть намного больше R.</p>
+<p><strong>Дополнительная память:</strong> каждое число <code>path</code> не меньше min(candidates), а сумма <code>path</code> не больше target. Поэтому в <code>path</code> не больше <code>d = target // min(candidates)</code> чисел, а Call Stack держит до d + 1 вызовов dfs. В примере 1 d = 7 // 2 = 3: <code>path = [2, 2, 2]</code> и 4 вызова. При <code>candidates = [2]</code> и <code>target = 40</code> получаем d = 20 и 21 вызов. Sorting в Python берёт до O(m) памяти. Всего O(m + d). Ответ, R list с S числами, считаем отдельно.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>dfs(i + 1, ...)</code> вместо <code>dfs(i, ...)</code>. Тогда число нельзя взять второй раз. Для примера 1 ответ <code>[[7]]</code> теряет <code>[2, 2, 3]</code>.</li>
+<li>Цикл от 0 вместо <code>start</code>. Тогда после 3 снова можно взять 2. Для примера 1 выйдет 4 list: <code>[2, 2, 3]</code>, <code>[2, 3, 2]</code>, <code>[3, 2, 2]</code> и <code>[7]</code>.</li>
+<li><code>break</code> без Sorting. Возьмите <code>candidates = [8, 7, 4, 3]</code>, <code>target = 11</code>. Вызов с <code>path = [8]</code> получает <code>remain = 3</code> и начинает с 8 &gt; 3: break, и до числа 3 цикл не доходит. Ответ пустой, хотя наборов три: <code>[3, 4, 4]</code>, <code>[3, 8]</code> и <code>[4, 7]</code>.</li>
+<li><code>res.append(path)</code> без копии. Тогда все элементы <code>res</code> это один и тот же list <code>path</code>. В конце он пустой, и для примера 1 ответ равен <code>[[], []]</code>.</li>
+<li>Нет ни <code>break</code>, ни возврата при <code>remain &lt; 0</code>. Тогда в примере 1 вызов <code>dfs(0, 1)</code> кладёт 2 и вызывает <code>dfs(0, -1)</code>, тот снова кладёт 2, и <code>remain</code> уменьшается без конца. Python останавливает код с <code>RecursionError</code>.</li>
+</ul>

@@ -1,0 +1,391 @@
+[
+	{
+		"id": "calls",
+		"title": "Решение 1 на 23: 13 вызовов dfs",
+		"frames": [
+			{
+				"caption": "dfs(0): path = []. Кнопка 2 даёт 3 ветки: a, b и c.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 0
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							"",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(1): path = ['a']. Кнопка 3 даёт 3 ветки: d, e и f.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							"a",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['a', 'd'], i == len(digits). join даёт ответ ad, теперь в res 1 ответ.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"a",
+							"d"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['a', 'e'], i == len(digits). join даёт ответ ae, теперь в res 2 ответа.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"a",
+							"e"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['a', 'f'], i == len(digits). join даёт ответ af, теперь в res 3 ответа.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"a",
+							"f"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(1): path = ['b']. Кнопка 3 даёт 3 ветки: d, e и f.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							"b",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['b', 'd'], i == len(digits). join даёт ответ bd, теперь в res 4 ответа.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"b",
+							"d"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['b', 'e'], i == len(digits). join даёт ответ be, теперь в res 5 ответов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"b",
+							"e"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['b', 'f'], i == len(digits). join даёт ответ bf, теперь в res 6 ответов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"b",
+							"f"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(1): path = ['c']. Кнопка 3 даёт 3 ветки: d, e и f.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						}
+					},
+					{
+						"label": "path",
+						"cells": [
+							"c",
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['c', 'd'], i == len(digits). join даёт ответ cd, теперь в res 7 ответов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"c",
+							"d"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['c', 'e'], i == len(digits). join даёт ответ ce, теперь в res 8 ответов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"c",
+							"e"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "dfs(2): path = ['c', 'f'], i == len(digits). join даёт ответ cf, теперь в res 9 ответов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "path",
+						"cells": [
+							"c",
+							"f"
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "levels",
+		"title": "Решение 2 на 23: level после каждой цифры",
+		"frames": [
+			{
+				"caption": "Начало: level = [''], один пустой префикс.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						]
+					},
+					{
+						"label": "level",
+						"cells": [
+							""
+						]
+					}
+				]
+			},
+			{
+				"caption": "digits[0] = 2: каждый префикс получает в конце a, b или c. Теперь в level 3 префикса длины 1: 3 новых символа.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "level",
+						"cells": [
+							"a",
+							"b",
+							"c"
+						]
+					}
+				]
+			},
+			{
+				"caption": "digits[1] = 3: каждый префикс получает в конце d, e или f. Теперь в level 9 префиксов длины 2: 18 новых символов.",
+				"rows": [
+					{
+						"label": "digits",
+						"cells": [
+							"2",
+							"3"
+						],
+						"marked": [
+							1
+						]
+					},
+					{
+						"label": "level",
+						"cells": [
+							"ad",
+							"ae",
+							"af",
+							"bd",
+							"be",
+							"bf",
+							"cd",
+							"ce",
+							"cf"
+						]
+					}
+				]
+			}
+		]
+	}
+]

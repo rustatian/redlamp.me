@@ -1,0 +1,48 @@
+<p>Нужно перебрать все способы выбрать форму каждой буквы: строчную или заглавную.</p>
+<h3>Решение 1. Backtracking</h3>
+<p>Возьмите пример 1: <code>s = "a1b2"</code>. Место 0 даёт <code>a</code> или <code>A</code>, место 1 только <code>1</code>, место 2 даёт <code>b</code> или <code>B</code>, место 3 только <code>2</code>. Выбор на одном месте не зависит от выбора на другом, поэтому ответов 2 · 1 · 2 · 1 = 4.</p>
+<p>Пусть n это длина <code>s</code>, а l число букв в ней. Каждая буква умножает число ответов на 2, поэтому ответов 2<sup>l</sup>. Ответы не повторяются: два разных набора выборов различаются хотя бы на одном месте с буквой. На этом месте у одного ответа строчная буква, а у другого заглавная. Так у <code>"bbb"</code> 2<sup>3</sup> = 8 разных ответов, хотя все три буквы одинаковые.</p>
+<p>Функция <code>dfs(i)</code> выбирает символ для места <code>i</code>. Общий для всех вызовов <code>list</code> <code>path</code> хранит символы, уже выбранные для мест от 0 до i − 1. Для буквы цикл по <code>options</code> делает два шага, для цифры один. Каждый шаг кладёт форму символа в <code>path</code>, вызывает <code>dfs(i + 1)</code> и убирает эту форму через <code>path.pop()</code>. При <code>i == len(s)</code> в <code>path</code> лежат все n символов, и <code>''.join(path)</code> даёт один ответ для <code>res</code>.</p>
+<p>Для <code>"a1b2"</code> вызовы идут уровнями: 1 вызов <code>dfs(0)</code>, затем 2, 2, 4 и 4 вызова <code>dfs(1)</code>, <code>dfs(2)</code>, <code>dfs(3)</code> и <code>dfs(4)</code>. Всего 13 вызовов. Число вызовов растёт вдвое только после буквы. Рисунок показывает вызовы по порядку.</p>
+<figure data-figure="calls"></figure>
+<p>После <code>path.pop()</code> в <code>path</code> снова те же символы, что до <code>path.append(c)</code>. На шаге 5 рисунка <code>join</code> даёт ответ <code>a1b2</code>. Затем один <code>pop</code> убирает <code>2</code>, второй убирает <code>b</code>, и на шаге 6 <code>path</code> равен <code>['a', '1', 'B']</code>. Ветка с <code>B</code> на месте 2 начинается с того же префикса <code>a1</code>, что и ветка с <code>b</code>. Поэтому каждый набор выборов доходит до <code>join</code> ровно один раз: ответы не теряются и не повторяются.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def letterCasePermutation(self, s: str) -&gt; list[str]:
+        res = []
+        path = []
+
+        def dfs(i):
+            if i == len(s):
+                res.append(''.join(path))
+                return
+            ch = s[i]
+            # буква даёт две ветки, цифра одну
+            options = (ch.lower(), ch.upper()) if ch.isalpha() else (ch,)
+            for c in options:
+                path.append(c)
+                dfs(i + 1)
+                path.pop()  # path снова такой, как до append
+
+        dfs(0)
+        return res</code></pre>
+<p><strong>Время:</strong> вызовов на уровне i столько, сколько вариантов у первых i символов: не больше 2<sup>l</sup>. Уровней n + 1, поэтому вызовов не больше (n + 1) · 2<sup>l</sup>. Вызов с <code>i &lt; len(s)</code> делает не больше двух <code>append</code> и двух <code>pop</code>. Каждый из 2<sup>l</sup> вызовов с <code>i == len(s)</code> делает <code>join</code> из n символов. Всего O(n · 2<sup>l</sup>) в худшем случае. Для <code>"a1b2"</code> вызовов 13, и это не больше 5 · 4 = 20, а <code>join</code> пишет 4 · 4 = 16 символов. При n = l = 12 вызовов 8191, а <code>join</code> пишет 12 · 4096 = 49 152 символа.</p>
+<p><strong>Дополнительная память:</strong> <code>path</code> хранит до n символов, а Call Stack держит до n + 1 вызовов <code>dfs</code>: O(n). Ответ занимает n · 2<sup>l</sup> символов: цифры есть в каждом ответе.</p>
+<h3>Решение 2. Расширение префиксов в цикле</h3>
+<p>Те же ответы можно строить без Recursion. После i шагов цикла <code>list</code> <code>level</code> хранит все варианты первых i символов <code>s</code>. Сначала <code>level = ['']</code>: один пустой префикс. Символ <code>ch</code> продлевает каждый префикс каждой своей формой. Для <code>"a1b2"</code> после символов <code>a</code>, <code>1</code>, <code>b</code> и <code>2</code> в <code>level</code> 2, 2, 4 и 4 префикса. Последний <code>level</code> и есть ответ.</p>
+<figure data-figure="levels"></figure>
+<p>Вариант первых i + 1 символов состоит из варианта первых i символов и одной формы символа <code>s[i]</code>. Запись <code>[p + c for p in level for c in options]</code> берёт каждую пару из префикса <code>p</code> и формы <code>c</code> один раз. Поэтому новый <code>level</code> содержит каждый вариант ровно один раз.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def letterCasePermutation(self, s: str) -&gt; list[str]:
+        level = ['']
+        for ch in s:
+            options = (ch.lower(), ch.upper()) if ch.isalpha() else (ch,)
+            # каждый префикс продлеваем каждым вариантом символа ch
+            level = [p + c for p in level for c in options]
+        return level</code></pre>
+<p><strong>Время:</strong> шаг с символом номер i, считая с 1, создаёт до 2<sup>l</sup> новых String длины i. Всего это не больше 2<sup>l</sup> · (1 + 2 + ... + n) = 2<sup>l</sup> · n(n + 1)/2 символов: O(n² · 2<sup>l</sup>) в худшем случае. Для <code>"a1b2"</code> шаги пишут 2 + 4 + 12 + 16 = 34 символа, а <code>join</code> решения 1 пишет 16. Больше всего работы, когда буквы стоят в начале: каждая следующая цифра снова копирует все префиксы. Для <code>"a"</code> и 11 цифр после неё решение 2 пишет 2 · (1 + 2 + ... + 12) = 156 символов, а ответ занимает 24. При n = l = 12 решение 2 пишет 90 114 символов: это наибольшее число для n ≤ 12, и оба решения проходят все тесты.</p>
+<p><strong>Дополнительная память:</strong> пока строится новый <code>level</code>, старый ещё хранится. Для <code>"a1b2"</code> перед последним шагом старый <code>level</code> хранит 4 String по 3 символа: 12 символов. У решения 1 <code>path</code> на этом входе хранит не больше 4 символов. Каждый уровень содержит до 2<sup>l</sup> String длины до n, поэтому дополнительная память O(n · 2<sup>l</sup>) в худшем случае. Последний <code>level</code> в эту оценку не входит: это ответ.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Две формы для каждого символа. У цифры <code>ch.lower()</code> и <code>ch.upper()</code> равны. Для <code>"3z4"</code> такой код вернёт 8 String: каждый из 2 ответов по 4 раза.</li>
+<li>Проверка <code>ch.islower()</code> вместо <code>ch.isalpha()</code>. Заглавная буква тогда получает одну ветку. Для <code>"aB"</code> выйдет 2 ответа вместо 4: ответы <code>"ab"</code> и <code>"Ab"</code> пропадут.</li>
+</ul>
