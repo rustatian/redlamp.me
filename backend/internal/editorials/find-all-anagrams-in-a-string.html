@@ -1,0 +1,69 @@
+<p>Нужно найти окна из <code>m = len(p)</code> букв подряд в <code>s</code>, у которых счётчики букв такие же, как у <code>p</code>. Длина <code>s</code> равна <code>n</code>.</p>
+<p>Пример 1: <code>s = "cbaebabacd"</code>, <code>p = "abc"</code>, <code>m = 3</code>. В окне "cba" по одной букве a, b, c, как в <code>p</code>. В окне "bae" есть e и нет c. Окно "cba" - Anagram строки <code>p</code>, окно "bae" - нет.</p>
+<p>Brute Force считает счётчики каждого окна с нуля: n − m + 1 окон по m букв. Это O((n − m + 1) · m) чтений. Произведение самое большое при m около n / 2. При n = 3 · 10<sup>4</sup> и m = 15 000 это 15 001 · 15 000 = 225 015 000 чтений букв: слишком долго.</p>
+<h3>Решение 1. Sliding Window со счётчиками</h3>
+<p>Счётчик - это list из 26 чисел. Число на месте <code>ord(c) - 97</code> показывает, сколько раз встретилась буква c. Здесь <code>ord("a") = 97</code>, поэтому a стоит на месте 0, b на месте 1, z на месте 25. <code>need</code> - счётчик <code>p</code>, <code>have</code> - счётчик текущего окна.</p>
+<p>Для <code>p = "abc"</code> в <code>need</code> стоят единицы на местах 0, 1, 2, а остальные 23 числа равны 0. Окно с концом r занимает номера r − m + 1..r. При r = 2 это окно "cba" (номера 0..2): <code>have == need</code>, индекс 0 идёт в ответ.</p>
+<p>При r = 3 окно "bae" (номера 1..3). От предыдущего окна оно отличается двумя буквами: c вышла, e вошла. Считать окно заново не нужно: уменьшите счётчик c на 1 и увеличьте счётчик e на 1. Теперь в <code>have</code> стоят a = 1, b = 1, e = 1. В <code>need</code> c = 1 и e = 0, поэтому <code>have != need</code>.</p>
+<div class="rule"><p><strong>Правило.</strong> Когда конец окна сдвинулся на номер r, буква <code>s[r]</code> вошла в окно: её счётчик в <code>have</code> растёт на 1. Если r ≥ m, буква <code>s[r - m]</code> вышла из окна: её счётчик в <code>have</code> падает на 1. Окно подходит, когда r ≥ m − 1 и <code>have == need</code>. Тогда в ответ идёт номер r − m + 1.</p></div>
+<figure data-figure="windows"></figure>
+<p>В примере 1 <code>have</code> получает 10 прибавлений и 7 вычитаний, а код делает 8 сравнений <code>have</code> с <code>need</code>: при r = 2..9. Счётчики равны при r = 2 и r = 8. Это индексы 2 − 3 + 1 = 0 и 8 − 3 + 1 = 6, как в условии.</p>
+<p>Шаг с r ≥ m заменяет в <code>have</code> одну старую букву окна на новую, как c на e при r = 3, поэтому <code>have</code> всегда равен счётчику окна. При r &lt; m никакая буква не выходит: окно растёт от 1 до m букв, и первое окно из m букв получается при r = m − 1.</p>
+<p>Если m &gt; n, например <code>s = "a"</code> и <code>p = "ab"</code>, то r доходит только до 0. Условие r ≥ m − 1 = 1 не выполняется, и ответ - пустой list.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def findAnagrams(self, s: str, p: str) -&gt; list[int]:
+        n, m = len(s), len(p)
+        need = [0] * 26
+        have = [0] * 26
+        for c in p:
+            need[ord(c) - 97] += 1
+        res = []
+        for r in range(n):
+            have[ord(s[r]) - 97] += 1  # буква s[r] вошла в окно
+            if r &gt;= m:
+                have[ord(s[r - m]) - 97] -= 1  # буква s[r - m] вышла из окна
+            if r &gt;= m - 1 and have == need:
+                res.append(r - m + 1)
+        return res</code></pre>
+<p><strong>Время:</strong> в худшем случае O(m + 26 · n): m прибавлений в <code>need</code>, затем n шагов. Каждый шаг делает не больше двух обновлений и не больше одного сравнения <code>have</code> с <code>need</code> из 26 чисел. Число 26 - размер алфавита, поэтому это O(n + m). При n = 3 · 10<sup>4</sup> сравнений чисел не больше 26 · 30 000 = 780 000. <strong>Дополнительная память:</strong> два list по 26 чисел и несколько чисел n, m, r: O(1) в худшем случае. Ответ <code>res</code> хранит до n − m + 1 номеров, его считаем отдельно.</p>
+<h3>Решение 2. Sliding Window со счётчиком совпадений</h3>
+<p>Решение 1 сравнивает до 26 чисел на каждом шаге. Решение 2 хранит одно число <code>matches</code>: сколько букв из 26 имеют <code>have[x] == need[x]</code>. Здесь <code>have[x]</code> - счётчик буквы x. В коде x - уже номер буквы: <code>x = ord(s[r]) - 97</code>. Окно подходит, когда <code>matches == 26</code>.</p>
+<p>Пример 2: <code>s = "abab"</code>, <code>p = "ab"</code>, <code>m = 2</code>. В <code>need</code> a = 1 и b = 1, а в <code>have</code> пока одни нули. У 24 букв, которых нет в <code>p</code>, <code>have == need == 0</code>. Поэтому в начале <code>matches</code> = 26 − 2 = 24, где 2 - число разных букв <code>p</code>.</p>
+<p>При r = 0 вошла a. До изменения <code>have[a] = 0</code> и <code>need[a] = 1</code>: не равны, <code>matches</code> не меняется. После изменения <code>have[a] = 1 = need[a]</code>, и <code>matches</code> = 25. При r = 1 вошла b, и <code>matches</code> = 26: индекс 0 идёт в ответ.</p>
+<figure data-figure="matches"></figure>
+<p>При r = 2 вошла a: до изменения <code>have[a] = 1 = need[a]</code>, поэтому <code>matches</code> уменьшается с 26 до 25, а после изменения <code>have[a] = 2</code> не равно <code>need[a]</code>. Потом вышла <code>s[0]</code> = a: <code>have[a]</code> стало 1, равно <code>need[a]</code>, и <code>matches</code> = 26: индекс 1 идёт в ответ. При r = 3 вошла b и вышла <code>s[1]</code> = b: снова <code>matches</code> = 26, индекс 2 идёт в ответ. Ответ [0, 1, 2].</p>
+<div class="rule"><p><strong>Правило.</strong> Перед изменением счётчика буквы x: если <code>have[x] == need[x]</code>, уменьшите <code>matches</code> на 1. Измените <code>have[x]</code>. После изменения: если <code>have[x] == need[x]</code>, увеличьте <code>matches</code> на 1.</p></div>
+<p>Каждое изменение <code>have[x]</code> меняет равенство только для буквы x. Поэтому <code>matches</code> всегда равно числу букв с <code>have == need</code>, а <code>matches == 26</code> означает <code>have == need</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def findAnagrams(self, s: str, p: str) -&gt; list[int]:
+        n, m = len(s), len(p)
+        need = [0] * 26
+        have = [0] * 26
+        for c in p:
+            need[ord(c) - 97] += 1
+        matches = 26 - len(set(p))  # число букв, у которых have == need
+        res = []
+        for r in range(n):
+            x = ord(s[r]) - 97
+            if have[x] == need[x]:
+                matches -= 1
+            have[x] += 1
+            if have[x] == need[x]:
+                matches += 1
+            if r &gt;= m:
+                y = ord(s[r - m]) - 97
+                if have[y] == need[y]:
+                    matches -= 1
+                have[y] -= 1
+                if have[y] == need[y]:
+                    matches += 1
+            if r &gt;= m - 1 and matches == 26:
+                res.append(r - m + 1)
+        return res</code></pre>
+<p><strong>Время:</strong> ожидаемое O(m + n): m прибавлений в <code>need</code> и n шагов. Шаг делает не больше двух обновлений счётчика и одну проверку <code>matches == 26</code>, и их число не зависит от n и m: сравнение 26 чисел не нужно. Построение <code>set(p)</code> читает m букв и хранит не больше 26 разных букв, поэтому тоже занимает ожидаемое O(m). <strong>Дополнительная память:</strong> два list по 26 чисел, set из не больше 26 букв и несколько чисел: O(1) в худшем случае. Ответ <code>res</code> считаем отдельно.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Сравнить <code>set</code> букв окна и <code>set(p)</code>. Для <code>s = "abb"</code> и <code>p = "aab"</code> оба <code>set</code> равны {a, b}, но в окне b = 2, а в <code>p</code> b = 1. Такой код вернёт [0], а ответ [].</li>
+<li>Сравнить суммы кодов букв. Для <code>s = "bc"</code> и <code>p = "ad"</code> суммы равны: 98 + 99 = 197 = 97 + 100. Такой код вернёт [0], а ответ [].</li>
+<li>Вычитать <code>s[r - m]</code> уже при r ≥ m − 1. При r = 2 и m = 3 это <code>s[-1]</code>: Python считает отрицательный номер с конца, и в примере 1 это буква d. Счётчик d в <code>have</code> становится −1, и такой код вернёт [] вместо [0, 6].</li>
+</ul>

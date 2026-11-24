@@ -1,0 +1,42 @@
+<p>Нужна пара равных чисел, номера которых отличаются не больше чем на <code>k</code>.</p>
+<p>Пусть n - длина <code>nums</code>. Brute Force берёт каждый номер <code>i</code> и сравнивает <code>nums[i]</code> с не более чем <code>k</code> следующими числами. Сравнений не больше n · k: O(nk) в худшем случае. В примере 3 (<code>n = 6</code>, <code>k = 2</code>) на расстоянии 1 стоят 6 − 1 = 5 пар, на расстоянии 2 стоят 6 − 2 = 4 пары: 5 + 4 = 9 сравнений. В общем случае на расстоянии d стоят n − d пар. При n = k = 10<sup>5</sup> подходят все пары, и сравнений (n − 1) + (n − 2) + ... + 1 = n(n − 1) / 2. Это 10<sup>5</sup> · (10<sup>5</sup> − 1) / 2 = 4 999 950 000: слишком долго.</p>
+<h3>Решение 1. Sliding Window и set</h3>
+<p>Возьмите пример 1: <code>nums = [1, 2, 3, 1]</code>, <code>k = 3</code>. Для числа <code>x = nums[i]</code> важны только числа на расстоянии от 1 до k слева: nums[i − k..i − 1]. Код хранит их в <code>set</code> с именем <code>window</code>. Проверка <code>x in window</code> в среднем стоит O(1).</p>
+<p>При <code>i = 0, 1, 2</code> числа 1, 2, 3 не лежат в <code>window</code>, и код добавляет их: <code>window = {1, 2, 3}</code>. При <code>i = 3</code> число <code>x = 1</code> лежит в <code>window</code>. Это <code>nums[0]</code>, и расстояние 3 − 0 = 3 не больше <code>k = 3</code>. Ответ True.</p>
+<p>Теперь пример 3: <code>nums = [1, 2, 3, 1, 2, 3]</code>, <code>k = 2</code>. При <code>i = 2</code> после добавления в <code>window</code> три числа 1, 2, 3, а для шага <code>i = 3</code> нужны только два последних: 2 и 3. Число <code>nums[0] = 1</code> стоит от номера 3 на расстоянии 3 − 0 = 3, это больше <code>k = 2</code>. Поэтому код удаляет <code>nums[0]</code> ещё на шаге <code>i = 2</code>, и перед шагом <code>i = 3</code> в <code>window</code> лежат 2 и 3.</p>
+<div class="rule"><p><strong>Правило.</strong> Перед шагом <code>i</code> в <code>window</code> лежат числа nums[i − k..i − 1]. Если <code>x = nums[i]</code> есть в <code>window</code>, ответ True. Иначе добавьте <code>x</code>. Если в <code>window</code> стало больше <code>k</code> чисел, удалите <code>nums[i - k]</code>.</p></div>
+<figure data-figure="window"></figure>
+<p>В примере 3 равное число не нашлось ни на одном шаге: равные числа стоят на расстоянии 3, а <code>k = 2</code>. Ответ False.</p>
+<p>Правило верно на каждом шаге. Пока код не вернул True, числа nums[i − k..i − 1] разные: равную пару нашёл бы шаг с большим из двух номеров. Значит, <code>len(window)</code> равно числу этих номеров. Число <code>x</code> тоже не равно ни одному из чисел nums[i − k..i − 1], иначе код вернул бы True. Поэтому число nums[i − k] стоит среди nums[i − k..i] один раз, и <code>window.remove(nums[i - k])</code> убирает только число с номера i − k. Пока <code>i &lt; k</code>, код ничего не удаляет: после шага в <code>window</code> не больше k чисел. Поэтому перед шагом <code>i = k</code> в <code>window</code> лежат k чисел nums[0..k − 1]. Дальше каждый шаг добавляет <code>x</code>, и в <code>window</code> становится k + 1 число. Код удаляет <code>nums[i - k]</code>, и остаются k чисел nums[i − k + 1..i]: это числа, которые нужны на шаге <code>i + 1</code>. В примере 3 при <code>i = 3</code> в <code>window</code> лежат числа 2 и 3, то есть <code>nums[1..2]</code>. После добавления <code>nums[3] = 1</code> их три, и код удаляет <code>nums[1] = 2</code>. Остаётся <code>nums[2..3]</code>: это числа, которые нужны на шаге <code>i = 4</code>.</p>
+<p>Поэтому <code>x in window</code> верно ровно тогда, когда слева от <code>i</code> на расстоянии от 1 до k стоит равное число. Подходящую пару номеров <code>j &lt; i</code> код находит на шаге <code>i</code>. Если ни на одном шаге равного числа нет, подходящей пары нет, и ответ False.</p>
+<p>При <code>k = 0</code> подходящих пар нет: у двух разных номеров расстояние не меньше 1. Код даёт тот же ответ. Для <code>nums = [1, 1]</code> на шаге <code>i = 0</code> число 1 попадает в <code>window</code>, <code>len(window) = 1</code> больше 0, и код сразу удаляет <code>nums[0]</code>. На шаге <code>i = 1</code> <code>window</code> пуст, и ответ False.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def containsNearbyDuplicate(self, nums: list[int], k: int) -&gt; bool:
+        window = set()  # числа nums[i - k..i - 1], не больше k чисел
+        for i, x in enumerate(nums):
+            if x in window:
+                return True
+            window.add(x)
+            if len(window) &gt; k:
+                window.remove(nums[i - k])  # nums[i - k] будет дальше k от номера i + 1
+        return False</code></pre>
+<p><strong>Время:</strong> ожидаемое для Hash Table. Код делает не больше n проверок, n добавлений и n удалений, каждое в среднем за O(1): O(n). В примере 3 это 6 проверок, 6 добавлений и 4 удаления. <strong>Дополнительная память:</strong> <code>window</code> хранит не больше k + 1 числа и не больше n чисел: O(min(n, k + 1)) в худшем случае. Ответ - одно значение.</p>
+<h3>Решение 2. Hash Table с последним местом числа</h3>
+<p>Решение 1 помнит k последних чисел. Другой способ: помнить для каждого числа номер его последнего места. Это <code>dict</code> с именем <code>last</code>: ключ - число, значение - номер места.</p>
+<p>Возьмите пример 2: <code>nums = [1, 0, 1, 1]</code>, <code>k = 1</code>. При <code>i = 0</code> числа 1 нет в <code>last</code>, и <code>last = {1: 0}</code>. При <code>i = 1</code> числа 0 нет, и <code>last = {1: 0, 0: 1}</code>. При <code>i = 2</code> число 1 есть, его последнее место 0, расстояние 2 − 0 = 2 больше <code>k = 1</code>. Код всё равно записывает <code>last[1] = 2</code>. При <code>i = 3</code> число 1 есть, его последнее место 2, расстояние 3 − 2 = 1 не больше <code>k</code>. Ответ True.</p>
+<p>Последнее место числа <code>x</code> - это место ближайшего равного числа слева. Если даже оно дальше k, остальные равные числа левее и ещё дальше. При <code>i = 3</code> в примере 2 равные числа стоят на местах 0 и 2 с расстояниями 3 и 1: ближайшее решает.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def containsNearbyDuplicate(self, nums: list[int], k: int) -&gt; bool:
+        last = {}  # last[x] - номер последнего места числа x
+        for i, x in enumerate(nums):
+            if x in last and i - last[x] &lt;= k:
+                return True
+            last[x] = i
+        return False</code></pre>
+<p><strong>Время:</strong> ожидаемое для Hash Table. Код делает не больше n проверок и n записей, каждую в среднем за O(1): O(n). <strong>Дополнительная память:</strong> <code>last</code> хранит все разные числа <code>nums</code>, не больше n: O(n) в худшем случае. Это не меньше, чем в решении 1. Пример: <code>k = 1</code> и 10<sup>5</sup> разных чисел. Решение 1 хранит не больше 2 чисел, а решение 2 хранит 10<sup>5</sup>.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Окно из k + 1 числа: <code>if len(window) &gt; k + 1</code>. Для <code>nums = [1, 2, 1]</code> и <code>k = 1</code> равные числа стоят на расстоянии 2, ответ False. Такой код вернёт True.</li>
+<li>Обычный <code>set</code> всех чисел без удаления. Для примера 3 код вернёт True при <code>i = 3</code>, а ответ False: число 1 стоит на расстоянии 3 &gt; 2.</li>
+<li>В решении 2 записывать место числа только при первой встрече. В примере 2 код сравнит <code>i = 3</code> с местом 0: расстояние 3 больше 1, и код вернёт False вместо True.</li>
+</ul>
