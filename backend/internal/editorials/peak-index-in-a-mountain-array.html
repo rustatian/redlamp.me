@@ -1,0 +1,33 @@
+<p>Нужен индекс вершины: числа, которое больше обоих соседей. Время должно быть O(log n), где n - длина <code>arr</code>.</p>
+<p>Brute Force ищет наибольшее число и для этого читает все n чисел. Для <code>arr = [0, 10, 5, 2]</code> это 4 чтения, наибольшее число 10 стоит в индексе 1. При n = 10<sup>5</sup> это 10<sup>5</sup> чтений, то есть O(n).</p>
+<h3>Решение 1. Binary Search</h3>
+<p>Сравним каждое число с правым соседом. Для <code>arr = [0, 10, 5, 2]</code> условие <code>arr[i] &gt; arr[i + 1]</code> при i = 0, 1, 2 даёт «нет, да, да»: 0 &gt; 10 нет, 10 &gt; 5 да, 5 &gt; 2 да. Вершина - индекс 1, первое «да».</p>
+<p>То же верно для любой горы. Слева от вершины числа растут: <code>arr[i] &lt; arr[i + 1]</code>, ответ «нет». От вершины вправо числа убывают: ответ «да». Для <code>[1, 3, 6, 9, 7, 4, 2]</code> условие при i = 0, 1, ..., 5 идёт «нет, нет, нет, да, да, да»: первое «да» стоит в индексе 3, там число 9.</p>
+<p>Все «нет» стоят перед всеми «да», поэтому первое «да» ищет Binary Search. Пара <code>lo</code> и <code>hi</code> - отрезок индексов, в котором стоит вершина. Сначала <code>lo = 0</code> и <code>hi = n - 1</code>. Проверка идёт на <code>mid = (lo + hi) // 2</code>. Для <code>lo = 2</code> и <code>hi = 3</code> получаем <code>mid = (2 + 3) // 2 = 2</code>: даже для двух соседних индексов mid меньше hi. Так же и для любых <code>lo &lt; hi</code>: индекс mid меньше hi, то есть не больше n − 2, и <code>arr[mid + 1]</code> существует.</p>
+<p>Возьмём <code>[1, 3, 6, 9, 7, 4, 2]</code>, n = 7. Сначала <code>lo = 0</code>, <code>hi = 6</code>, <code>mid = 3</code>. Число <code>arr[3] = 9</code> больше <code>arr[4] = 7</code>: «да». Вершина стоит в mid или левее: <code>hi = 3</code>. Теперь <code>mid = 1</code>, и <code>arr[1] = 3</code> меньше <code>arr[2] = 6</code>: «нет». Условия в индексах 0 и 1 - «нет», поэтому вершина правее: <code>lo = 2</code>. Теперь <code>mid = 2</code>, и <code>arr[2] = 6</code> меньше <code>arr[3] = 9</code>: «нет», <code>lo = 3</code>. Тогда <code>lo = hi = 3</code>: остался один индекс, ответ 3 после 3 проверок.</p>
+<figure data-figure="peak"></figure>
+<div class="rule"><p><strong>Правило.</strong> Инвариант: вершина лежит в отрезке [lo, hi]. «Да» в mid значит, что вершина в mid или левее: <code>hi = mid</code>. «Нет» в mid значит, что вершина правее mid: <code>lo = mid + 1</code>. Цикл идёт, пока <code>lo &lt; hi</code>.</p></div>
+<pre class="no-run"><code class="language-python">class Solution:
+    def peakIndexInMountainArray(self, arr: list[int]) -&gt; int:
+        lo, hi = 0, len(arr) - 1
+        while lo &lt; hi:
+            mid = (lo + hi) // 2
+            if arr[mid] &gt; arr[mid + 1]:
+                hi = mid  # «да»: вершина в mid или левее
+            else:
+                lo = mid + 1  # «нет»: mid левее вершины
+        return lo
+</code></pre>
+<p>В примере длина отрезка идёт так: 7, 4, 2, 1. Это 3 проверки. При s = 7 и <code>mid = 3</code> «да» оставляет [0, 3], 4 индекса, а «нет» оставляет [4, 6], 3 индекса. Одна проверка оставляет не больше <code>(s + 1) // 2</code> индексов, где s - длина отрезка. Для n = 10<sup>5</sup> и вершины в индексе 1 длина идёт так: 100 000, 50 000, 25 000, 12 500, 6 250, 3 125, 1 563, 782, 391, 196, 98, 49, 25, 13, 7, 4, 2, 1. Это 17 проверок.</p>
+<p><strong>Время:</strong> O(log n) в худшем случае: не больше 17 проверок для n = 10<sup>5</sup>, потому что 2<sup>16</sup> = 65 536 &lt; 10<sup>5</sup> ≤ 131 072 = 2<sup>17</sup>. <strong>Дополнительная память:</strong> O(1) в худшем случае: числа <code>lo</code>, <code>hi</code> и <code>mid</code>. Вход <code>arr</code> и ответ не считаем.</p>
+<h3>Другой способ: Ternary Search</h3>
+<p>Ternary Search берёт две точки m1 &lt; m2 и отбрасывает треть отрезка. Для <code>[1, 3, 6, 9, 7, 4, 2]</code> точки m1 = 0 + 6 // 3 = 2 и m2 = 6 − 6 // 3 = 4: <code>arr[2] = 6</code> меньше <code>arr[4] = 7</code>. Если бы вершина стояла в m1 или левее, числа от m1 вправо убывали бы, и arr[m1] было бы больше arr[m2]. Значит, вершина правее m1, и индексы 0, 1, 2 отброшены.</p>
+<p>Каждый шаг оставляет около 2/3 отрезка, поэтому для n = 10<sup>5</sup> нужно около 28 шагов: 10<sup>5</sup> · (2/3)<sup>28</sup> ≈ 1,2. Это больше 17 проверок Binary Search, а каждый шаг и каждая проверка читают по 2 числа.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>hi = len(arr)</code> вместо <code>hi = len(arr) - 1</code>. Для <code>[0, 1, 2, 3, 0]</code>: <code>lo = 0</code>, <code>hi = 5</code>, <code>mid = 2</code>, «нет», <code>lo = 3</code>. Потом <code>mid = 4</code>, и чтение <code>arr[5]</code> даёт IndexError.</li>
+<li><code>lo = mid</code> вместо <code>lo = mid + 1</code>. Для <code>[0, 1, 0]</code>: <code>mid = 1</code>, «да», <code>hi = 1</code>. Потом <code>lo = 0</code>, <code>mid = 0</code>, «нет», и <code>lo = mid = 0</code>: отрезок тот же, цикл не заканчивается.</li>
+<li><code>while lo &lt;= hi</code> из главы 1 вместо <code>while lo &lt; hi</code>. Для <code>[0, 1, 0]</code>: <code>mid = 1</code>, «да», <code>hi = 1</code>. Потом <code>mid = 0</code>, «нет», <code>lo = 1</code>. При <code>lo = hi = 1</code> проверка снова даёт «да» и <code>hi = mid = 1</code>: отрезок тот же, цикл не заканчивается.</li>
+<li><code>hi = mid - 1</code> вместо <code>hi = mid</code>. Для <code>[0, 10, 5, 2]</code>: <code>mid = 1</code>, «да», и <code>hi = 0</code>. Вершина с индексом 1 вышла из отрезка, ответ 0 вместо 1. Вершина сама может стоять в mid.</li>
+<li>Сравнение с последним числом, <code>arr[mid] &gt; arr[-1]</code>, вместо соседа. Для <code>[1, 3, 6, 9, 7, 4, 2]</code> условие идёт «нет, да, да, да, да, да, нет»: это не «нет, ..., да», и Binary Search на нём даёт ответ 1 вместо 3.</li>
+</ul>

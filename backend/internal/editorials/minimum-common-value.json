@@ -1,0 +1,419 @@
+[
+	{
+		"id": "search",
+		"title": "Решение 1, пример 2: Binary Search каждого x из nums1 в nums2",
+		"frames": [
+			{
+				"caption": "Проверка 1. x = 1, lo = 0, hi = 3, mid = 1. nums2[1] = 3 больше x: hi = 1 − 1 = 0.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							2,
+							3,
+							6
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							3,
+							4,
+							5
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"lo": 0,
+							"mid": 1,
+							"hi": 3
+						},
+						"window": [
+							0,
+							3
+						]
+					}
+				]
+			},
+			{
+				"caption": "Проверка 2. x = 1, lo = 0, hi = 0, mid = 0. nums2[0] = 2 больше x: hi = 0 − 1 = −1. Отрезок пуст: числа 1 нет в nums2.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							2,
+							3,
+							6
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							3,
+							4,
+							5
+						],
+						"marked": [
+							0
+						],
+						"dimmed": [
+							1,
+							2,
+							3
+						],
+						"pointers": {
+							"lo": 0,
+							"mid": 0,
+							"hi": 0
+						},
+						"window": [
+							0,
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "Проверка 3. x = 2, lo = 0, hi = 3, mid = 1. nums2[1] = 3 больше x: hi = 1 − 1 = 0.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							2,
+							3,
+							6
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							3,
+							4,
+							5
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"lo": 0,
+							"mid": 1,
+							"hi": 3
+						},
+						"window": [
+							0,
+							3
+						]
+					}
+				]
+			},
+			{
+				"caption": "Проверка 4. x = 2, lo = 0, hi = 0, mid = 0. nums2[0] = 2 равно x. Ответ 2.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							2,
+							3,
+							6
+						],
+						"marked": [
+							1
+						],
+						"dimmed": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							3,
+							4,
+							5
+						],
+						"marked": [
+							0
+						],
+						"dimmed": [
+							1,
+							2,
+							3
+						],
+						"pointers": {
+							"lo": 0,
+							"mid": 0,
+							"hi": 0
+						},
+						"window": [
+							0,
+							0
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "pointers",
+		"title": "Решение 2, nums1 = [1, 3, 5, 6], nums2 = [2, 4, 6]: Two Pointers",
+		"frames": [
+			{
+				"caption": "i = 0, j = 0: 1 меньше 2. Число 1 пропускаем: i = 1.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"i": 0
+						}
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"j": 0
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 1, j = 0: 3 больше 2. Число 2 пропускаем: j = 1.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						},
+						"dimmed": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"j": 0
+						}
+					}
+				]
+			},
+			{
+				"caption": "i = 1, j = 1: 3 меньше 4. Число 3 пропускаем: i = 2.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"i": 1
+						},
+						"dimmed": [
+							0
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"j": 1
+						},
+						"dimmed": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 2, j = 1: 5 больше 4. Число 4 пропускаем: j = 2.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"i": 2
+						},
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"j": 1
+						},
+						"dimmed": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 2, j = 2: 5 меньше 6. Число 5 пропускаем: i = 3.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"i": 2
+						},
+						"dimmed": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"j": 2
+						},
+						"dimmed": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "i = 3, j = 2: 6 и 6 равны. Ответ 6.",
+				"rows": [
+					{
+						"label": "nums1",
+						"cells": [
+							1,
+							3,
+							5,
+							6
+						],
+						"marked": [
+							3
+						],
+						"pointers": {
+							"i": 3
+						},
+						"dimmed": [
+							0,
+							1,
+							2
+						]
+					},
+					{
+						"label": "nums2",
+						"cells": [
+							2,
+							4,
+							6
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"j": 2
+						},
+						"dimmed": [
+							0,
+							1
+						]
+					}
+				]
+			}
+		]
+	}
+]

@@ -1,0 +1,74 @@
+<p>Array упорядочен по возрастанию, но его начало могли перенести в конец: нужен индекс числа <code>target</code> или <code>-1</code>.</p>
+<p>Brute Force читает числа слева направо и останавливается на первом числе, равном <code>target</code>. Это Linear Scan за O(n) в худшем случае: при n = 5000 он делает до 5000 сравнений, а условие требует O(log n). Обычный Binary Search на всём Array не подходит. В <code>nums = [4, 5, 6, 7, 0, 1, 2]</code> для <code>target = 0</code> середина <code>nums[3] = 7</code> больше 0, и поиск уходит влево, а 0 стоит в индексе 4. Решение 1 сначала находит место разрыва. Решение 2 на каждом шаге ищет упорядоченную половину.</p>
+<h3>Решение 1. Binary Search по месту разрыва</h3>
+<p>Возьмите пример 1: <code>nums = [4, 5, 6, 7, 0, 1, 2]</code>. Порядок ломается один раз, между 7 и 0. Числа 4, 5, 6, 7 до разрыва идут по возрастанию, числа 0, 1, 2 после разрыва тоже. Каждое число левой части больше последнего числа 2, а каждое число правой части не больше него.</p>
+<p>Поэтому условие <code>nums[i] ≤ nums[-1]</code> идёт «нет, нет, нет, нет, да, да, да». Первое «да» стоит в индексе 4: это минимум, и с него начинается правая часть. Обозначим этот индекс p. Первое «да» находит шаблон Lower Bound.</p>
+<p>Проверим на числах. Сначала <code>lo = 0</code>, <code>hi = 6</code>, <code>mid = 3</code>, и 7 &gt; 2: «нет». Первое «да» правее <code>mid</code>, поэтому <code>lo = 4</code>. Теперь <code>mid = 5</code>, и 1 ≤ 2: «да». Первое «да» стоит в <code>mid</code> или левее, поэтому <code>hi = 5</code>. Теперь <code>mid = 4</code>, и 0 ≤ 2: «да», поэтому <code>hi = 4</code>. Получилось <code>lo = hi = 4</code>, то есть p = 4. Это 3 проверки.</p>
+<figure data-figure="rot-min"></figure>
+<p>Теперь выберем часть. Для <code>target = 0</code> имеем 0 ≤ 2. Все числа левой части 4, 5, 6, 7 больше 2, значит, больше 0, и числа 0 среди них нет. Ищем в правой части, на индексах [4, 6]. Для <code>target = 3</code> имеем 3 &gt; 2. Все числа правой части 0, 1, 2 не больше 2, значит, меньше 3, и числа 3 среди них нет. Ищем в левой части, на индексах [0, 3].</p>
+<div class="rule"><p><strong>Правило.</strong> Если <code>target ≤ nums[-1]</code>, ищите на индексах [p, n − 1], иначе на индексах [0, p − 1]. Обе части упорядочены, поэтому в них работает обычный Binary Search.</p></div>
+<p>Для <code>target = 0</code> поиск идёт на [4, 6]. Середина <code>mid = 5</code>, и 1 &gt; 0, поэтому <code>hi = 4</code>. Середина <code>mid = 4</code>, и 0 = 0: ответ 4. Это 2 проверки.</p>
+<figure data-figure="rot-zero"></figure>
+<p>Для <code>target = 3</code> поиск идёт на [0, 3]. Середина <code>mid = 1</code>, и 5 &gt; 3, поэтому <code>hi = 0</code>. Середина <code>mid = 0</code>, и 4 &gt; 3, поэтому <code>hi = -1</code>. Теперь <code>hi = -1</code> меньше <code>lo = 0</code>: отрезок пуст, ответ <code>-1</code>. Это тоже 2 проверки.</p>
+<figure data-figure="rot-three"></figure>
+<p>Правило работает и для Array без поворота. Для <code>nums = [1, 2, 3, 4, 5]</code> каждое число не больше последнего числа 5, поэтому все ответы «да» и p = 0. Для <code>target = 3</code> имеем 3 ≤ 5 и отрезок [0, 4]. Для <code>target = 6</code> имеем 6 &gt; 5 и отрезок [0, −1]: он пуст, ответ <code>-1</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def search(self, nums: list[int], target: int) -&gt; int:
+        n = len(nums)
+        lo, hi = 0, n - 1
+        while lo &lt; hi:
+            mid = (lo + hi) // 2
+            if nums[mid] &lt;= nums[-1]:
+                hi = mid
+            else:
+                lo = mid + 1
+        p = lo  # индекс минимума
+        if target &lt;= nums[-1]:
+            lo, hi = p, n - 1
+        else:
+            lo, hi = 0, p - 1
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[mid] &lt; target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return -1</code></pre>
+<p><strong>Время:</strong> первый поиск оставляет не больше половины индексов, округлённой вверх (из 5 индексов остаётся не больше 3): из 5000 индексов получается 2500, 1250, 625, 313, 157, 79, 40, 20, 10, 5, 3, 2, 1. Это 13 проверок. Второй поиск оставляет не больше половины чисел, округлённой вниз (из 5 чисел остаётся не больше 2): из 5000 чисел получается 2500, 1250, 625, 312, 156, 78, 39, 19, 9, 4, 2, 1, 0. Это тоже 13 проверок. Всего не больше 13 + 13 = 26 проверок середины: O(log n) в худшем случае. <strong>Дополнительная память:</strong> <code>n</code>, <code>lo</code>, <code>hi</code>, <code>mid</code> и <code>p</code>, O(1) в худшем случае.</p>
+<h3>Решение 2. Binary Search за один проход</h3>
+<p>Возьмите пример 1: <code>nums = [4, 5, 6, 7, 0, 1, 2]</code>, <code>target = 0</code>. Сначала <code>lo = 0</code>, <code>hi = 6</code>, <code>mid = 3</code>. Сравним <code>nums[lo]</code> и <code>nums[mid]</code>: 4 ≤ 7. Числа 4, 5, 6, 7 растут, и отрезок [0, 3] упорядочен. Число 0 меньше 4, поэтому в упорядоченной половине [0, 3] его нет: <code>lo = mid + 1 = 4</code>.</p>
+<p>Теперь <code>lo = 4</code> и <code>mid = 5</code>: <code>nums[lo] = 0</code> ≤ <code>nums[mid] = 1</code>, поэтому отрезок [4, 5] упорядочен. Число <code>target = 0</code> не меньше <code>nums[4] = 0</code> и меньше <code>nums[5] = 1</code>. Другая половина, [6, 6], состоит из числа 2, оно больше 1. Значит, число 0 может стоять только в [4, 5], а <code>nums[5] = 1</code> не равно 0: <code>hi = mid - 1 = 4</code>. Теперь <code>mid = 4</code> и <code>nums[4] = 0</code>: ответ 4. Это 3 проверки.</p>
+<figure data-figure="one-zero"></figure>
+<p>Теперь возьмите <code>nums = [6, 7, 0, 1, 2, 4, 5]</code> и <code>target = 4</code>. Сначала <code>lo = 0</code>, <code>hi = 6</code>, <code>mid = 3</code>. Имеем <code>nums[lo] = 6</code> &gt; <code>nums[mid] = 1</code>: середина стоит после разрыва, который лежит между 7 и 0. Разрыв один, поэтому отрезок [3, 6] с числами 1, 2, 4, 5 упорядочен. Другая половина, [0, 2], состоит из чисел 6, 7, 0: они вне диапазона от 1 до 5. Число 4 лежит в этом диапазоне, поэтому оно может стоять только в [3, 6], а <code>nums[3] = 1</code> не равно 4: <code>lo = mid + 1 = 4</code>. Теперь <code>mid = 5</code> и <code>nums[5] = 4</code>: ответ 5. Это 2 проверки.</p>
+<figure data-figure="one-four"></figure>
+<p>Разрывов порядка не больше одного, поэтому у любого отрезка [lo, hi] с серединой <code>mid</code> одна из половин [lo, mid] и [mid, hi] упорядочена. Какая именно, показывает сравнение <code>nums[lo]</code> с <code>nums[mid]</code>. Как в решении 1, числа левой части растут, числа правой части тоже, и каждое число левой части больше каждого числа правой части.</p>
+<p>Если разрыв лежит в [lo, mid], то <code>nums[lo]</code> стоит в левой части, <code>nums[mid]</code> в правой части, и <code>nums[lo] &gt; nums[mid]</code>. Если разрыва в [lo, mid] нет, то числа растут, и <code>nums[lo] ≤ nums[mid]</code>. Поэтому условие <code>nums[lo] ≤ nums[mid]</code> означает, что разрыва в [lo, mid] нет, как в примере 1. Условие <code>nums[lo] &gt; nums[mid]</code> означает, что разрыв там есть, как в <code>nums = [6, 7, 0, 1, 2, 4, 5]</code>, и середина стоит в правой части. Разрыв один, поэтому в [mid, hi] его нет, и эта половина упорядочена.</p>
+<p>Число другой половины стоит в той же части, что и упорядоченная половина, или в другой части. В <code>nums = [6, 7, 0, 1, 2, 4, 5]</code> число 0 стоит в той же части, что и 1, и меньше 1. Числа 6 и 7 стоят в другой части и больше 5. В обоих случаях число меньше левого края упорядоченной половины или больше правого: числа одной части растут, а числа левой части больше чисел правой. Между краями числа другой половины нет.</p>
+<div class="rule"><p><strong>Правило.</strong> Сначала сравните <code>nums[mid]</code> с <code>target</code>: при равенстве ответ <code>mid</code>. Если <code>nums[lo] ≤ nums[mid]</code>, упорядочен отрезок [lo, mid]: при <code>nums[lo] ≤ target &lt; nums[mid]</code> шаг <code>hi = mid - 1</code>, иначе <code>lo = mid + 1</code>. Если <code>nums[lo] &gt; nums[mid]</code>, упорядочен отрезок [mid, hi]: при <code>nums[mid] &lt; target ≤ nums[hi]</code> шаг <code>lo = mid + 1</code>, иначе <code>hi = mid - 1</code>.</p></div>
+<pre class="no-run"><code class="language-python">class Solution:
+    def search(self, nums: list[int], target: int) -&gt; int:
+        lo, hi = 0, len(nums) - 1
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[lo] &lt;= nums[mid]:  # отрезок [lo, mid] упорядочен
+                if nums[lo] &lt;= target &lt; nums[mid]:
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            else:  # отрезок [mid, hi] упорядочен
+                if nums[mid] &lt; target &lt;= nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+        return -1</code></pre>
+<p><strong>Время:</strong> каждая проверка исключает <code>mid</code> и оставляет не больше половины чисел, как во втором поиске решения 1. Для n = 5000 это не больше 13 проверок середины: O(log n) в худшем случае. <strong>Дополнительная память:</strong> <code>lo</code>, <code>hi</code> и <code>mid</code>, O(1) в худшем случае.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Условие <code>nums[mid] &lt; nums[0]</code> вместо <code>nums[mid] &lt;= nums[-1]</code> в первом поиске. Для <code>nums = [1, 2, 3]</code> условие всюду «нет»: p = 2 вместо 0, и для <code>target = 1</code> функция возвращает <code>-1</code>, а нужен ответ 0.</li>
+<li>Выбор части по <code>target &gt;= nums[0]</code> вместо <code>target &lt;= nums[-1]</code>. Для <code>nums = [1, 3]</code> и <code>target = 3</code> имеем p = 0, поиск идёт на пустом отрезке [0, −1], и функция возвращает <code>-1</code>, а нужен ответ 1.</li>
+<li>Строгое сравнение <code>nums[lo] &lt; nums[mid]</code> в решении 2. Для <code>nums = [3, 1]</code> и <code>target = 1</code> имеем <code>lo = mid = 0</code>. Отрезок [0, 0] из одного числа считается неупорядоченным, поэтому код считает упорядоченным отрезок [0, 1] с числами 3, 1. Условие <code>nums[mid] &lt; target ≤ nums[hi]</code> равно 3 &lt; 1 ≤ 1 и неверно, поэтому <code>hi = mid - 1 = -1</code>, и функция возвращает <code>-1</code>, а нужен ответ 1.</li>
+</ul>

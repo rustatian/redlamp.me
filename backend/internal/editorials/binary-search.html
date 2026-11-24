@@ -1,0 +1,32 @@
+<p>Нужен индекс <code>target</code> в упорядоченном Array <code>nums</code> или <code>-1</code>, и поиск должен занимать O(log n).</p>
+<p>Brute Force проверяет индексы 0, 1, 2, ... по порядку. Для <code>nums = [-1, 0, 3, 5, 9, 12]</code> и <code>target = 9</code> это 5 сравнений: число 9 стоит на индексе 4. Если target нет, Brute Force сравнивает все n чисел, где n - длина <code>nums</code>. При n = 10<sup>4</sup> это 10 000 сравнений, то есть O(n), а нужно O(log n). Brute Force не использует порядок Array.</p>
+<h3>Решение 1. Binary Search</h3>
+<p>Пара <code>lo</code> и <code>hi</code> задаёт отрезок индексов, где target ещё может стоять. Возьмём <code>nums = [-1, 0, 3, 5, 9, 12]</code>, n = 6, и <code>target = 9</code>. Сначала <code>lo = 0</code> и <code>hi = 5</code>: в отрезке все индексы. Середина отрезка: <code>mid = (lo + hi) // 2 = 2</code>.</p>
+<p>Проверка: <code>nums[2] = 3</code> меньше 9. Array упорядочен по возрастанию, поэтому <code>nums[0] = -1</code> и <code>nums[1] = 0</code> тоже меньше 9. Число 9 не стоит на индексах 0, 1, 2, и отрезок сужается: <code>lo = mid + 1 = 3</code>. Новая середина <code>mid = (3 + 5) // 2 = 4</code>, и <code>nums[4] = 9</code>. Ответ 4 после двух проверок.</p>
+<figure data-figure="hit"></figure>
+<p>Теперь <code>target = 2</code>: этого числа в <code>nums</code> нет. Первая проверка: <code>nums[2] = 3</code> больше 2. Числа на индексах 3, 4, 5 ещё больше, поэтому 2 не стоит на индексах 2, 3, 4, 5, и <code>hi = mid - 1 = 1</code>. Дальше <code>mid = 0</code> и <code>nums[0] = -1</code> меньше 2: <code>lo = 1</code>. Потом <code>mid = 1</code> и <code>nums[1] = 0</code> меньше 2: <code>lo = 2</code>. Теперь <code>lo = 2</code> больше <code>hi = 1</code>: отрезок пуст, для 2 не осталось индексов. Ответ −1 после трёх проверок.</p>
+<figure data-figure="miss"></figure>
+<div class="rule"><p><strong>Правило.</strong> Инвариант: если target есть в <code>nums</code>, его индекс лежит в отрезке [lo, hi]. Цикл идёт, пока <code>lo &lt;= hi</code>. При <code>nums[mid] &lt; target</code> ход <code>lo = mid + 1</code>, при <code>nums[mid] &gt; target</code> ход <code>hi = mid - 1</code>. Пустой отрезок <code>lo &gt; hi</code> значит, что target нет.</p></div>
+<p>Одна проверка делит отрезок на левую часть, индекс mid и правую часть. Остаётся левая или правая часть. Пусть s - длина отрезка. Для отрезка [0, 5] длина s = 6. При mid = 2 в левой части 2 индекса, в правой 3. Для любого s каждая часть не длиннее ⌊s / 2⌋, где ⌊x⌋ - это x, округлённое вниз. Для s = 6 это ⌊6 / 2⌋ = 3. Если target всё время правее mid, длины равны 6, 3, 1. Это самый длинный путь: 3 проверки, потом длина 0.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def search(self, nums: list[int], target: int) -&gt; int:
+        lo, hi = 0, len(nums) - 1
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[mid] &lt; target:
+                lo = mid + 1  # слева от mid числа не больше nums[mid]: target там нет
+            else:
+                hi = mid - 1  # справа от mid числа не меньше nums[mid]: target там нет
+        return -1
+</code></pre>
+<p><strong>Время:</strong> O(log n) в худшем случае: не больше ⌊log₂ n⌋ + 1 проверок середины. Для n = 10<sup>4</sup> самый длинный путь даёт длины отрезка 10 000, 5 000, 2 500, 1 250, 625, 312, 156, 78, 39, 19, 9, 4, 2, 1. Это 14 проверок. Формула даёт то же: 2<sup>13</sup> = 8 192 ≤ 10 000 &lt; 16 384 = 2<sup>14</sup>, поэтому ⌊log₂ 10 000⌋ = 13 и 13 + 1 = 14. <strong>Дополнительная память:</strong> O(1) в худшем случае: числа <code>lo</code>, <code>hi</code> и <code>mid</code>. Вход <code>nums</code> и ответ не считаем.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li><code>hi = len(nums)</code> вместо <code>hi = len(nums) - 1</code>. Индекс <code>len(nums)</code> лежит за концом <code>nums</code>. Оба примера условия этот код проходит. Он ломается, когда target больше всех чисел. Для <code>nums = [5]</code> и <code>target = 6</code>: <code>lo = 0</code>, <code>hi = 1</code>, <code>mid = 0</code>, <code>nums[0] = 5</code> меньше 6, и <code>lo = 1</code>. Потом <code>lo = hi = 1</code> и <code>mid = 1</code>, а индекса 1 в <code>nums</code> нет: IndexError.</li>
+<li><code>while lo &lt; hi</code> вместо <code>lo &lt;= hi</code>. Для <code>nums = [5]</code> и <code>target = 5</code> получаем <code>lo = hi = 0</code>, цикл не начинается, и ответ −1 вместо 0. Отрезок из одного индекса тоже нужно проверить.</li>
+<li><code>lo = mid</code> вместо <code>lo = mid + 1</code>. Для <code>nums = [1, 3]</code> и <code>target = 3</code>: <code>lo = 0</code>, <code>hi = 1</code>, <code>mid = 0</code>, <code>nums[0] = 1</code> меньше 3, и lo снова равно 0. Цикл не заканчивается.</li>
+<li><code>hi = mid</code> вместо <code>hi = mid - 1</code>. Для <code>nums = [1, 3]</code> и <code>target = 0</code>: <code>mid = 0</code>, <code>nums[0] = 1</code> больше 0, и hi становится 0. Потом <code>lo = hi = 0</code>, снова <code>mid = 0</code> и <code>hi = 0</code>. Цикл не заканчивается.</li>
+<li>Срез <code>nums[mid + 1:]</code> вместо границ lo и hi. Для <code>nums = [-1, 0, 3, 5, 9, 12]</code> и <code>target = 9</code> срез <code>nums[3:]</code> равен <code>[5, 9, 12]</code>, и в нём число 9 стоит на индексе 1, а в <code>nums</code> на индексе 4. Срез ещё копирует ссылки на числа. Для n = 1024 и target больше всех чисел срезы длин 512, 256, ..., 1 копируют вместе 1 023 ссылки: время и дополнительная память O(n) в худшем случае.</li>
+</ul>

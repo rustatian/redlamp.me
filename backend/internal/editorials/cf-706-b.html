@@ -1,0 +1,54 @@
+<p>Для каждого дня нужно посчитать, сколько цен не больше m. Цены одни и те же во все q дней, поэтому их можно подготовить один раз.</p>
+<p>Brute Force сравнивает с m каждую из n цен в каждый из q дней. При n = q = 10<sup>5</sup> это 10<sup>5</sup> · 10<sup>5</sup> = 10<sup>10</sup> сравнений: слишком долго.</p>
+<h3>Решение 1. Binary Search</h3>
+<p>Пример: цены <code>x = [3, 10, 8, 6, 11]</code> и день m = 10. После Sorting <code>x = [3, 6, 8, 10, 11]</code>. Цены не больше 10 стоят в начале: 3, 6, 8 и 10. Следующая цена 11 больше 10 и стоит в индексе 4. Ответ 4 равен индексу первой цены, которая больше m.</p>
+<p>Sorting не меняет ответ: нужно число магазинов, а их номера не важны. До Sorting подходят цены 3, 10, 8 и 6, а после Sorting те же четыре цены стоят в начале.</p>
+<p>В упорядоченном x каждое число левее x[i] не больше x[i]. Если x[i] ≤ m, то и все числа левее x[i] не больше m: x[3] = 10 ≤ 10, поэтому 3, 6 и 8 тоже не больше 10. Значит, условие x[i] &gt; m идёт «нет, ..., нет, да, ..., да». Для m = 10 условие даёт: нет, нет, нет, нет, да. Первое «да» стоит в индексе 4. На индексах 0, 1, 2 и 3 до него стоят четыре цены не больше m.</p>
+<p>При m = 1 первая цена 3 уже больше 1: ответ 0. При m = 3 цена 3 подходит, а следующая цена 6 больше 3: ответ 1. При m = 11 цен больше 11 нет: ответ 5 = n. Вместе с днём m = 10 получаются ответы 0, 4, 1, 5.</p>
+<div class="rule"><p><strong>Правило.</strong> В упорядоченном Array x число цен не больше m равно <code>bisect_right(x, m)</code>. Это Upper Bound: индекс первой цены больше m. Если такой цены нет, ответ n.</p></div>
+<figure data-figure="days"></figure>
+<pre class="no-run"><code class="language-python">import sys
+from bisect import bisect_right
+
+data = sys.stdin.buffer.read().split()
+n = int(data[0])
+x = sorted(map(int, data[1:1 + n]))
+q = int(data[1 + n])
+out = []
+for i in range(q):
+    m = int(data[2 + n + i])
+    # Upper Bound стоит сразу после последней цены не больше m
+    out.append(bisect_right(x, m))
+print("\n".join(map(str, out)))</code></pre>
+<p><strong>Время:</strong> O(n log n + q log n) в худшем случае. Sorting делает O(n log n) сравнений. Один bisect_right делает не больше ⌊log<sub>2</sub> n⌋ + 1 сравнений: при n = 10<sup>5</sup> это 17. Поэтому q = 10<sup>5</sup> дней дают не больше 17 · 10<sup>5</sup> = 1 700 000 сравнений. <strong>Дополнительная память:</strong> O(n) в худшем случае: срез <code>data[1:1 + n]</code> и список x хранят по n элементов. Список data из 2 + n + q элементов - это вход, а список out из q чисел - это ответ: их считаем отдельно.</p>
+<h3>Решение 2. Prefix Sum по значениям</h3>
+<p>Все цены не больше 10<sup>5</sup>, поэтому их можно считать по значениям, без Sorting. Пример: <code>x = [3, 10, 8, 6, 11]</code>, наибольшая цена top = 11. Пусть cnt[v] - число магазинов с ценой v, для v от 0 до 11. Цены 3, 6, 8, 10 и 11 встречаются по одному разу: <code>cnt = [0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1]</code>.</p>
+<p>Prefix Sum <code>c = list(accumulate(cnt))</code> даёт c[v] = cnt[0] + cnt[1] + ... + cnt[v]: это число цен не больше v. Здесь <code>c = [0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 5]</code>. Ответ дня m равен c[m]: c[10] = 4, c[1] = 0, c[3] = 1, c[11] = 5.</p>
+<p>Число m может быть до 10<sup>9</sup>, а в c индексы идут только от 0 до top. Все цены не больше top, поэтому при m ≥ top подходят все n магазинов: c[top] = 5 = n. Значит, берём <code>c[min(m, top)]</code>: для m = 10<sup>9</sup> это c[11] = 5.</p>
+<figure data-figure="values"></figure>
+<pre class="no-run"><code class="language-python">import sys
+from itertools import accumulate
+
+data = sys.stdin.buffer.read().split()
+n = int(data[0])
+prices = list(map(int, data[1:1 + n]))
+q = int(data[1 + n])
+top = max(prices)
+cnt = [0] * (top + 1)
+for p in prices:
+    cnt[p] += 1
+# c[v] - число цен не больше v; при m ≥ top ответ c[top] = n
+c = list(accumulate(cnt))
+out = []
+for i in range(q):
+    m = int(data[2 + n + i])
+    out.append(c[min(m, top)])
+print("\n".join(map(str, out)))</code></pre>
+<p><strong>Время:</strong> O(n + q + V) в худшем случае, где V = top, наибольшая цена, V ≤ 10<sup>5</sup>. Каждый из списков cnt и c строится за V + 1 шагов. По n ценам код делает три прохода: <code>list(map(int, ...))</code>, <code>max(prices)</code> и цикл <code>for p in prices</code>. Каждый из q дней читается один раз. <strong>Дополнительная память:</strong> O(n + V) в худшем случае: срез <code>data[1:1 + n]</code> и список prices хранят по n чисел, cnt и c хранят по V + 1 чисел. Список data - это вход, а список out - ответ: их считаем отдельно.</p>
+<p>Решение 2 требует малого диапазона цен. Если бы цены доходили до 10<sup>9</sup>, список cnt из 10<sup>9</sup> + 1 элементов не поместился бы в лимит памяти 256 мегабайт. Один элемент списка занимает не меньше 1 байта, поэтому cnt занял бы не меньше 10<sup>9</sup> байт. Лимит равен 256 · 2<sup>20</sup> = 268 435 456 байт, а это меньше 10<sup>9</sup>. Binary Search границу цен не требует.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>bisect_left вместо bisect_right не считает цену, равную m. Для <code>x = [3, 6, 8, 10, 11]</code> и m = 10 получается bisect_left(x, 10) = 3 вместо 4.</li>
+<li>Binary Search без Sorting ошибается. Для <code>x = [10, 1, 5]</code> и m = 5 bisect_right даёт 3, а цен не больше 5 две: 1 и 5. Binary Search требует упорядоченного Array.</li>
+<li>В решении 2 индекс m без min(m, top) выходит за конец c. Для m = 10<sup>9</sup> и списка c из 12 чисел Python выдаёт <code>IndexError</code>.</li>
+</ul>
