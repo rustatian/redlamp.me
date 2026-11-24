@@ -1,0 +1,50 @@
+<p>Общее число есть и в <code>nums1</code>, и в <code>nums2</code>. Нужны все общие числа, каждое один раз.</p>
+<h3>Решение 1. Sorting и Two Pointers</h3>
+<p>Возьмите пример 2: <code>nums1 = [4, 9, 5]</code>, <code>nums2 = [9, 4, 9, 8, 4]</code>. После Sorting получаем <code>a = [4, 5, 9]</code> и <code>b = [4, 4, 8, 9, 9]</code>. Указатель <code>i</code> стоит на месте 0 в <code>a</code>, указатель <code>j</code> на месте 0 в <code>b</code>.</p>
+<p>Числа <code>a[0] = 4</code> и <code>b[0] = 4</code> равны. Число 4 общее: код записывает его в ответ и сдвигает оба указателя. Теперь <code>a[1] = 5</code> и <code>b[1] = 4</code>. Число 4 меньше 5, и код делает <code>j += 1</code>. Затем 5 меньше <code>b[2] = 8</code>, и код делает <code>i += 1</code>. Число 8 меньше <code>a[2] = 9</code>: снова <code>j += 1</code>. Числа <code>a[2] = 9</code> и <code>b[3] = 9</code> равны, и 9 идёт в ответ. Теперь <code>i = 3 = len(a)</code>, и цикл кончается. Ответ <code>[4, 9]</code>: условие разрешает любой порядок.</p>
+<div class="rule"><p><strong>Правило.</strong> <code>a[i] &lt; b[j]</code>: <code>i += 1</code>. <code>a[i] &gt; b[j]</code>: <code>j += 1</code>. Числа равны: код записывает число, если его ещё нет в ответе, и сдвигает оба указателя.</p></div>
+<figure data-figure="scan"></figure>
+<p>Ход <code>i += 1</code> не теряет общее число. При <code>a[1] = 5</code> и <code>b[2] = 8</code> все числа <code>b</code> от места 2 не меньше 8, потому что <code>b</code> отсортирован. Число 5 меньше 8, поэтому в <code>b</code> от места 2 его нет.</p>
+<p>Так в каждом случае. Код сохраняет инвариант: каждое общее число уже есть в ответе или стоит и в <code>a</code> от места <code>i</code>, и в <code>b</code> от места <code>j</code>. Сначала <code>i = j = 0</code>, и инвариант верен. Пусть <code>a[i] &lt; b[j]</code>. Все числа <code>b</code> от места <code>j</code> не меньше <code>b[j]</code>, поэтому числа <code>a[i]</code> там нет. Если бы <code>a[i]</code> было общим числом не из ответа, то по инварианту оно стояло бы в <code>b</code> от места <code>j</code>. Значит, число <code>a[i]</code> уже в ответе или не общее, и ход <code>i += 1</code> сохраняет инвариант. Ход <code>j += 1</code> сохраняет его по той же причине. В примере 2 ход <code>j += 1</code> при <code>a[1] = 5</code> и <code>b[1] = 4</code> убирает второе число 4, а 4 уже в ответе.</p>
+<p>После шага при равенстве <code>a[i] = b[j]</code> это число есть в ответе: код записал его сейчас или раньше. Другие общие числа не из ответа не равны ему. По инварианту они стоят в <code>a</code> от места <code>i</code> и в <code>b</code> от места <code>j</code>, поэтому остаются в <code>a</code> от места <code>i + 1</code> и в <code>b</code> от места <code>j + 1</code>. Цикл кончается при <code>i = len(a)</code> или <code>j = len(b)</code>. Тогда в <code>a</code> от места <code>i</code> или в <code>b</code> от места <code>j</code> нет ни одного числа, и все общие числа уже в ответе.</p>
+<p>Теперь повторы. Возьмите пример 1: после Sorting <code>a = [1, 1, 2, 2]</code> и <code>b = [2, 2]</code>. Число 1 меньше 2, и <code>i</code> два раза идёт вправо. При <code>i = 2</code> и <code>j = 0</code> числа равны, и 2 идёт в ответ. При <code>i = 3</code> и <code>j = 1</code> числа снова равны 2. Последнее число ответа <code>answer[-1] = 2</code>, поэтому код не записывает 2 второй раз. Ответ <code>[2]</code>.</p>
+<figure data-figure="repeat"></figure>
+<p>Сравнения с последним числом ответа хватает. Указатели идут только вправо, а <code>a</code> отсортирован, поэтому каждое следующее равенство даёт число не меньше прошлого. Числа в ответе идут по возрастанию. Пусть ответ уже <code>[4, 9]</code>. Следующее равное число не меньше 9. Если оно равно 9, то это последнее число ответа. Число 4 встретиться уже не может: оно меньше 9.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def intersection(self, nums1: list[int], nums2: list[int]) -&gt; list[int]:
+        a, b = sorted(nums1), sorted(nums2)
+        i = j = 0
+        answer = []
+        while i &lt; len(a) and j &lt; len(b):
+            if a[i] &lt; b[j]:
+                i += 1  # числа a[i] нет в b от места j
+            elif a[i] &gt; b[j]:
+                j += 1  # числа b[j] нет в a от места i
+            else:
+                if not answer or answer[-1] != a[i]:
+                    answer.append(a[i])
+                i += 1
+                j += 1
+        return answer</code></pre>
+<p><strong>Время:</strong> n и m - длины <code>nums1</code> и <code>nums2</code>. Sorting занимает O(n log n + m log m). Каждый шаг цикла сдвигает <code>i</code> или <code>j</code>, а цикл кончается при <code>i = n</code> или <code>j = m</code>. Поэтому шагов не больше n + m. В примере 2 шагов 5, а n + m = 8. Всего O(n log n + m log m) в худшем случае. <strong>Дополнительная память:</strong> копии <code>a</code> и <code>b</code> хранят n + m чисел: O(n + m). Ответ хранит k чисел, где k - число разных общих чисел.</p>
+<h3>Решение 2. Hash Table</h3>
+<p>Python <code>set</code> - это Hash Table. Проверка <code>x in seen</code> и удаление <code>seen.remove(x)</code> в среднем занимают O(1).</p>
+<p>В примере 2 <code>seen = set(nums1)</code> хранит числа 4, 9 и 5. Код идёт по <code>nums2 = [9, 4, 9, 8, 4]</code>. Число 9 есть в <code>seen</code>: оно идёт в ответ и уходит из <code>seen</code>. С числом 4 то же самое. Когда код доходит до второго числа 9, его в <code>seen</code> уже нет. Числа 8 в <code>seen</code> нет. Со вторым числом 4 то же самое. Ответ <code>[9, 4]</code>.</p>
+<p>Удаление даёт уникальность: число попадает в ответ только при первой встрече в <code>nums2</code>. Каждое общее число есть в <code>seen</code> до этой первой встречи, поэтому в ответ попадают все общие числа.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def intersection(self, nums1: list[int], nums2: list[int]) -&gt; list[int]:
+        seen = set(nums1)
+        answer = []
+        for x in nums2:
+            if x in seen:
+                answer.append(x)
+                seen.remove(x)  # второй раз x не попадёт в ответ
+        return answer</code></pre>
+<p><strong>Время:</strong> ожидаемое для Hash Table. <code>set(nums1)</code> делает n добавлений. Цикл делает m проверок и k удалений. Всего O(n + m) в среднем. <strong>Дополнительная память:</strong> <code>seen</code> хранит разные числа <code>nums1</code>, их не больше n: O(n). Ответ хранит k чисел.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Записывать каждое равенство. В примере 1 равенство 2 = 2 случается два раза, и ответ будет <code>[2, 2]</code> вместо <code>[2]</code>. В решении 2 та же ошибка без <code>seen.remove(x)</code>.</li>
+<li>Взять <code>answer[-1]</code> без проверки <code>not answer</code>. При первом равенстве <code>answer</code> пуст, и <code>answer[-1]</code> даёт IndexError.</li>
+<li>Сравнивать число с переменной <code>last</code>, которая хранит последнее записанное число и сначала равна 0. Для <code>nums1 = [0]</code> и <code>nums2 = [0]</code> код решит, что 0 уже в ответе, и вернёт <code>[]</code> вместо <code>[0]</code>.</li>
+<li>Two Pointers без Sorting. В примере 2 код сравнит 4 и 9: 4 меньше 9, и код сдвинет <code>i</code>. Число 4 из <code>nums1</code> больше не встретится. Ответ <code>[9]</code> вместо <code>[4, 9]</code>.</li>
+</ul>
