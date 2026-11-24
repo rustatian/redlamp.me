@@ -1,0 +1,293 @@
+[
+	{
+		"id": "pop",
+		"title": "Решение 1, пример 1: Min-Heap пар (-c, w), ответ ['i', 'love']",
+		"frames": [
+			{
+				"caption": "Counter: i 2 раза, love 2 раза, leetcode 1 раз, coding 1 раз. heapify(h) строит Min-Heap из 4 пар, h[0] = (-2, 'i').",
+				"rows": [
+					{
+						"label": "h",
+						"cells": [
+							"(-2, 'i')",
+							"(-2, 'love')",
+							"(-1, 'leetcode')",
+							"(-1, 'coding')"
+						],
+						"marked": [
+							0
+						],
+						"tree": true
+					}
+				]
+			},
+			{
+				"caption": "Первый вызов heappop вернул (-2, 'i'), ans = ['i']. Теперь h[0] = (-2, 'love').",
+				"rows": [
+					{
+						"label": "h",
+						"cells": [
+							"(-2, 'love')",
+							"(-1, 'coding')",
+							"(-1, 'leetcode')"
+						],
+						"marked": [
+							0
+						],
+						"tree": true
+					},
+					{
+						"label": "ans",
+						"cells": [
+							"i"
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "Второй вызов heappop вернул (-2, 'love'), ans = ['i', 'love']. Выбрано k = 2 слова. Пары слов coding и leetcode остались в h.",
+				"rows": [
+					{
+						"label": "h",
+						"cells": [
+							"(-1, 'coding')",
+							"(-1, 'leetcode')"
+						],
+						"marked": [
+							0
+						],
+						"tree": true
+					},
+					{
+						"label": "ans",
+						"cells": [
+							"i",
+							"love"
+						],
+						"marked": [
+							1
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "topk",
+		"title": "Решение 2, k = 3: Max-Heap держит не больше k пар, ответ ['a', 'b', 'c']",
+		"frames": [
+			{
+				"caption": "Пара (-1, 'e'): в h 0 пар, меньше k = 3. heappush_max кладёт её. h[0] = (-1, 'e').",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-1, 'e')"
+						],
+						"tree": true,
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "Пара (-3, 'a'): в h 1 пара, меньше k = 3. heappush_max кладёт её. h[0] = (-1, 'e').",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							1
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-1, 'e')",
+							"(-3, 'a')"
+						],
+						"tree": true,
+						"marked": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "Пара (-2, 'd'): в h 2 пары, меньше k = 3. heappush_max кладёт её. h[0] = (-1, 'e').",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							2
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-1, 'e')",
+							"(-3, 'a')",
+							"(-2, 'd')"
+						],
+						"tree": true,
+						"marked": [
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "Пара (-2, 'b') меньше h[0] = (-1, 'e'): −2 < −1. heapreplace_max ставит её вместо (-1, 'e'). Теперь h[0] = (-2, 'd').",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							3
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-2, 'd')",
+							"(-3, 'a')",
+							"(-2, 'b')"
+						],
+						"tree": true,
+						"marked": [
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "Пара (-1, 'f') больше h[0] = (-2, 'd'): −1 > −2. Код её пропускает.",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							4
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-2, 'd')",
+							"(-3, 'a')",
+							"(-2, 'b')"
+						],
+						"tree": true
+					}
+				]
+			},
+			{
+				"caption": "Пара (-2, 'c') меньше h[0] = (-2, 'd'): частоты равны, 'c' < 'd'. heapreplace_max ставит её вместо (-2, 'd'). Теперь h[0] = (-2, 'c').",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						],
+						"marked": [
+							5
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-2, 'c')",
+							"(-3, 'a')",
+							"(-2, 'b')"
+						],
+						"tree": true,
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "h.sort() ставит 3 пары по возрастанию. Ответ ['a', 'b', 'c'].",
+				"rows": [
+					{
+						"label": "cnt",
+						"cells": [
+							"e: 1",
+							"a: 3",
+							"d: 2",
+							"b: 2",
+							"f: 1",
+							"c: 2"
+						]
+					},
+					{
+						"label": "h",
+						"cells": [
+							"(-3, 'a')",
+							"(-2, 'b')",
+							"(-2, 'c')"
+						],
+						"marked": [
+							0,
+							1,
+							2
+						]
+					}
+				]
+			}
+		]
+	}
+]

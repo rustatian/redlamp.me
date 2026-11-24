@@ -1,0 +1,51 @@
+<p>Сначала считаем, сколько раз встречается каждое слово. Затем выбираем k лучших слов: более частое слово лучше, а при равной частоте лучше то, что стоит раньше по алфавиту.</p>
+<h3>Решение 1. Counter и Min-Heap всех пар</h3>
+<p>В примере 1 <code>words = ["i", "love", "leetcode", "i", "love", "coding"]</code>, k = 2. <code>Counter(words)</code> проходит по словам один раз и считает частоты: i и love по 2 раза, leetcode и coding по 1 разу. Разных слов u = 4.</p>
+<p>Для каждого слова <code>w</code> с частотой <code>c</code> код строит пару <code>(-c, w)</code>. Python сравнивает tuple по полям слева направо. Пара <code>(-2, 'love')</code> меньше пары <code>(-1, 'coding')</code>, потому что −2 &lt; −1: у более частого слова пара меньше. У пар <code>(-2, 'i')</code> и <code>(-2, 'love')</code> первые поля равны, поэтому Python сравнивает слова: 'i' &lt; 'love'. Значит, пары по возрастанию идут в том же порядке, что и слова в ответе.</p>
+<p><code>heapq.heapify(h)</code> строит Min-Heap из 4 пар, и в <code>h[0]</code> стоит наименьшая пара <code>(-2, 'i')</code>. <code>heappop</code> удаляет и возвращает <code>h[0]</code>, а на место <code>h[0]</code> встаёт наименьшая из оставшихся пар. Первый вызов возвращает пару <code>(-2, 'i')</code>, и <code>[1]</code> берёт из неё слово 'i'. Второй вызов возвращает <code>(-2, 'love')</code>, и в <code>ans</code> идёт 'love'. После k = 2 вызовов цикл заканчивается, и ответ <code>["i", "love"]</code>.</p>
+<figure data-figure="pop"></figure>
+<p>Значит, k вызовов <code>heappop</code> дают k наименьших пар по возрастанию, то есть k лучших слов сразу в порядке ответа. Остальные u − k пар остаются в <code>h</code>: в примере это пары leetcode и coding.</p>
+<pre class="no-run"><code class="language-python">import heapq
+from collections import Counter
+
+
+class Solution:
+    def topKFrequent(self, words: list[str], k: int) -&gt; list[str]:
+        cnt = Counter(words)
+        h = [(-c, w) for w, c in cnt.items()]  # минус: частое слово идёт раньше
+        heapq.heapify(h)
+        ans = []
+        for _ in range(k):
+            ans.append(heapq.heappop(h)[1])  # h[0] - лучшая из оставшихся пар
+        return ans</code></pre>
+<p><strong>Время:</strong> n - число слов, u - число разных слов, u ≤ n. Слово не длиннее 10 букв, поэтому одно обращение к Hash Table и одно сравнение двух слов читают не больше 10 букв каждого слова: O(1). <code>Counter</code> делает n обновлений Hash Table: ожидаемое O(n). Создание u пар и <code>heapify</code> стоят O(u). Каждый из k вызовов <code>heappop</code> стоит O(log(u + 1)). Всего ожидаемое O(n + k log(u + 1)). <strong>Дополнительная память:</strong> <code>cnt</code> и <code>h</code> хранят по u записей: O(u). Список <code>ans</code> из k слов - это ответ, его не считаем.</p>
+<h3>Решение 2. Max-Heap размера k</h3>
+<p>Дополнительный вопрос просит ожидаемое O(n log(k + 1)) времени. Решение 1 тоже укладывается в эту оценку. При n = u = 500 и k = 2 его часть k log<sub>2</sub>(u + 1) = 2 · log<sub>2</sub>(501) ≈ 18, а n log<sub>2</sub>(k + 1) = 500 · log<sub>2</sub>(3) ≈ 792. Дробь k / log<sub>2</sub>(k + 1) растёт с ростом k: 1/1 при k = 1, 3/2 при k = 3, 7/3 при k = 7. Поэтому при k ≤ n получаем k / log<sub>2</sub>(k + 1) ≤ n / log<sub>2</sub>(n + 1), то есть k log<sub>2</sub>(n + 1) ≤ n log<sub>2</sub>(k + 1). Так как u ≤ n, часть k log<sub>2</sub>(u + 1) тоже не больше n log<sub>2</sub>(k + 1). А часть n не больше n log<sub>2</sub>(k + 1), так как log<sub>2</sub>(k + 1) ≥ 1.</p>
+<p>Решение 2 использует другой способ: оно держит в <code>h</code> не больше k пар, лучшие пары среди уже просмотренных. <code>h</code> - это Max-Heap, поэтому в <code>h[0]</code> стоит наибольшая пара, то есть худшая из выбранных. Когда в <code>h</code> уже k пар, новая пара <code>p</code> входит, только если <code>p &lt; h[0]</code>. Тогда <code>heapreplace_max</code> удаляет <code>h[0]</code> и ставит <code>p</code>. Функции <code>heappush_max</code> и <code>heapreplace_max</code> есть в <code>heapq</code> с версии Python 3.14.</p>
+<p>Возьмём <code>words = ["e", "a", "d", "b", "f", "c", "a", "d", "b", "c", "a"]</code> и k = 3. <code>Counter</code> хранит слова в порядке первого появления: e 1, a 3, d 2, b 2, f 1, c 2. Первые три пары код кладёт через <code>heappush_max</code>, и худшая из них <code>(-1, 'e')</code> стоит в <code>h[0]</code>. Пара <code>(-2, 'b')</code> меньше её: −2 &lt; −1. Поэтому b заменяет e, и худшей становится <code>(-2, 'd')</code>. Пара <code>(-1, 'f')</code> больше <code>(-2, 'd')</code>, и f не входит. У пар <code>(-2, 'c')</code> и <code>(-2, 'd')</code> частоты равны, а 'c' &lt; 'd'. Поэтому c заменяет d.</p>
+<figure data-figure="topk"></figure>
+<p>Удалённая пара не входит в ответ. Когда b заменяет e, в <code>h</code> есть <code>(-3, 'a')</code> и <code>(-2, 'd')</code>, и вместе с <code>(-2, 'b')</code> это 3 пары меньше <code>(-1, 'e')</code>. Значит, e не входит в 3 лучших слова. Пропущенная пара больше <code>h[0]</code>, поэтому все k пар в <code>h</code> лучше её. Так для каждого слова вне <code>h</code> есть k слов лучше него, и после цикла в <code>h</code> остаются ровно k лучших пар. Они стоят в порядке Heap: <code>[(-2, 'c'), (-3, 'a'), (-2, 'b')]</code>. <code>h.sort()</code> ставит их по возрастанию, и ответ <code>["a", "b", "c"]</code>.</p>
+<pre class="no-run"><code class="language-python">import heapq
+from collections import Counter
+
+
+class Solution:
+    def topKFrequent(self, words: list[str], k: int) -&gt; list[str]:
+        cnt = Counter(words)
+        h = []  # Max-Heap: в h[0] худшая из выбранных пар
+        for w, c in cnt.items():
+            p = (-c, w)
+            if len(h) &lt; k:
+                heapq.heappush_max(h, p)
+            elif p &lt; h[0]:
+                heapq.heapreplace_max(h, p)  # p лучше худшей пары
+        h.sort()
+        return [w for c, w in h]</code></pre>
+<p><strong>Время:</strong> <code>Counter</code> стоит ожидаемое O(n), как в решении 1. В <code>h</code> не больше k пар, поэтому каждый вызов <code>heappush_max</code> и <code>heapreplace_max</code> стоит O(log(k + 1)). Таких вызовов не больше u. <code>h.sort()</code> сортирует k пар за O(k log(k + 1)). Всего ожидаемое O(n + u log(k + 1)), так как k ≤ u. Это не больше O(n log(k + 1)): n ≤ n log<sub>2</sub>(k + 1), а u log<sub>2</sub>(k + 1) ≤ n log<sub>2</sub>(k + 1), так как u ≤ n. <strong>Дополнительная память:</strong> <code>cnt</code> хранит u записей, <code>h</code> не больше k пар: O(u). При u ≤ n это O(n), как просит дополнительный вопрос.</p>
+<h3>Типичные ошибки</h3>
+<ul>
+<li>Sorting только по частоте: <code>sorted(cnt, key=cnt.get, reverse=True)</code>. Слова с равной частотой остаются в порядке первого появления. Для <code>words = ["b", "a", "b", "c", "a"]</code>, k = 2 ответ <code>["b", "a"]</code> вместо <code>["a", "b"]</code>.</li>
+<li>Sorting пар (частота, слово) с <code>reverse=True</code>: <code>sorted(cnt.items(), key=lambda p: (p[1], p[0]), reverse=True)</code>. Обратный порядок действует и на слова: при равной частоте они идут от конца алфавита. В примере 1 ответ <code>["love", "i"]</code> вместо <code>["i", "love"]</code>.</li>
+<li>В решении 2 Min-Heap пар <code>(c, w)</code> без минуса. В <code>h[0]</code> стоит пара с наименьшей частотой, а при равной частоте пара с меньшим словом. Код удаляет <code>h[0]</code> как худшую пару, но меньшее слово лучше. Для <code>words = ["a", "b", "c"]</code>, k = 2 код удаляет a и возвращает <code>["b", "c"]</code> вместо <code>["a", "b"]</code>.</li>
+<li>Ответ решения 2 без <code>h.sort()</code>. Для <code>words</code> из решения 2 и k = 3 код вернёт <code>["c", "a", "b"]</code>: это порядок Heap, а не порядок ответа.</li>
+</ul>
