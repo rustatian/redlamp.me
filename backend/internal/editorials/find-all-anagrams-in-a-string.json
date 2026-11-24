@@ -1,0 +1,947 @@
+[
+	{
+		"id": "windows",
+		"title": "Sliding Window на примере 1: 8 сравнений have и need",
+		"frames": [
+			{
+				"caption": "r = 2: вошла a, ни одна буква не вышла. Окно cba: have = need, индекс 0 идёт в ответ. Показаны буквы a-e, у остальных 21 буквы оба счётчика равны 0.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"r": 2
+						},
+						"window": [
+							0,
+							2
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 3: вошла e, вышла c. Окно bae: у c have 0, need 1, у e have 1, need 0. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"r": 3
+						},
+						"window": [
+							1,
+							3
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1,
+							0,
+							0,
+							1
+						],
+						"marked": [
+							2,
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 4: вошла b, вышла b: счётчик не меняется. Окно aeb: у c have 0, need 1, у e have 1, need 0. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							4
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"r": 4
+						},
+						"window": [
+							2,
+							4
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1,
+							0,
+							0,
+							1
+						],
+						"marked": [
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 5: вошла a, вышла a: счётчик не меняется. Окно eba: у c have 0, need 1, у e have 1, need 0. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							5
+						],
+						"dimmed": [
+							0,
+							1,
+							2
+						],
+						"pointers": {
+							"r": 5
+						},
+						"window": [
+							3,
+							5
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1,
+							0,
+							0,
+							1
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 6: вошла b, вышла e. Окно bab: у b have 2, need 1, у c have 0, need 1. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							6
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3
+						],
+						"pointers": {
+							"r": 6
+						},
+						"window": [
+							4,
+							6
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							2,
+							0,
+							0,
+							0
+						],
+						"marked": [
+							1,
+							4
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 7: вошла a, вышла b. Окно aba: у a have 2, need 1, у c have 0, need 1. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							7
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4
+						],
+						"pointers": {
+							"r": 7
+						},
+						"window": [
+							5,
+							7
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							2,
+							1,
+							0,
+							0,
+							0
+						],
+						"marked": [
+							0,
+							1
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 8: вошла c, вышла a. Окно bac: have = need, индекс 6 идёт в ответ.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							8
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4,
+							5
+						],
+						"pointers": {
+							"r": 8
+						},
+						"window": [
+							6,
+							8
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						],
+						"marked": [
+							0,
+							2
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 9: вошла d, вышла b. Окно acd: у b have 0, need 1, у d have 1, need 0. Окно не подходит.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"c",
+							"b",
+							"a",
+							"e",
+							"b",
+							"a",
+							"b",
+							"a",
+							"c",
+							"d"
+						],
+						"marked": [
+							9
+						],
+						"dimmed": [
+							0,
+							1,
+							2,
+							3,
+							4,
+							5,
+							6
+						],
+						"pointers": {
+							"r": 9
+						},
+						"window": [
+							7,
+							9
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b",
+							"c",
+							"d",
+							"e"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1,
+							1,
+							0,
+							0
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							0,
+							1,
+							1,
+							0
+						],
+						"marked": [
+							1,
+							3
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"id": "matches",
+		"title": "Sliding Window со счётчиком совпадений: s = abab, p = ab",
+		"frames": [
+			{
+				"caption": "До цикла have состоит из нулей. Равны have и need только у 24 букв, которых нет в p: matches = 26 − 2 = 24.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							0,
+							0
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"нет",
+							"нет"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 0: вошла a, ни одна буква не вышла. have = need у 1 из 2 показанных букв, matches = 24 + 1 = 25. В окне 1 из m = 2 букв.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							0
+						],
+						"pointers": {
+							"r": 0
+						},
+						"window": [
+							0,
+							0
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							0
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"да",
+							"нет"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 1: вошла b, ни одна буква не вышла. have = need у 2 из 2 показанных букв, matches = 24 + 2 = 26. Индекс 0 идёт в ответ.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							1
+						],
+						"pointers": {
+							"r": 1
+						},
+						"window": [
+							0,
+							1
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1
+						],
+						"marked": [
+							1
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"да",
+							"да"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 2: вошла a, буква s[0] = a ещё не вышла. have = need у 1 из 2 показанных букв, matches = 24 + 1 = 25.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							2
+						],
+						"pointers": {
+							"r": 2
+						},
+						"window": [
+							0,
+							2
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							2,
+							1
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"нет",
+							"да"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 2: вошла a, вышла a: have такой же, как после r = 1. have = need у 2 из 2 показанных букв, matches = 24 + 2 = 26. Индекс 1 идёт в ответ.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							2
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"r": 2
+						},
+						"window": [
+							1,
+							2
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1
+						],
+						"marked": [
+							0
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"да",
+							"да"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 3: вошла b, буква s[1] = b ещё не вышла. have = need у 1 из 2 показанных букв, matches = 24 + 1 = 25.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							0
+						],
+						"pointers": {
+							"r": 3
+						},
+						"window": [
+							1,
+							3
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							2
+						],
+						"marked": [
+							1
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"да",
+							"нет"
+						]
+					}
+				]
+			},
+			{
+				"caption": "r = 3: вошла b, вышла b: have такой же, как после r = 2. have = need у 2 из 2 показанных букв, matches = 24 + 2 = 26. Индекс 2 идёт в ответ.",
+				"rows": [
+					{
+						"label": "s",
+						"cells": [
+							"a",
+							"b",
+							"a",
+							"b"
+						],
+						"marked": [
+							3
+						],
+						"dimmed": [
+							0,
+							1
+						],
+						"pointers": {
+							"r": 3
+						},
+						"window": [
+							2,
+							3
+						]
+					},
+					{
+						"label": "буква",
+						"cells": [
+							"a",
+							"b"
+						]
+					},
+					{
+						"label": "need",
+						"cells": [
+							1,
+							1
+						]
+					},
+					{
+						"label": "have",
+						"cells": [
+							1,
+							1
+						],
+						"marked": [
+							1
+						]
+					},
+					{
+						"label": "have = need",
+						"cells": [
+							"да",
+							"да"
+						]
+					}
+				]
+			}
+		]
+	}
+]
