@@ -1,0 +1,60 @@
+<p>Для <code>[3, 2, 3]</code> пары шаров с номерами <code>(1, 2)</code>, <code>(1, 3)</code> и <code>(2, 3)</code> дают произведения <code>6</code>, <code>9</code> и <code>6</code>. У каждой пары одна и та же вероятность, поэтому математическое ожидание равно <code>21 / 3 = 7</code>.</p>
+<p>Brute Force умножает значения для каждой пары отдельно. При <code>n = 200 000</code> это <code>n · (n − 1) / 2 = 19 999 900 000</code> умножений. Такой перебор занимает <code>O(n<sup>2</sup>)</code> времени в худшем случае.</p>
+<h3>Решение 1. Квадрат суммы</h3>
+<p>В примере сумма значений равна <code>total = 3 + 2 + 3 = 8</code>. В произведении <code>(3 + 2 + 3) · (3 + 2 + 3)</code> умножаем каждое число из первой скобки на каждое число из второй. В таблице строка задаёт первый шар, а столбец задаёт второй.</p>
+<figure data-figure="products"></figure>
+<p>В каждой клетке на диагонали оба множителя относятся к одному шару. Сумма квадратов равна <code>squares = 9 + 4 + 9 = 22</code>. После вычитания остаётся <code>8<sup>2</sup> − 22 = 42</code>. Обе клетки для пары троек остаются, потому что у этих шаров разные номера. В этой сумме каждая пара разных шаров встречается дважды, по одному разу для каждого порядка выбора. В примере таких вариантов <code>3 · 2 = 6</code>, поэтому среднее равно <code>42 / 6 = 7</code>.</p>
+<p>Для первого шара есть <code>n</code> вариантов, а для второго остаётся <code>n − 1</code>. Получаем дробь <code>(total<sup>2</sup> − squares) / (n · (n − 1))</code>.</p>
+<p>Для <code>[1, 1, 2]</code> сумма произведений трёх пар без учёта порядка равна <code>1 + 2 + 2 = 5</code>. Код учитывает оба порядка каждой пары, поэтому среднее равно <code>(2 · 5) / (2 · 3) = 10 / 6 = 5 / 3</code>. Целочисленное деление <code>5 // 3</code> отбросит остаток и даст <code>1</code>. По модулю <code>M = 10<sup>9</sup> + 7</code> у тройки есть обратный элемент <code>333333336</code>, поскольку <code>3 · 333333336 = M + 1</code>. Умножаем числитель на этот обратный элемент и получаем остаток <code>5 · 333333336 % M = 666666673</code>.</p>
+<p>При <code>n = 4</code> знаменатель равен <code>4 · 3 = 12</code>. Возьмём для примера модуль <code>M = 7</code> и найдём остаток <code>12 % 7 = 5</code>. При показателе <code>7 − 2 = 5</code> вызовы <code>pow(12, 5, 7)</code> и <code>pow(5, 5, 7)</code> дают один и тот же остаток <code>3</code>. Замена основания его остатком сохраняет остаток каждого умножения, а значит, и всей степени. Это обратный элемент исходного знаменателя, потому что <code>12 · 3 % 7 = 1</code>.</p>
+<p>В коде знаменатель <code>denominator</code> равен <code>n · (n − 1)</code>. Оба множителя лежат между <code>1</code> и <code>200 000</code> включительно. Модуль <code>M</code> простой и больше каждого множителя, поэтому их произведение на <code>M</code> не делится. По малой теореме Ферма остаток от <code>denominator<sup>M − 1</sup></code> при делении на <code>M</code> равен <code>1</code>. Умножение <code>denominator<sup>M − 2</sup></code> на знаменатель увеличивает показатель до <code>M − 1</code>. Поэтому <code>pow(denominator % MOD, MOD - 2, MOD)</code> даёт обратный элемент знаменателя.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+MOD = 1_000_000_007
+read = sys.stdin.readline
+answers = []
+
+for _ in range(int(read())):
+    n = int(read())
+    values = read().split()
+    total = 0
+    squares = 0
+    for x in map(int, values):
+        total += x
+        squares += x * x
+
+    numerator = total * total - squares
+    denominator = n * (n - 1)
+    inverse = pow(denominator % MOD, MOD - 2, MOD)
+    answers.append(str(numerator * inverse % MOD))
+
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> <code>O(N + t · log M)</code> в худшем случае за весь запуск, где <code>N</code> - общее число шаров, а <code>t</code> - число наборов. Для каждого шара код создаёт запись в <code>values</code>, читает её один раз в цикле и освобождает вместе со списком. В каждом наборе <code>pow</code> выполняет <code>O(log M)</code> умножений. <strong>Дополнительная память:</strong> <code>O(n<sub>max</sub> + t)</code> в худшем случае, где <code>n<sub>max</sub></code> - число шаров в самом большом наборе. Если после набора из <code>64</code> чисел идёт набор из <code>2</code>, то <code>values</code> хранит все <code>64</code> части предыдущей строки, пока <code>split()</code> делит новую строку. Пока <code>join</code> строит строку вывода, в <code>answers</code> остаются <code>t</code> строк длиной до <code>10</code> цифр каждая. Для самих сумм достаточно <code>O(1)</code> памяти.</p>
+<h3>Решение 2. Prefix Sum</h3>
+<p>В <code>[3, 2, 3]</code> у первого шара слева нет соседа. У второго шара слева только тройка, поэтому добавляем <code>3 · 2 = 6</code>. Если сначала прибавить двойку к <code>prefix</code>, получится <code>(3 + 2) · 2 = 10</code>. Так второй шар образует пару с самим собой и даёт лишнее слагаемое <code>2 · 2 = 4</code>. Для последней тройки вклад обеих пар равен <code>(3 + 2) · 3 = 15</code>. Сумма произведений всех пар равна <code>6 + 15 = 21</code>.</p>
+<p>Перед обработкой <code>x</code> в <code>prefix</code> лежит сумма всех значений слева. Прибавляя <code>prefix · x</code> к <code>products</code>, учитываем все пары, в которых текущий шар стоит справа. В таблице это клетки над диагональю в столбце текущего шара. Каждая пара попадает в сумму ровно раз, когда проход доходит до правого шара. Само число <code>x</code> добавляем в <code>prefix</code> только после умножения, иначе в сумму попадёт ещё и <code>x<sup>2</sup></code>.</p>
+<p>Для трёх шаров число пар без учёта порядка равно <code>3 · 2 / 2 = 3</code>. Код вычисляет <code>pairs = n * (n - 1) // 2</code> до перехода к остаткам. Здесь деление на <code>2</code> точное, потому что одно из двух соседних чисел обязательно чётное. Если бы <code>pairs</code> делилось на <code>M</code>, то и произведение <code>2 · pairs = n · (n − 1)</code> делилось бы на <code>M</code>. В решении 1 мы показали, что это произведение на <code>M</code> не делится, поэтому у <code>pairs</code> есть обратный элемент. Для ответа умножаем <code>products</code> на обратный элемент числа <code>pairs</code> по модулю <code>M</code> и берём остаток.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+MOD = 1_000_000_007
+read = sys.stdin.readline
+answers = []
+
+for _ in range(int(read())):
+    n = int(read())
+    values = read().split()
+    prefix = 0
+    products = 0
+    for x in map(int, values):
+        products += prefix * x
+        prefix += x
+
+    pairs = n * (n - 1) // 2
+    inverse = pow(pairs % MOD, MOD - 2, MOD)
+    answers.append(str(products * inverse % MOD))
+
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> <code>O(N + t · log M)</code> в худшем случае за весь запуск. <strong>Дополнительная память:</strong> <code>O(n<sub>max</sub> + t)</code> в худшем случае. Для <code>prefix</code> и <code>products</code> достаточно <code>O(1)</code> памяти.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>
