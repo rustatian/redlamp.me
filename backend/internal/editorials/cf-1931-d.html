@@ -1,0 +1,74 @@
+<p>В примере из шести чисел Brute Force проверяет <code>0 + 1 + 2 + 3 + 4 + 5 = 15</code> пар. Каждое число он сравнивает со всеми, что стоят левее. Для <code>n</code> чисел это <code>n(n − 1)/2</code> проверок и <code>O(n<sup>2</sup>)</code> времени. При <code>n = 200 000</code> пришлось бы проверить 19 999 900 000 пар.</p>
+<h3>Решение 1. Hash Table по двум остаткам</h3>
+<p>В первом наборе <code>x = 5</code> и <code>y = 2</code>. При делении на <code>5</code> получаем <code>9 = 5 + 4</code> и <code>1 = 0 + 1</code>. Если отбросить <code>5 + 0</code>, вместо <code>9 + 1 = 10</code> получим <code>4 + 1 = 5</code>. Обе суммы делятся на <code>5</code>. Остатки при делении на <code>5</code> лежат в пределах от <code>0</code> до <code>4</code>, поэтому их сумма лежит в пределах от <code>0</code> до <code>8</code>. В этих пределах на <code>5</code> делятся только <code>0</code> и <code>5</code>. Можно сложить только остатки, ведь отброшенные части обоих чисел кратны <code>x</code>. Каждый остаток меньше <code>x</code>, поэтому сумма остатков может быть кратна <code>x</code> только при значении <code>0</code> или <code>x</code>.</p>
+<p>При делении числа <code>9</code> на <code>x = 5</code> получаем остаток <code>rx = 4</code>. До <code>5</code> ему не хватает <code>5 − 4 = 1</code>. В Python <code>-4 % 5</code> даёт ту же единицу, потому что <code>−4 = 5 · (−1) + 1</code>. Если <code>0 &lt; rx &lt; x</code>, то до <code>x</code> не хватает <code>x − rx</code>. Это и есть остаток от деления <code>−rx</code> на <code>x</code>, так как <code>−rx = −x + (x − rx)</code> и <code>0 &lt; x − rx &lt; x</code>. При <code>x = 5</code> получаем <code>0 % 5 = 0</code>. Если <code>rx = 0</code>, у второго числа остаток от деления на <code>x</code> тоже должен быть нулевым. Так для остатка <code>rx</code> одно выражение <code>-rx % x</code> находит нужный остаток в обоих случаях.</p>
+<p>У чисел <code>1</code> и <code>9</code> одинаковый остаток от деления на <code>2</code>, и их разность <code>1 − 9 = −8</code> делится на <code>2</code>. При делении на <code>2</code> получаем <code>2 = 2 + 0</code> и <code>9 = 8 + 1</code>. Разность чётных частей <code>2 − 8 = −6</code> делится на <code>2</code>. Прибавим разность остатков <code>0 − 1 = −1</code> и получим нечётное число <code>−6 + (−1) = −7</code>. Разность частей, кратных <code>y</code>, делится на <code>y</code>. Разность остатков лежит строго между <code>−y</code> и <code>y</code>, а в этих пределах на <code>y</code> делится только <code>0</code>. Поэтому разность исходных чисел делится на <code>y</code> ровно тогда, когда остатки равны.</p>
+<p>Число <code>4</code> даёт остаток <code>rx = 4</code> по <code>x = 5</code> и остаток <code>ry = 0</code> по <code>y = 2</code>, поэтому его ключ <code>key = (4, 0)</code>. Слева ищем ключ <code>need = (1, 0)</code>. У числа <code>1</code> есть нужный остаток <code>1</code> по <code>5</code>, а у числа <code>2</code> есть нужный остаток <code>0</code> по <code>2</code>. Ни одно число слева не даёт оба остатка сразу. В словаре <code>seen</code> по ключу <code>(rx, ry)</code> храним число позиций слева с такими остатками. Если ключа ещё нет, <code>seen.get(need, 0)</code> даёт ноль. При обработке <code>9</code> ключ <code>(1, 1)</code> уже встретился один раз, у числа <code>1</code>. Для <code>6</code> совпадение даёт число <code>4</code> с ключом <code>(4, 0)</code>. Всего в примере две пары.</p>
+<figure data-figure="seen"></figure>
+<p>У всех пятёрок при тех же делителях один и тот же ключ <code>(0, 1)</code>. Для пары с пятёркой нужен тот же ключ.</p>
+<table>
+<caption>Пары из одинаковых чисел</caption>
+<thead><tr><th>Числа</th><th>Новых пар с последней пятёркой</th><th>Всего пар</th></tr></thead>
+<tbody>
+<tr><td><code>[5, 5]</code></td> <td>1</td> <td>1</td></tr>
+<tr><td><code>[5, 5, 5]</code></td> <td>2</td> <td>3</td></tr>
+<tr><td><code>[5, 5, 5, 5]</code></td> <td>3</td> <td>6</td></tr>
+</tbody>
+</table>
+<p>Если сначала записать третью пятёрку в <code>seen</code>, поиск найдёт три совпадения, включая саму третью пятёрку. Сначала берём из <code>seen</code> число совпадений, затем увеличиваем счётчик для <code>key</code> на единицу. Так каждая красивая пара попадает в <code>pairs</code> один раз, при обработке правой позиции.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+
+def count_pairs(values, x, y):
+    seen = {}
+    pairs = 0
+    for value in values:
+        rx, ry = value % x, value % y
+        need = (-rx % x, ry)
+        pairs += seen.get(need, 0)
+        key = (rx, ry)
+        seen[key] = seen.get(key, 0) + 1
+    return pairs
+
+
+read = sys.stdin.readline
+answers = []
+for _ in range(int(read())):
+    n, x, y = map(int, read().split())
+    values = list(map(int, read().split()))
+    answers.append(str(count_pairs(values, x, y)))
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> ожидаемое <code>O(n)</code> на набор. Для каждого числа код дважды вызывает <code>get</code> и один раз записывает счётчик. Каждая такая операция занимает в среднем <code>O(1)</code> времени. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. В <code>seen</code> не больше <code>n</code> ключей, так как каждое число добавляет не больше одного ключа. Входной список <code>values</code> считаем отдельно.</p>
+<h3>Решение 2. Sorting и Binary Search по ключам</h3>
+<p>В списке <code>[1, 9, 4, 19]</code> при <code>x = 5</code> и <code>y = 2</code> для числа <code>1</code> ищем ключ <code>(4, 1)</code>. У чисел <code>9, 4, 19</code> ключи идут в порядке <code>(4, 1), (4, 0), (4, 1)</code>. Первый остаток у всех трёх равен <code>4</code>. По второму остатку <code>(4, 0)</code> идёт первым, так как <code>0 &lt; 1</code>. Теперь обе копии <code>(4, 1)</code> стоят рядом. Ключ <code>(1, 1)</code> числа <code>1</code> идёт перед <code>(4, 0)</code>, потому что его первый остаток <code>1</code> меньше <code>4</code>. Упорядочим ключи сначала по первому остатку, а при равенстве по второму.</p>
+<p>Для <code>[19, 1, 9]</code> при тех же делителях число <code>1</code> образует пару и с <code>19</code>, и с <code>9</code>. У пар <code>(19, 1)</code> и <code>(1, 19)</code> одна и та же сумма <code>20</code>, кратная <code>5</code>. Разности <code>19 − 1 = 18</code> и <code>1 − 19 = −18</code> делятся на <code>2</code>. Если поменять числа местами, сумма сохранится, а разность сменит знак и сохранит делимость. После Sorting получим <code>[(1, 1), (4, 1), (4, 1)]</code>.</p>
+<p>Справа от позиции <code>i = 0</code> обе функции сначала сравнивают искомый ключ <code>(4, 1)</code> с таким же ключом на позиции <code>2</code>. Функция <code>bisect_left</code> ищет начало группы, поэтому проверяет ещё и позицию <code>1</code>. Там тоже стоит <code>(4, 1)</code>, поэтому <code>left = 1</code>. Функция <code>bisect_right</code> ищет границу за последним совпадением, поэтому пропускает равный ключ на позиции <code>2</code> и возвращает <code>right = 3</code>. Число совпадений равно <code>right − left = 2</code>.</p>
+<p>При <code>i = 1</code> поиск ключа <code>(1, 1)</code> начинается с позиции <code>2</code>. Там стоит единственный оставшийся ключ <code>(4, 1)</code>, и он больше искомого. Для <code>bisect_left</code> это первая позиция с ключом не меньше искомого, а для <code>bisect_right</code> это первая позиция с ключом строго больше искомого. Обе функции возвращают <code>2</code>, так что совпадений <code>2 − 2 = 0</code>. Если нужного ключа справа нет, обе границы совпадают.</p>
+<figure data-figure="bounds"></figure>
+<p>Поиск начинается с <code>i + 1</code>. Каждую красивую пару считаем один раз, когда берём её левую позицию в упорядоченном списке.</p>
+<pre class="no-run"><code class="language-python">import sys
+from bisect import bisect_left, bisect_right
+
+
+def count_pairs(values, x, y):
+    keys = sorted((v % x, v % y) for v in values)
+    pairs = 0
+    for i, (rx, ry) in enumerate(keys):
+        need = (-rx % x, ry)
+        left = bisect_left(keys, need, i + 1)
+        right = bisect_right(keys, need, i + 1)
+        pairs += right - left
+    return pairs
+
+
+read = sys.stdin.readline
+answers = []
+for _ in range(int(read())):
+    n, x, y = map(int, read().split())
+    values = list(map(int, read().split()))
+    answers.append(str(count_pairs(values, x, y)))
+print("\n".join(answers))
+</code></pre>
+<p>Пусть в области поиска <code>8</code> ключей. После сравнения со средним ключом остаётся проверить не больше <code>4</code> ключей, затем не больше <code>2</code>, затем не больше <code>1</code>. Для последнего ключа достаточно ещё одного сравнения. В худшем случае число сравнений растёт как логарифм от <code>n</code>, поэтому один поиск занимает <code>O(log n)</code> времени. Sorting занимает <code>O(n log n)</code> времени в худшем случае, а затем код делает по два поиска для каждой позиции. <strong>Время:</strong> <code>O(n log n)</code> в худшем случае на набор. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. В <code>keys</code> лежат <code>n</code> пар остатков, и поиск работает по границам без копии списка.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>

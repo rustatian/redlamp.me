@@ -1,0 +1,63 @@
+<p>При <code>n = 5</code> Brute Force проверяет <code>5! = 120</code> порядков чисел. Заранее запишем в таблицу, какие числа простые. В порядке <code>[5, 2, 3, 4, 1]</code> у числа <code>5</code> отметка <code>True</code>, а у номера его места <code>1</code> отметка <code>False</code>. Если простое число стоит на месте с непростым номером, отбрасываем весь порядок. Для одного места читаем из таблицы не более двух отметок, поэтому проверка занимает <code>O(1)</code> времени. В каждом порядке проверяем от одного до <code>n</code> мест, поэтому время перебора в худшем случае <code>O(n · n!)</code>. При <code>n = 100</code> порядков больше <code>10<sup>157</sup></code>, поэтому проверок мест тоже больше <code>10<sup>157</sup></code>.</p>
+<h3>Как посчитать допустимые порядки</h3>
+<p>При <code>n = 2</code> подходит только порядок <code>[1, 2]</code>. При <code>n = 3</code> числа <code>2</code> и <code>3</code> можно поменять местами, поэтому есть два порядка. При <code>n = 4</code> можно также поменять местами <code>1</code> и <code>4</code>, и всего получается <code>2 · 2 = 4</code> порядка.</p>
+<p>При <code>n = 5</code> у чисел <code>2, 3, 5</code> есть ровно три места с простыми номерами. Для места <code>2</code> есть три варианта, для места <code>3</code> останется два, а место <code>5</code> займёт последнее число. С добавлением <code>5</code> число порядков в группе простых выросло с <code>2</code> до <code>3! = 3 · 2 · 1 = 6</code>.</p>
+<p>На местах <code>1</code> и <code>4</code> по-прежнему можно записать <code>[1, 4]</code> или <code>[4, 1]</code>. К каждому из шести порядков простых чисел подходят оба варианта, поэтому ответ равен <code>6 · 2 = 12</code>.</p>
+<p>Номера мест и значения берутся из одних и тех же чисел, поэтому для <code>k</code> простых значений есть ровно <code>k</code> простых мест. Остальные <code>n − k</code> чисел занимают оставшиеся места. Пара порядков внутри групп однозначно задаёт весь ряд. Для каждой группы берём Factorial её размера и получаем <code>k! · (n − k)!</code> способов.</p>
+<p>При <code>n = 1</code> простых чисел нет, а для числа <code>1</code> есть единственное место. У пустой группы один порядок, поэтому <code>0! = 1</code>.</p>
+<figure data-figure="groups"></figure>
+<h3>Решение 1. Trial Division</h3>
+<p>Для <code>23</code> проверяем остатки от деления на <code>2, 3, 4</code> и останавливаемся, так как <code>5 · 5 &gt; 23</code>. Для <code>25</code> проверяем и <code>5</code>, так как <code>5 · 5 = 25</code>. Остаток <code>25 % 5 = 0</code>, поэтому <code>25</code> составное. Так проверяем каждое число <code>value</code> от <code>2</code> до <code>n</code> включительно. Если <code>value</code> составное, у него есть пара множителей больше единицы. Хотя бы один из них не больше <code>√value</code>, иначе их произведение превысит <code>value</code>. Если ни одно число от <code>2</code> до этой границы не делит <code>value</code> нацело, увеличиваем <code>k</code>.</p>
+<p>При <code>n = 5</code> начнём с <code>answer = 1</code> и для примера возьмём модуль <code>5</code>. Для группы простых чисел <code>size = 3</code>, поэтому умножаем <code>answer</code> сначала на <code>2</code>, затем на <code>3</code>. После первого умножения получаем <code>2</code>, после второго берём остаток <code>6 % 5 = 1</code>. Для второй группы <code>size = 2</code>, поэтому умножаем тот же <code>answer</code> на <code>2</code> и получаем остаток <code>2</code>, как у <code>12</code> при делении на <code>5</code>.</p>
+<p>Разность произведений <code>6 · 2</code> и <code>1 · 2</code> равна <code>5 · 2</code> и делится на <code>5</code>. Когда берём остаток, отбрасываем часть числа, которая делится на модуль без остатка. После умножения на <code>factor</code> эта часть по-прежнему делится на модуль без остатка, поэтому остатки произведений совпадают. После каждого умножения код сохраняет в <code>answer</code> остаток по модулю <code>10<sup>9</sup> + 7</code>. При <code>n = 1</code> размеры групп равны <code>0</code> и <code>1</code>. В обоих случаях <code>range(2, size + 1)</code> пуст, поэтому <code>answer</code> остаётся равным <code>1</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def numPrimeArrangements(self, n: int) -&gt; int:
+        def is_prime(value):
+            divisor = 2
+            while divisor * divisor &lt;= value:
+                if value % divisor == 0:
+                    return False
+                divisor += 1
+            return True
+
+        k = 0
+        for value in range(2, n + 1):
+            if is_prime(value):
+                k += 1
+
+        modulus = 10**9 + 7
+        answer = 1
+        for size in (k, n - k):
+            for factor in range(2, size + 1):
+                answer = answer * factor % modulus
+        return answer
+</code></pre>
+<p>При <code>n = 100</code> код проверяет делители <code>236</code> раз и делает <code>98</code> умножений для Factorial. <strong>Время:</strong> <code>O(n√n)</code> в худшем случае. На каждое число приходится не более <code>√n</code> проверок делителя, а на обе группы вместе нужно не более <code>n</code> умножений для Factorial. <strong>Дополнительная память:</strong> <code>O(1)</code> в худшем случае, так как при любом <code>n</code> храним лишь несколько чисел: счётчики, размеры двух групп, модуль и текущий остаток <code>answer</code>.</p>
+<h3>Решение 2. Sieve of Eratosthenes</h3>
+<p>При <code>n = 10</code> ставим <code>False</code> для <code>0</code> и <code>1</code>, а для чисел от <code>2</code> до <code>10</code> пока оставляем <code>True</code>. При <code>p = 2</code> вычёркиваем сначала <code>4</code>, затем <code>6, 8, 10</code>. При <code>p = 3</code> начинаем с <code>9</code> и до конца таблицы вычёркиваем только это число. Оба прохода начинаются после <code>3</code>, поэтому у <code>2</code> и <code>3</code> остаётся <code>True</code>. Ещё две отметки <code>True</code> остаются у <code>5</code> и <code>7</code>. Функция <code>sum</code> считает <code>True</code> за <code>1</code>, а <code>False</code> за <code>0</code>, поэтому <code>k = 4</code>.</p>
+<figure data-figure="sieve"></figure>
+<p>Для <code>p = 3</code> начинаем с <code>9 = 3 · 3</code>, потому что <code>6 = 3 · 2</code> уже вычеркнули при <code>p = 2</code>. Так же для каждого простого <code>p</code> начинаем с <code>p · p</code> и идём с шагом <code>p</code>. Цикл вычёркивает только произведения двух чисел не меньше <code>2</code>, поэтому все вычеркнутые числа составные. Отметка простого <code>p</code> остаётся равной <code>True</code>, поэтому условие <code>if is_prime[p]</code> выполняется.</p>
+<p>При <code>n = 16</code> проход для <code>2</code> ставит <code>is_prime[4] = False</code>, поэтому при <code>p = 4</code> код пропускает внутренний цикл. У числа <code>15 = 5 · 3</code> есть делитель <code>3</code> меньше <code>5</code>. При <code>p = 3</code> переменная <code>multiple</code> растёт с шагом <code>3</code> и принимает значения <code>9, 12, 15</code>. Запишем составное число как <code>p · q</code>, где оба множителя больше <code>1</code>, а <code>p</code> - наименьший делитель больше <code>1</code>. Если бы у <code>p</code> был делитель от <code>2</code> до <code>p − 1</code>, он делил бы и исходное число, вопреки выбору <code>p</code>. Поэтому <code>p</code> прост. Число <code>q</code> тоже делит исходное число, поэтому <code>q ≥ p</code> и <code>p · q ≥ p · p</code>. Цикл с условием <code>p · p ≤ n</code> дойдёт до этого делителя и вычеркнет число. Если цикл дойдёт до проверки самого составного числа, его отметка уже будет <code>False</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def numPrimeArrangements(self, n: int) -&gt; int:
+        is_prime = [True] * (n + 1)
+        is_prime[0] = is_prime[1] = False
+        p = 2
+        while p * p &lt;= n:
+            if is_prime[p]:
+                for multiple in range(p * p, n + 1, p):
+                    is_prime[multiple] = False
+            p += 1
+
+        k = sum(is_prime)
+        modulus = 10**9 + 7
+        answer = 1
+        for size in (k, n - k):
+            for factor in range(2, size + 1):
+                answer = answer * factor % modulus
+        return answer
+</code></pre>
+<p>При <code>n = 16</code> код записывает <code>False</code> в <code>is_prime[12]</code> при <code>p = 2</code> и ещё раз при <code>p = 3</code>. При подсчёте операций учитываем каждую запись, даже если в ячейке уже было <code>False</code>. При <code>n = 100</code> внешний цикл проверяет девять значений <code>p</code> от <code>2</code> до <code>10</code>. Внутренний цикл запускается только для <code>2, 3, 5, 7</code> и делает <code>49 + 31 + 16 + 8 = 104</code> записи в таблицу. При <code>p = 2</code> цикл начинает с <code>4</code> и посещает <code>49</code> из <code>50</code> чётных чисел от <code>1</code> до <code>100</code>. Для каждого простого <code>p ≤ √n</code> цикл посещает кратные <code>p</code> от <code>p · p</code> до <code>n</code>. Всего от <code>1</code> до <code>n</code> есть <code>n // p</code> кратных <code>p</code>, поэтому за проход цикл делает не более <code>n/p</code> записей.</p>
+<p>При <code>n = 100</code> возьмём все знаменатели от <code>2</code> до <code>√100 = 10</code>, включая составные. Тогда число записей не больше <code>100 · (1/2 + 1/3 + ... + 1/10)</code>. Для знаменателей <code>2</code> и <code>3</code> сумма дробей не больше <code>2 · (1/2) = 1</code>. Для знаменателей от <code>4</code> до <code>7</code> сумма не больше <code>4 · (1/4) = 1</code>, а для знаменателей от <code>8</code> до <code>10</code> не больше <code>3 · (1/8) &lt; 1</code>. Так как <code>2<sup>3</sup> = 8</code>, пишем <code>log<sub>2</sub> 8 = 3</code>. Из <code>8 &lt; 10 &lt; 16 = 2<sup>4</sup></code> получаем <code>3 &lt; log<sub>2</sub> 10 &lt; 4</code>. До начала четвёртой группы знаменатели не доходят, поэтому три группы дают верхнюю границу <code>3 · 100 = 300</code> записей.</p>
+<p>В группе со знаменателями от <code>d</code> до <code>2 · d − 1</code> не более <code>d</code> дробей, каждая не больше <code>1/d</code>. Их сумма не больше <code>1</code>, поэтому на группу приходится не более <code>n</code> записей. Первые знаменатели групп удваиваются, поэтому группа с номером <code>j</code> начинается с <code>2<sup>j</sup></code>. Запись <code>log<sub>2</sub> n</code> показывает, в какую степень надо возвести <code>2</code>, чтобы получить <code>n</code>. Так как степень двойки растёт с показателем, из <code>2<sup>j</sup> ≤ √n ≤ n</code> следует <code>j ≤ log<sub>2</sub> n</code>. Номера групп начинаются с <code>1</code>, поэтому групп не больше <code>log<sub>2</sub> n</code>.</p>
+<p>Внешний цикл проверяет не более <code>√n</code> значений <code>p</code>, так как <code>p · p ≤ n</code>. Вне внутреннего цикла на каждое <code>p</code> уходит <code>O(1)</code> времени: проверяем условие и отметку, затем увеличиваем <code>p</code>. Эти шаги, начальное заполнение таблицы, подсчёт отметок и умножения для ответа вместе занимают <code>O(n)</code> времени. <strong>Время:</strong> <code>O(n log n)</code> в худшем случае (верхняя граница). <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае для <code>n + 1</code> отметок.</p>

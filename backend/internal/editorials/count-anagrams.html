@@ -1,0 +1,59 @@
+<p>У слова <code>hot</code> на первое место можно выбрать любую из трёх букв, на второе останутся две, на третье одна. Получаем <code>3 · 2 · 1 = 6</code> слов. Если пронумеровать все буквы слова длины <code>n</code> и выписать все порядки, получится <code>n!</code> записей длины <code>n</code>. На их запись уйдёт <code>O(n · n!)</code> времени в худшем случае. При <code>n = 10<sup>5</sup></code> перебор сделает <code>100000!</code> записей ещё до удаления повторов. В числе <code>100000!</code> ровно 456 574 цифры.</p>
+<h3>Решение 1. Таблицы Factorial</h3>
+<p>В слове <code>too</code> обозначим одинаковые буквы как <code>o<sub>1</sub></code> и <code>o<sub>2</sub></code>. На первое из двух мест для <code>o</code> можно поставить любую из них. У каждого слова без номеров есть ровно два варианта с номерами. Поэтому разных слов <code>3! / 2! = 3</code>.</p>
+<figure data-figure="equal-letters"></figure>
+<p>В каждом слове из букв <code>aabb</code> номера двух букв <code>a</code> можно расставить двумя способами. Для каждого из них есть два порядка номеров букв <code>b</code>. На одно слово приходится <code>2 · 2 = 4</code> записи с номерами, поэтому разных слов <code>4! / (2! · 2!) = 6</code>. Если буква встречается <code>c</code> раз, её номера можно расставить по её местам <code>c!</code> способами. Порядок номеров одной буквы не ограничивает порядок номеров другой. Поэтому для слова длины <code>L</code> берём <code>L!</code> и делим на <code>c!</code> для каждой буквы. В строке <code>too hot</code> к каждому из трёх вариантов первого слова подходят все шесть вариантов второго. Пары дают разные строки, поэтому <code>answer = 3 · 6 = 18</code>.</p>
+<p>Для <code>too</code> нужно разделить 6 на 2. По модулю 5 от числителя остаётся 1, а <code>1 // 2</code> в Python даёт 0. У числа 2 есть обратный элемент <code>x = 3</code>, так как <code>2 · 3 = 6</code> даёт остаток 1. Пусть <code>q = 6 / 2 = 3</code>. Из равенства <code>6 = q · 2</code> получаем <code>6 · x = q · (2 · x)</code>. Множитель <code>2 · x</code> даёт остаток 1, поэтому произведение даёт тот же остаток, что и <code>q</code>. Умножаем остаток числителя на <code>x</code> и получаем <code>1 · 3 = 3</code>.</p>
+<p>В коде <code>mod</code> хранит простой модуль <code>M = 10<sup>9</sup> + 7</code>. Длина строки <code>n ≤ 10<sup>5</sup> &lt; M</code>, поэтому ни один из множителей от 1 до <code>n</code> не делится на <code>M</code>. Их произведение тоже не делится на <code>M</code>. Если хранить в <code>fact</code> остатки по модулю 5, получим <code>fact[2] = 2</code>, а затем <code>fact[3] = (2 · 3) % 5 = 1</code>. При заполнении <code>fact</code> слева направо умножаем <code>fact[i − 1]</code> на <code>i</code> и записываем остаток в <code>fact[i]</code>. По модулю 5 степень <code>2<sup>4</sup> = 16</code> даёт остаток 1, а <code>2<sup>3</sup> = 8</code> даёт остаток 3, обратный элемент числа 2. По малой теореме Ферма для <code>a = fact[n]</code> степень <code>a<sup>M − 1</sup></code> даёт остаток 1. Значит, <code>a<sup>M − 2</sup></code> при умножении на <code>a</code> даёт остаток 1. Поэтому вызов <code>pow(fact[n], mod - 2, mod)</code> даёт обратный элемент для <code>n!</code>.</p>
+<p>По модулю 5 число <code>3!</code> даёт остаток 1, поэтому <code>inv_fact[3] = 1</code>. Умножаем это значение на 3 и получаем <code>inv_fact[2] = 3</code>. Это обратный элемент для <code>2!</code>, так как <code>2! · 3 = 6</code> даёт остаток 1. Для любого шага обратного цикла <code>(i − 1)! · (i · inv_fact[i]) = i! · inv_fact[i]</code>, и правая часть даёт остаток 1. Поэтому в <code>inv_fact[i − 1]</code> записываем остаток произведения <code>i · inv_fact[i]</code> по модулю <code>M</code>. Подсчитав частоты всех букв слова в <code>freq</code>, записываем в <code>ways</code> значение <code>fact[len(word)]</code>. Для каждой частоты <code>c</code> умножаем <code>ways</code> на <code>inv_fact[c]</code> и берём остаток. Отсутствующая буква даёт множитель 1, так как <code>0! = 1</code>.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def countAnagrams(self, s: str) -&gt; int:
+        mod = 1_000_000_007
+        n = len(s)
+        fact = [1] * (n + 1)
+        for i in range(1, n + 1):
+            fact[i] = fact[i - 1] * i % mod
+
+        inv_fact = [1] * (n + 1)
+        inv_fact[n] = pow(fact[n], mod - 2, mod)
+        for i in range(n, 0, -1):
+            inv_fact[i - 1] = inv_fact[i] * i % mod
+
+        answer = 1
+        words = s.split()
+        for word in words:
+            freq = [0] * 26
+            for letter in word:
+                freq[ord(letter) - ord('a')] += 1
+            ways = fact[len(word)]
+            for c in freq:
+                ways = ways * inv_fact[c] % mod
+            answer = answer * ways % mod
+        return answer
+</code></pre>
+<p><strong>Время:</strong> <code>O(n + log M)</code> в худшем случае. Таблицы <code>fact</code> и <code>inv_fact</code> строим за два прохода и один вызов <code>pow</code>. Читаем все буквы и перебираем 26 частот на слово. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае для таблиц и результата <code>s.split()</code>.</p>
+<h3>Решение 2. Один проход по буквам</h3>
+<p>Для <code>too</code> в числитель по очереди входят номера мест <code>1, 2, 3</code>. В знаменатель входят числа <code>1, 1, 2</code>: буква <code>t</code> встретилась впервые, а затем буква <code>o</code> встретилась дважды. При каждом появлении буквы берём её новую частоту. Так буква с частотой <code>c</code> даёт в знаменателе произведение от 1 до <code>c</code>. Длина слова растёт от 1 до <code>L</code> и даёт в числителе <code>L!</code>.</p>
+<p>После <code>too</code> дробь равна <code>6 / 2</code>. На пробеле сбрасываем длину и частоты, а произведения сохраняем. В начале <code>hot</code> буква <code>h</code> получает номер 1. Буква <code>o</code> даёт в знаменателе множитель 1, ведь обе прежние <code>o</code> остались в другом слове. В итоге <code>numerator = 36</code>, <code>denominator = 2</code>, и <code>36 / 2 = 18</code>.</p>
+<p>После увеличения частоты получаем <code>1 ≤ freq[index] ≤ n &lt; M</code>. Простое число <code>M</code> не делит ни один такой множитель, поэтому не делит и их произведение. Значит, <code>denominator</code> хранит ненулевой остаток и имеет обратный элемент. Код хранит остатки обоих произведений и в конце один раз умножает на обратный элемент знаменателя.</p>
+<figure data-figure="products"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def countAnagrams(self, s: str) -&gt; int:
+        mod = 1_000_000_007
+        numerator = 1
+        denominator = 1
+        length = 0
+        freq = [0] * 26
+        for letter in s:
+            if letter == ' ':
+                length = 0
+                freq = [0] * 26
+                continue
+            length += 1
+            index = ord(letter) - ord('a')
+            freq[index] += 1
+            numerator = numerator * length % mod
+            denominator = denominator * freq[index] % mod
+        return numerator * pow(denominator, mod - 2, mod) % mod
+</code></pre>
+<p><strong>Время:</strong> <code>O(n + log M)</code> в худшем случае для одного прохода по строке и одного вызова <code>pow</code>. <strong>Дополнительная память:</strong> <code>O(1)</code> в худшем случае: список хранит 26 частот при любой длине строки.</p>
