@@ -1,0 +1,47 @@
+<p>В примере <code>[1, 2, 3, 1, 1]</code> только одно значение меньше двойки, хотя единица встречается трижды. Поэтому ответ равен <code>2</code>.</p>
+<p>В этом примере Brute Force проверит только единицу и двойку. Для очередного числа программа считает, сколько разных значений во всём списке меньше него. Если такое значение ровно одно, программа выводит проверяемое число и останавливается. Для <code>100</code> одинаковых чисел придётся сделать <code>100 · 100 = 10 000</code> сравнений. При длине <code>n</code> это <code>n<sup>2</sup></code> сравнений в худшем случае.</p>
+<h3>Решение 1. Два минимума за один проход</h3>
+<p>Возьмём <code>[1, 2, 2, -4]</code>. После первого числа знаем только минимум <code>first = 1</code>. В <code>second</code> пока запишем <code>101</code>. Входные числа не больше <code>100</code>, поэтому <code>101</code> означает, что второго значения ещё нет.</p>
+<p>Двойка больше единицы и меньше <code>101</code>, поэтому становится вторым значением. Повторная двойка оставляет пару <code>(1, 2)</code> прежней. Когда приходит <code>-4</code>, прежний минимум <code>1</code> становится ответом. Все прочитанные до этого числа не меньше единицы, а сама единица больше нового минимума. Поэтому при <code>x &lt; first</code> сначала сохраняем прежнее <code>first</code> в <code>second</code> и только потом меняем <code>first</code>.</p>
+<figure data-figure="minima"></figure>
+<p>Пусть после <code>1</code> и <code>5</code> пришло <code>3</code>. До прихода тройки пятёрка была наименьшим из прочитанных чисел выше минимума. Так как <code>1 &lt; 3 &lt; 5</code>, оставляем <code>first = 1</code> и записываем <code>second = 3</code>.</p>
+<p>На входе <code>[1, 1]</code> после первого числа получаем <code>first = 1</code> и <code>second = 101</code>. Второе число даёт <code>x = first = 1</code>. Поскольку <code>1 &lt; 1</code> неверно, оба условия <code>x &lt; first</code> и <code>first &lt; x &lt; second</code> не выполняются. Переменные <code>first</code> и <code>second</code> не меняются. В <code>second</code> так и остаётся <code>101</code>, и программа выводит <code>NO</code>. Число, равное <code>first</code>, повторяет минимум, а число не меньше <code>second</code> уже не улучшит ответ.</p>
+<pre class="no-run"><code class="language-python">n = int(input())
+words = input().split()
+first = int(words[0])
+second = 101
+
+for i in range(1, n):
+    x = int(words[i])
+    if x &lt; first:
+        second = first
+        first = x
+    elif first &lt; x &lt; second:
+        second = x
+
+print("NO" if second == 101 else second)
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае. После первого числа цикл проверяет ещё <code>n − 1</code> чисел. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. Для двух минимумов хватает двух переменных, но <code>split()</code> сохраняет в <code>words</code> все <code>n</code> частей строки.</p>
+<h3>Решение 2. Таблица отметок</h3>
+<p>В списке <code>[1, 2, 2, -4]</code> двойка встречается дважды, но для ответа достаточно знать, что она есть. Отведём каждому возможному числу свою ячейку в <code>seen</code>. Для <code>-4</code> номер ячейки равен <code>−4 + 100 = 96</code>, для <code>2</code> он равен <code>102</code>. Так числа от <code>-100</code> до <code>100</code> занимают ячейки от <code>0</code> до <code>200</code> по возрастанию. До первого появления числа в его ячейке хранится <code>False</code>. При каждом появлении двойки программа записывает <code>True</code> в <code>seen[102]</code>.</p>
+<p>При просмотре по возрастанию сначала найдём отметку для <code>-4</code>, затем для <code>1</code>. До первой отметки в <code>found_first</code> хранится <code>False</code>. Когда находим минимум, записываем <code>found_first = True</code>. Следующая отметка даёт наименьшее из встретившихся чисел выше минимума, поэтому выводим это число и прерываем цикл.</p>
+<figure data-figure="marks"></figure>
+<p>На входе <code>[1, 1]</code> обе единицы отмечают одну и ту же ячейку <code>seen[101]</code>. При <code>x = 1</code> программа записывает <code>found_first = True</code>. Дальше цикл доходит до <code>x = 100</code> без второй отметки. Цикл заканчивается без <code>break</code>, поэтому программа выполняет блок <code>else</code> и выводит <code>NO</code>.</p>
+<pre class="no-run"><code class="language-python">n = int(input())
+words = input().split()
+seen = [False] * 201
+for i in range(n):
+    x = int(words[i])
+    seen[x + 100] = True
+
+found_first = False
+for x in range(-100, 101):
+    if seen[x + 100]:
+        if found_first:
+            print(x)
+            break
+        found_first = True
+else:
+    print("NO")
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае. Программа ставит отметку <code>n</code> раз и проверяет не более <code>201</code> ячейки. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. В <code>words</code> лежат <code>n</code> частей входной строки, а в <code>seen</code> всегда <code>201</code> ячейка.</p>

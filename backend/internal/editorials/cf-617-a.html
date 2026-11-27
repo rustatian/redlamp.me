@@ -1,0 +1,12 @@
+<p>До точки <code>12</code> за два шага не дойти: каждый шаг покрывает не больше пяти единиц, а <code>2 · 5 = 10</code>. Трёх шагов хватает: <code>5 + 5 + 2 = 12</code>. Если цель в точке <code>5</code>, хватает одного полного шага.</p>
+<p>Функция divmod делит первое число на второе с остатком. Для цели <code>12</code> вызов <code>divmod(12, 5)</code> возвращает <code>(2, 2)</code>: <code>full = 2</code> и <code>rest = 2</code>. Для цели <code>5</code> вызов <code>divmod(5, 5)</code> возвращает <code>(1, 0)</code>: <code>full = 1</code> и <code>rest = 0</code>. Для цели <code>x</code> вызов <code>divmod(x, 5)</code> даёт число полных шагов <code>full</code> и остаток <code>rest</code>. За <code>full</code> шагов можно пройти максимум <code>5 · full</code> единиц. Если остаток равен нулю, полные шаги приводят точно к цели, а за меньшее число шагов до неё не дойти. Если остаток положительный, нужен ещё хотя бы один шаг. Одного хватает: остаток от деления на пять равен <code>1</code>, <code>2</code>, <code>3</code> или <code>4</code>, и шаг такой длины разрешён.</p>
+<p>До точек 9 и 10 хватает двух шагов, а до точки 11 нужны три.</p>
+<figure data-figure="route"></figure>
+<pre class="no-run"><code class="language-python">x = int(input())
+full, rest = divmod(x, 5)
+steps = full
+if rest:
+    steps += 1
+print(steps)
+</code></pre>
+<p><strong>Время:</strong> O(1) в худшем случае. По условию <code>1 ≤ x ≤ 1 000 000</code>, поэтому у <code>x</code> не больше 7 цифр, а у ответа не больше 6 цифр. Программа выполняет один вызов divmod и не больше одного сложения. <strong>Дополнительная память:</strong> O(1) в худшем случае. Программа хранит четыре целых числа: <code>x</code>, <code>full</code>, <code>rest</code> и <code>steps</code>. Строки ввода и вывода считаем отдельно.</p>

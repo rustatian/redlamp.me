@@ -1,0 +1,37 @@
+<h3>Решение 1. Проверяем пары</h3>
+<p>В тройке <code>1 4 3</code> первые два числа дают <code>1 + 4 = 5</code>. На третьем месте стоит <code>3</code>, поэтому эта пара не подходит. Зато первое и третье числа дают <code>1 + 3 = 4</code>. Значит, ответ для этой тройки <code>YES</code>.</p>
+<p>Выберем число, с которым будем сравнивать сумму. Если это <code>c</code>, складываем <code>a</code> и <code>b</code>. Для <code>b</code> берём <code>a + c</code>, а для <code>a</code> берём <code>b + c</code>. Других позиций в тройке нет. В коде <code>or</code> соединяет эти три равенства и останавливает проверку при первом совпадении.</p>
+<p>Для <code>2 5 8</code> ни одна пара не подходит, поэтому ответ <code>NO</code>. Для <code>0 0 0</code> подходят все три пары, а для ответа <code>YES</code> достаточно одной.</p>
+<figure data-figure="pairs"></figure>
+<pre class="no-run"><code class="language-python">import sys
+
+read = sys.stdin.readline
+t = int(read())
+answers = []
+for _ in range(t):
+    a, b, c = map(int, read().split())
+    matches = a + b == c or a + c == b or b + c == a
+    answers.append("YES" if matches else "NO")
+
+print("\n".join(answers))
+</code></pre>
+<p>На тройке <code>2 5 8</code> код выполняет все три сравнения. <strong>Время:</strong> O(1) на тройку и <code>O(t)</code> на все <code>t</code> троек в худшем случае. При <code>t = 7</code> в списке <code>answers</code> семь ответов. Когда <code>join</code> собирает из них строку для печати, список ещё хранится в памяти. <strong>Дополнительная память:</strong> <code>O(1)</code> для проверки одной тройки и <code>O(t)</code> для всей программы в худшем случае.</p>
+<h3>Решение 2. Находим наибольшее число</h3>
+<p>Для <code>15 7 8</code> общая сумма равна <code>30</code>. Вычтем из неё наибольшее число <code>15</code>. Получим <code>30 − 15 = 15</code>, то есть <code>7 + 8</code>.</p>
+<p>Все числа по условию неотрицательны, поэтому сумма двух чисел не меньше каждого слагаемого. Значит, если подходящая пара есть, её сумма равна наибольшему числу <code>largest</code>. После вычитания <code>largest</code> в <code>rest</code> остаётся сумма двух других чисел. Если <code>rest == largest</code>, эти два числа образуют нужную пару.</p>
+<p>В тройке <code>0 4 4</code> наибольшее число встречается дважды. Код вычитает одну четвёрку из общей суммы <code>8</code>, и остаётся <code>0 + 4 = 4</code>.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+read = sys.stdin.readline
+t = int(read())
+answers = []
+for _ in range(t):
+    a, b, c = map(int, read().split())
+    largest = max(a, b, c)
+    rest = a + b + c - largest
+    answers.append("YES" if rest == largest else "NO")
+
+print("\n".join(answers))
+</code></pre>
+<p>Для каждой тройки <code>max</code> просматривает три числа, затем код проверяет одно равенство. <strong>Время:</strong> <code>O(1)</code> на тройку и <code>O(t)</code> на весь ввод в худшем случае. Код хранит ответы так же, как в примере из первого решения при <code>t = 7</code>. <strong>Дополнительная память:</strong> <code>O(1)</code> для вычисления <code>largest</code> и <code>rest</code>, <code>O(t)</code> для всей программы в худшем случае.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>

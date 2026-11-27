@@ -1,0 +1,44 @@
+<p>При <code>n = 4</code> можно для каждой из четырёх монет выбрать одну из двух групп. Brute Force проверит все <code>2<sup>4</sup> = 16</code> вариантов, включая те, где в группах разное число монет. Если для каждого варианта заново считать монеты и складывать их веса, перебор займёт <code>O(n · 2<sup>n</sup>)</code> времени. При <code>n = 30</code> один набор потребует <code>30 · 2<sup>30</sup> = 32 212 254 720</code> проверок монет.</p>
+<h3>Решение 1. Greedy</h3>
+<p>При <code>n = 4</code> самая тяжёлая монета весит <code>16</code>, а остальные вместе весят <code>2 + 4 + 8 = 14</code>. Если прибавить к этой сумме <code>2</code>, две двойки дадут <code>4</code>, две четвёрки дадут <code>8</code>, а две восьмёрки дадут <code>16</code>. При любом <code>n</code> так получим <code>2<sup>n</sup></code>, поэтому сумма всех меньших весов равна <code>2<sup>n</sup> − 2</code>. Группа с самой тяжёлой монетой тяжелее другой, даже когда в ней лежит только эта монета.</p>
+<p>Пока монета весом <code>16</code> лежит отдельно, разность равна <code>16 − 14 = 2</code>. Из четырёх монет в каждую группу должны попасть две, поэтому рядом с монетой весом <code>16</code> остаётся одно место. Если перенести к ней монету весом <code>2</code>, получим разность <code>18 − 12 = 6</code>. Если для того же места выбрать монету весом <code>4</code>, получим <code>(16 + 4) − (14 − 4) = 10</code>. Перенос монеты весом <code>w</code> увеличивает вес тяжёлой группы на <code>w</code> и уменьшает вес лёгкой на <code>w</code>. Разность растёт на <code>2 · w</code>.</p>
+<p>В каждой группе должно быть <code>half = n // 2</code> монет. Одно место в тяжёлой группе уже занято, поэтому переносим ровно <code>half − 1</code> монет. Чтобы разность выросла как можно меньше, выбираем для переноса самые лёгкие монеты. При <code>n = 2</code> переносить нечего, и ответ равен <code>4 − 2 = 2</code>.</p>
+<figure data-figure="groups"></figure>
+<p>В Python сдвиг влево <code>1 &lt;&lt; 4</code> даёт <code>16</code>, так как единица умножается на двойку четыре раза. При <code>n = 4</code> первый цикл начинает с <code>heavy = 16</code> и прибавляет <code>2</code> при <code>i = 1</code>. Второй цикл прибавляет к <code>light</code> сначала <code>4</code> при <code>i = half = 2</code>, затем <code>8</code> при <code>i = 3</code>. Код прибавляет вес <code>1 &lt;&lt; i</code> к <code>heavy</code> при показателях от <code>1</code> до <code>half − 1</code>, а к <code>light</code> при показателях от <code>half</code> до <code>n − 1</code>.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+read = sys.stdin.readline
+t = int(read())
+answers = []
+for _ in range(t):
+    n = int(read())
+    half = n // 2
+    heavy = 1 &lt;&lt; n
+    for i in range(1, half):
+        heavy += 1 &lt;&lt; i
+    light = 0
+    for i in range(half, n):
+        light += 1 &lt;&lt; i
+    answers.append(str(heavy - light))
+
+print("\n".join(answers))
+</code></pre>
+<p>При <code>n = 4</code> циклы выполняют <code>1 + 2 = 3</code> сложения, а при любом чётном <code>n</code> всего <code>n − 1</code> сложений. При <code>n ≤ 30</code> даже сумма всех весов меньше <code>2<sup>31</sup></code>, поэтому одну операцию с весами считаем за <code>O(1)</code>. <strong>Время:</strong> в худшем случае <code>O(n)</code> на набор и <code>O(N)</code> на весь ввод, где <code>N</code> обозначает общее число монет во всех наборах. <strong>Дополнительная память:</strong> в худшем случае <code>O(1)</code> для подсчёта двух сумм и <code>O(t)</code> для всей программы. При выводе в памяти одновременно находятся <code>t</code> ответов в списке <code>answers</code> и строка, которую строит <code>join</code>.</p>
+<h3>Решение 2. Формула разности</h3>
+<p>При <code>n = 6</code> начальная разность равна <code>64 − 62 = 2</code>. К монете весом <code>64</code> переходят монеты весом <code>2</code> и <code>4</code>, поэтому итоговая разность равна <code>2 + 2 · (2 + 4) = 14</code>. Здесь <code>half = 3</code>, а сумма перенесённых весов равна <code>2 + 4 = 2<sup>3</sup> − 2</code>.</p>
+<p>В общем случае мы переносим все монеты легче <code>2<sup>half</sup></code>, поэтому их суммарный вес равен <code>2<sup>half</sup> − 2</code>. Начальная разность всегда равна <code>2</code>, а каждый перенесённый вес учитывается дважды. Отсюда <code>difference = 2 + 2 · (2<sup>half</sup> − 2) = 2<sup>half + 1</sup> − 2</code>.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+read = sys.stdin.readline
+t = int(read())
+answers = []
+for _ in range(t):
+    n = int(read())
+    half = n // 2
+    difference = (1 &lt;&lt; (half + 1)) - 2
+    answers.append(str(difference))
+
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> в худшем случае <code>O(1)</code> на набор и <code>O(t)</code> на весь ввод, так как для каждого набора код вычисляет формулу один раз. <strong>Дополнительная память:</strong> в худшем случае <code>O(1)</code> для вычисления разности и <code>O(t)</code> для списка ответов и строки вывода.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>

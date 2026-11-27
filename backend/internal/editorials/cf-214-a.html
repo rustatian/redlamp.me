@@ -1,0 +1,36 @@
+<h3>Решение 1. Brute Force по двум переменным</h3>
+<p>При <code>n = 9</code> значение <code>a = 4</code> уже слишком велико. Даже при <code>b = 0</code> получим <code>4<sup>2</sup> + 0 = 16</code>. При <code>m = 3</code> значение <code>b = 2</code> тоже слишком велико, потому что <code>2<sup>2</sup> = 4</code>. Остаются четыре значения <code>a</code> от 0 до 3 и два значения <code>b</code> от 0 до 1.</p>
+<p>Число <code>b</code> неотрицательно, поэтому <code>a<sup>2</sup> ≤ n</code>. По той же причине <code>b<sup>2</sup> ≤ m</code>, ведь <code>a ≥ 0</code>. Например, <code>isqrt(3)</code> даёт 1, поскольку <code>1<sup>2</sup> ≤ 3 &lt; 2<sup>2</sup></code>. Функция <code>isqrt</code> возвращает целую часть квадратного корня.</p>
+<p>В <code>range(4)</code> последнее значение <code>a</code> равно 3, потому что <code>range</code> не включает правую границу. При <code>a = 3</code> внутренний цикл по <code>range(2)</code> проверяет пары <code>(3, 0)</code> и <code>(3, 1)</code>. Первая пара даёт <code>3<sup>2</sup> + 0 = 9</code> и <code>3 + 0<sup>2</sup> = 3</code>. Вложенные циклы проверяют каждую пару в найденных границах ровно один раз. Если обе суммы совпали с входными числами, программа прибавляет единицу к <code>answer</code>.</p>
+<pre class="no-run"><code class="language-python">from math import isqrt
+
+n, m = map(int, input().split())
+max_a = isqrt(n)
+max_b = isqrt(m)
+answer = 0
+
+for a in range(max_a + 1):
+    for b in range(max_b + 1):
+        if a * a + b == n and a + b * b == m:
+            answer += 1
+
+print(answer)
+</code></pre>
+<p>При <code>n = m = 1000</code> квадрат числа 31 равен 961, а квадрат числа 32 равен 1024. С учётом нуля циклы проверят <code>32 · 32 = 1024</code> пары. Для каждого из <code>max_a + 1</code> значений <code>a</code> внутренний цикл проверяет <code>max_b + 1</code> значений <code>b</code>. <strong>Время:</strong> <code>O(√n · √m)</code> в худшем случае. <strong>Дополнительная память:</strong> <code>O(1)</code> в худшем случае. Программа хранит границы, текущую пару и число совпадений.</p>
+<h3>Решение 2. Подстановка из первого уравнения</h3>
+<p>Пусть <code>n = 14</code> и <code>m = 28</code>. При <code>a = 2</code> первое уравнение даёт <code>b = 14 − 4 = 10</code>. Во втором уравнении получается <code>2 + 10<sup>2</sup> = 102</code>, поэтому пара не подходит. При <code>a = 3</code> получаем <code>b = 14 − 9 = 5</code>, и теперь <code>3 + 5<sup>2</sup> = 28</code>. При <code>a = 4</code> получилось бы <code>b = 14 − 16 = −2</code>, а по условию <code>b ≥ 0</code>.</p>
+<p>При выбранном <code>a</code> первое уравнение даёт единственное значение <code>b = n − a<sup>2</sup></code>. Перебор начинается с <code>a = 0</code> и продолжается, пока <code>a<sup>2</sup> ≤ n</code>. Каждая допустимая пара встречается при своём <code>a</code>, и для неё остаётся проверить только второе уравнение.</p>
+<p>Из четырёх проверенных пар для <code>14 28</code> подходит только <code>(3, 5)</code>. Для <code>4 20</code> получаются суммы 16, 10 и 2. Ни одна не равна 20, поэтому ответ равен 0. При <code>n = m = 1</code> подходят обе пары <code>(0, 1)</code> и <code>(1, 0)</code>. Если закончить поиск после первого совпадения, ответ уменьшится с 2 до 1.</p>
+<figure data-figure="substitution"></figure>
+<pre class="no-run"><code class="language-python">n, m = map(int, input().split())
+answer = 0
+a = 0
+while a * a &lt;= n:
+    b = n - a * a
+    if a + b * b == m:
+        answer += 1
+    a += 1
+
+print(answer)
+</code></pre>
+<p>При <code>n = 1000</code> цикл проверяет 32 значения <code>a</code> и для каждого вычисляет одно <code>b</code>. <strong>Время:</strong> <code>O(√n)</code> в худшем случае. <strong>Дополнительная память:</strong> <code>O(1)</code> в худшем случае. Для следующей проверки программа меняет значения тех же переменных <code>a</code> и <code>b</code>.</p>

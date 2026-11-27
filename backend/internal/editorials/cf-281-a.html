@@ -1,0 +1,13 @@
+<h3>Первая буква и срез строки</h3>
+<p>В слове <code>konjac</code> шесть букв. Заменим <code>k</code> на <code>K</code> и припишем оставшиеся пять букв <code>onjac</code>. Получим <code>Konjac</code>.</p>
+<p>Первую букву берём по индексу <code>0</code>. Она всегда есть, ведь по условию слово непустое. Заглавный вариант <code>word[0]</code> получим вызовом <code>upper()</code> и запишем в <code>first</code>. Срез <code>word[1:]</code> копирует в <code>tail</code> все буквы со второй до конца. В слове <code>konjac</code> у буквы <code>o</code> индекс <code>1</code>, а в срезе <code>tail</code> она стоит первой и имеет индекс <code>0</code>. Когда ставим перед срезом одну букву <code>K</code>, у <code>o</code> снова индекс <code>1</code>. Значит, в строке <code>first + tail</code> каждая буква после первой сохраняет своё место и регистр.</p>
+<p>В слове <code>ApPLe</code> первая буква уже заглавная. Вызов <code>upper()</code> для <code>A</code> вернёт ту же <code>A</code>, поэтому ответом будет <code>ApPLe</code>. А вызов <code>word.capitalize()</code> даст <code>Apple</code>, потому что этот метод делает все буквы после первой строчными.</p>
+<figure data-figure="first-letter"></figure>
+<p>Если на входе одна буква <code>z</code>, срез <code>word[1:]</code> пуст. Прибавление пустой строки к <code>Z</code> даёт <code>Z</code>.</p>
+<pre class="no-run"><code class="language-python">word = input()
+first = word[0].upper()
+tail = word[1:]
+answer = first + tail
+print(answer)
+</code></pre>
+<p>При длине слова <code>1000</code> в <code>tail</code> попадут <code>999</code> букв. <strong>Время:</strong> <code>O(n)</code> в худшем случае, где <code>n</code> - длина слова. Программа копирует <code>n − 1</code> букв в срез, затем собирает и печатает ответ длины <code>n</code>. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае для среза <code>tail</code>.</p>
