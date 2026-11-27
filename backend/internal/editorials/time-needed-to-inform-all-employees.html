@@ -1,0 +1,53 @@
+<p>В примере с главой 2 все пятеро подчинённых узнают новость одновременно, через одну минуту. Ответ равен времени, когда новость получит последний сотрудник.</p>
+<p>В цепочке с <code>manager = [-1, 0, 1, 2]</code> пути к главе имеют длины 0, 1, 2 и 3. Если от каждого сотрудника идти к главе по <code>manager</code>, получится <code>0 + 1 + 2 + 3 = 6</code> переходов. От сотрудника 3 поднимемся к начальникам 2, 1 и 0. При <code>informTime = [1, 2, 4, 0]</code> сумма их задержек равна <code>4 + 2 + 1 = 7</code> минутам. На каждом переходе прибавляем задержку того начальника, к которому пришли. Так мы найдём время для каждого сотрудника, но общую часть путей пройдём несколько раз. Для цепочки из <code>n</code> сотрудников такой Brute Force сделает <code>n · (n − 1) / 2</code> переходов. При <code>n = 100 000</code> это <code>4 999 950 000</code> переходов. Время <code>O(n<sup>2</sup>)</code> в худшем случае.</p>
+<h3>Решение 1. DFS со Stack от главы</h3>
+<p>Возьмём <code>manager = [4, 4, 3, -1, 3]</code> и <code>informTime = [0, 0, 0, 2, 4]</code>. Глава 3 передаёт новость сотрудникам 2 и 4 за две минуты. Затем сотрудник 4 передаёт её сотрудникам 0 и 1 ещё за четыре минуты. Оба узнают новость через <code>2 + 4 = 6</code> минут от начала.</p>
+<p>Запись <code>manager[0] = 4</code> говорит, что сотрудник 0 подчиняется сотруднику 4. Добавим номер 0 в <code>reports[4]</code>. Так соберём для каждого начальника список его прямых подчинённых. У главы <code>manager[headID] = -1</code>, поэтому его номер ни в один список не добавляем.</p>
+<p>Положим в Stack пару <code>(3, 0)</code>. Её первое число обозначает сотрудника, а второе показывает, сколько минут прошло до получения новости. Снимем пару <code>(employee, minutes)</code> и добавим в Stack пары для подчинённых сотрудника <code>employee</code>. Для каждого из них возьмём время <code>minutes + informTime[employee]</code>. К каждому сотруднику ведёт единственный путь от главы, поэтому время в его паре равно сумме задержек его начальников на этом пути.</p>
+<figure data-figure="stack"></figure>
+<p>Сотрудник 4 попадает в Stack из <code>reports[3]</code>, а сотрудник 0 - из <code>reports[4]</code>. Так обход от главы доходит до всех сотрудников. Каждый подчинённый попадает в Stack ровно один раз, ведь его номер есть только в списке прямого начальника.</p>
+<p>В нашем примере <code>pop()</code> снимает пару <code>(1, 6)</code> раньше пары <code>(2, 2)</code>. Поэтому после каждой снятой пары обновляем наибольшее время <code>latest</code>. Когда Stack опустеет, в <code>latest</code> останется максимум по всем сотрудникам.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def numOfMinutes(
+        self, n: int, headID: int, manager: list[int], informTime: list[int]
+    ) -&gt; int:
+        reports = [[] for _ in range(n)]
+        for employee, boss in enumerate(manager):
+            if boss != -1:
+                reports[boss].append(employee)
+
+        stack = [(headID, 0)]
+        latest = 0
+        while stack:
+            employee, minutes = stack.pop()
+            latest = max(latest, minutes)
+            for child in reports[employee]:
+                stack.append((child, minutes + informTime[employee]))
+        return latest
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае. Построение списков требует одного прохода по <code>manager</code>. При обходе каждый из <code>n</code> сотрудников один раз входит в Stack и один раз выходит из него. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. В <code>n</code> списках хранятся <code>n − 1</code> номеров подчинённых, а в Stack одновременно лежит не более <code>n</code> пар.</p>
+<h3>Решение 2. Подъём по manager с сохранением времени</h3>
+<p>У сотрудников 0 и 1 общий начальник 4. Если при подъёме от 0 сохранить время сотрудника 4, то для сотрудника 1 хватит одного перехода к начальнику. Список <code>arrived</code> хранит время получения новости. Сначала ставим главе 0 минут, а остальным записываем <code>-1</code>. По этой отметке код отличает неизвестное время от нулевого.</p>
+<p>От сотрудника 0 поднимемся через 4 к главе 3. В <code>path</code> запишем номера с неизвестным временем, здесь это <code>[0, 4]</code>. Подъём всегда заканчивается, ведь время главы известно с самого начала. Теперь снимем номера с конца, сначала 4, потом 0. При разборе пути с конца мы уже знаем время начальника, когда вычисляем время подчинённого.</p>
+<figure data-figure="arrived"></figure>
+<p>Подъём от сотрудника 1 остановится на записи <code>arrived[4] = 2</code>. Прибавим <code>informTime[4] = 4</code> и получим <code>arrived[1] = 6</code>. После прохода по всем номерам в <code>arrived</code> лежат времена <code>[6, 6, 2, 0, 2]</code>. Их максимум равен 6.</p>
+<pre class="no-run"><code class="language-python">class Solution:
+    def numOfMinutes(
+        self, n: int, headID: int, manager: list[int], informTime: list[int]
+    ) -&gt; int:
+        arrived = [-1] * n
+        arrived[headID] = 0
+        for employee in range(n):
+            node = employee
+            path = []
+            while arrived[node] == -1:
+                path.append(node)
+                node = manager[node]
+
+            while path:
+                node = path.pop()
+                boss = manager[node]
+                arrived[node] = arrived[boss] + informTime[boss]
+        return max(arrived)
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае. В <code>path</code> попадают лишь сотрудники с неизвестным временем. При снятии записываем время, поэтому каждый номер попадает туда не более одного раза за весь проход. Поиск максимума также занимает <code>O(n)</code>. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае. В <code>arrived</code> ровно <code>n</code> записей, а в <code>path</code> не более <code>n − 1</code> номеров.</p>

@@ -1,0 +1,68 @@
+<p>Города на пути от столицы расположены в порядке <code>0, 1, 2, 3</code>. Чтобы узнать, сколько людей проедет по каждой дороге, можно пройти путь каждого представителя до столицы и прибавить единицу к счётчику каждой пройденной дороги. На этом пути получится <code>1 + 2 + 3 = 6</code> шагов. Если столица находится на конце пути из <code>n</code> городов, число шагов равно <code>n · (n − 1) / 2</code>. При <code>n = 100 000</code> получится <code>4 999 950 000</code> шагов, поэтому такой подсчёт за <code>O(n<sup>2</sup>)</code> слишком долог.</p>
+<h3>Решение 1. Размеры поддеревьев в обратном порядке BFS</h3>
+<p>Во втором примере путь из города <code>2</code> в столицу проходит через города <code>3</code> и <code>1</code>. Если закрыть дорогу из <code>1</code> в <code>0</code>, по другую сторону от столицы останутся города <code>1, 3, 2</code>. Жители этих трёх городов должны проехать по этой дороге. При <code>seats = 2</code> в одной машине для них мало мест, а двух машин хватает.</p>
+<p>У каждого города, кроме столицы, есть <strong>родитель</strong>. Это следующий город на пути в столицу. Число людей, которым нужна дорога из <code>1</code> к родителю, равно размеру поддерева города <code>1</code>, то есть <code>size[1] = 3</code>. Из любого такого поддерева есть только один выезд по дороге к родителю. Чтобы найти наименьшее число поездок по этой дороге, делим <code>size[city]</code> на <code>seats</code> и округляем вверх.</p>
+<p>Для троих на дороге из <code>1</code> в <code>0</code> расчёт <code>(3 + 2 - 1) // 2</code> даёт те же две машины. На дороге из <code>3</code> в <code>1</code> едут двое, и <code>(2 + 2 - 1) // 2</code> даёт одну машину. Операция <code>//</code> округляет результат вниз. Если число людей делится на <code>seats</code> без остатка, прибавки <code>seats - 1</code> не хватает до следующего кратного <code>seats</code>. Если есть остаток, этой прибавки хватает, и <code>//</code> даёт на единицу больше. Число машин для дороги к родителю равно <code>(size[city] + seats - 1) // seats</code>.</p>
+<p>В городе <code>1</code> двое приезжих могут продолжить путь в своей машине, а местный представитель поедет в своей. Прибывших машин хватает для всех приезжих, а в городе есть ещё одна машина для местного жителя. При пересадке заполняем одну машину за другой, пока все не сядут. Лишние машины оставляем в городе. Если так поступать в каждом городе по пути к столице, число поездок на каждой дороге будет наименьшим. Каждая машина тратит на дорогу один литр, так что складываем число поездок по всем дорогам.</p>
+<p>В примере BFS записывает города в <code>order = [0, 1, 4, 5, 3, 6, 2]</code>. Мы начинаем обход со столицы и дописываем соседей в конец <code>order</code>, пропуская родителя. При чтении с конца каждый ребёнок встретится раньше родителя.</p>
+<p>Сначала ставим <code>size[city] = 1</code>, чтобы учесть местного жителя. К моменту подсчёта машин для города в <code>size[city]</code> уже учтены люди из поддеревьев всех его детей. После подсчёта прибавляем <code>size[city]</code> к <code>size[parent[city]]</code>, чтобы учесть тех же людей в поддереве родителя. Для дороги из <code>1</code> в <code>0</code> получаем две машины, для остальных пяти дорог по одной, всего <code>7</code> литров. Если есть только город <code>0</code>, цикл сразу останавливается и <code>fuel</code> остаётся равным нулю.</p>
+<figure data-figure="subtrees"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def minimumFuelCost(self, roads: list[list[int]], seats: int) -&gt; int:
+        n = len(roads) + 1
+        neighbors = [[] for _ in range(n)]
+        for a, b in roads:
+            neighbors[a].append(b)
+            neighbors[b].append(a)
+
+        parent = [-1] * n
+        order = [0]
+        for city in order:
+            for neighbor in neighbors[city]:
+                if neighbor != parent[city]:
+                    parent[neighbor] = city
+                    order.append(neighbor)
+
+        size = [1] * n
+        fuel = 0
+        for city in reversed(order):
+            if city == 0:
+                break
+            cars = (size[city] + seats - 1) // seats
+            fuel += cars
+            size[parent[city]] += size[city]
+        return fuel
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае, где <code>n</code> обозначает число городов. В списках соседей каждая дорога встречается дважды, а в обратном обходе для неё нужно одно деление. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае для списков соседей, <code>parent</code>, <code>order</code> и <code>size</code>.</p>
+<h3>Решение 2. Удаление листьев</h3>
+<p>Соединим город <code>1</code> со столицей <code>0</code> и с городами <code>2</code> и <code>3</code>. В каждой машине три места. У каждого из городов <code>2</code> и <code>3</code> есть только одна дорога, и обе ведут в город <code>1</code>. Теперь в городе <code>1</code> собираются трое и доезжают до столицы в одной машине. На три дороги уходит <code>1 + 1 + 1 = 3</code> литра.</p>
+<p>Путь из другого города в столицу не проходит через город <code>3</code>, потому что для въезда и выезда нужны две разные дороги. По той же причине удаление города вне столицы с одной оставшейся дорогой сохраняет пути остальных городов в столицу. Когда у города вне столицы остаётся один сосед, через этого соседа проходит единственный путь в столицу. Такой город называют листом и кладут в Stack <code>leaves</code>. К этому моменту остальные соседи уже передали листу всех людей со своей стороны. При удалении листа прибавляем к <code>fuel</code> число машин для <code>people[city]</code> человек. Затем прибавляем <code>people[city]</code> к числу людей у оставшегося соседа.</p>
+<p>В <code>degree[city]</code> храним число оставшихся соседей города. Например, после удаления городов <code>3</code> и <code>2</code> значение <code>degree[1]</code> падает с трёх до одного, и город <code>1</code> сам попадает в <code>leaves</code>. Номера <code>2</code> и <code>3</code> остаются в <code>neighbors[1]</code>, а нули в <code>degree[2]</code> и <code>degree[3]</code> показывают, что эти города уже удалены. При поиске цикл пропускает соседей с такой отметкой. У города <code>1</code> остаётся только сосед <code>0</code>, к нему и едут люди. Столицу в Stack не кладём, потому что в ней поездки заканчиваются.</p>
+<figure data-figure="leaves"></figure>
+<pre class="no-run"><code class="language-python">class Solution:
+    def minimumFuelCost(self, roads: list[list[int]], seats: int) -&gt; int:
+        n = len(roads) + 1
+        neighbors = [[] for _ in range(n)]
+        for a, b in roads:
+            neighbors[a].append(b)
+            neighbors[b].append(a)
+
+        degree = [len(row) for row in neighbors]
+        leaves = [v for v in range(1, n) if degree[v] == 1]
+        people = [1] * n
+        fuel = 0
+        while leaves:
+            city = leaves.pop()
+            degree[city] = 0
+            for neighbor in neighbors[city]:
+                if degree[neighbor] == 0:
+                    continue
+                fuel += (people[city] + seats - 1) // seats
+                people[neighbor] += people[city]
+                degree[neighbor] -= 1
+                if neighbor != 0 and degree[neighbor] == 1:
+                    leaves.append(neighbor)
+                break
+        return fuel
+</code></pre>
+<p><strong>Время:</strong> <code>O(n)</code> в худшем случае. Каждый город вне столицы попадает в Stack один раз, поэтому суммарно цикл проверит не более <code>2 · (n − 1)</code> записей о соседях. <strong>Дополнительная память:</strong> <code>O(n)</code> в худшем случае для списков соседей, <code>degree</code>, <code>people</code> и Stack.</p>
