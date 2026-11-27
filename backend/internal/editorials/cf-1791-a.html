@@ -1,0 +1,35 @@
+<h3>Решение 1. Linear Scan</h3>
+<p>Буква <code>d</code> стоит в слове <code>codeforces</code> на третьем месте. Первые две буквы, <code>c</code> и <code>o</code>, не подходят. Если ответить <code>NO</code> после первого несовпадения, мы пропустим <code>d</code>.</p>
+<figure data-figure="scan"></figure>
+<p>После поиска <code>d</code> в <code>answer</code> осталось <code>YES</code>. Перед проверкой следующей буквы <code>a</code> меняем ответ на <code>NO</code>. Ни одна из 10 букв слова не совпадает с <code>a</code>, поэтому после цикла программа печатает <code>NO</code>.</p>
+<p>Перед поиском ставим <code>answer = "NO"</code>. Цикл берёт из слова по одной букве <code>letter</code> и сравнивает её с входной буквой <code>c</code>. При первом совпадении меняем ответ на <code>YES</code>. Команда <code>break</code> завершает поиск, ведь одной такой буквы достаточно.</p>
+<pre class="no-run"><code class="language-python">word = "codeforces"
+t = int(input())
+for _ in range(t):
+    c = input()
+    answer = "NO"
+    for letter in word:
+        if letter == c:
+            answer = "YES"
+            break
+    print(answer)
+</code></pre>
+<p>Для 26 запросов с буквой <code>a</code> цикл сделает <code>26 · 10 = 260</code> сравнений. Больше не потребуется, ведь за один запрос цикл проверяет не более 10 букв. <strong>Время:</strong> в худшем случае <code>O(1)</code> на одну букву и <code>O(t)</code> на все <code>t</code> запросов. <strong>Дополнительная память:</strong> <code>O(1)</code> в худшем случае и для одного запроса, и для всей программы. После каждого поиска программа сразу печатает ответ.</p>
+<h3>Решение 2. Поиск в <code>set</code></h3>
+<p>Буква <code>o</code> встречается на 2-м и 6-м местах в слове <code>codeforces</code>. Для ответа <code>YES</code> достаточно сохранить её один раз. Команда <code>allowed = set("codeforces")</code> собирает буквы слова в множество без повторов. В нём семь букв (<code>c</code>, <code>o</code>, <code>d</code>, <code>e</code>, <code>f</code>, <code>r</code> и <code>s</code>).</p>
+<p>Для <code>o</code> проверка <code>c in allowed</code> даст <code>True</code>, а для <code>a</code> даст <code>False</code>. Для обоих запросов программа использует одну и ту же Hash Table, построенную до чтения запросов.</p>
+<table>
+<caption>Упрощённая модель Hash Table из 12 ячеек</caption>
+<thead><tr><th>Ячейка</th> <th>0</th> <th>1</th> <th>2</th> <th>3</th> <th>4</th> <th>5</th> <th>6</th> <th>7</th> <th>8</th> <th>9</th> <th>10</th> <th>11</th></tr></thead>
+<tbody><tr><th>Буква</th> <td><code>c</code></td> <td>пусто</td> <td><code>o</code></td> <td>пусто</td> <td><code>d</code></td> <td><code>e</code></td> <td>пусто</td> <td><code>f</code></td> <td>пусто</td> <td><code>r</code></td> <td><code>s</code></td> <td>пусто</td></tr></tbody>
+</table>
+<p>В этой учебной таблице 7 ячеек заняты буквами и 5 свободны. В самом Python точные номера ячеек скрыты и меняются при каждом запуске. Пусть для примера оба запроса, <code>o</code> и <code>a</code>, начинают поиск с ячейки 2. Для <code>o</code> в ячейке 2 сразу находится <code>o</code>, и поиск даёт <code>True</code> за 1 проверку. Для <code>a</code> в ячейке 2 стоит другая буква <code>o</code>, поэтому поиск переходит к следующей ячейке 3. Ячейка 3 пуста, поэтому поиск останавливается за 2 проверки и даёт <code>False</code>. Эти 7 букв распределены между 5 свободными ячейками так, что подряд заняты не больше 2 ячеек (например, 4 и 5). Поэтому поиск отсутствующей буквы при переходе к следующей ячейке проверяет от 1 до 3 ячеек.</p>
+<p>По букве Python вычисляет номер начальной ячейки. Если ячейку занимает другая буква, поиск продолжается до совпадения или до пустой ячейки. Когда буквы распределены равномерно и свободных ячеек достаточно, для поиска в среднем нужно постоянное число проверок.</p>
+<pre class="no-run"><code class="language-python">allowed = set("codeforces")
+t = int(input())
+for _ in range(t):
+    c = input()
+    print("YES" if c in allowed else "NO")
+</code></pre>
+<p><strong>Время:</strong> ожидаемое <code>O(1)</code> на проверку одной буквы и <code>O(t)</code> на все <code>t</code> запросов. <strong>Дополнительная память:</strong> ожидаемое <code>O(1)</code> для одного запроса и для всей программы. В <code>allowed</code> всегда семь элементов, а ответы программа печатает по одному.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>

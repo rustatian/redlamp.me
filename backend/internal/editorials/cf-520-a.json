@@ -1,0 +1,51 @@
+[
+	{
+		"id": "letters",
+		"title": "Строка AaB: заполнение seen",
+		"frames": [
+			{
+				"caption": "После A в seen: a.",
+				"rows": [
+					{
+						"label": "seen",
+						"cells": [
+							"a"
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "После a в seen: a.",
+				"rows": [
+					{
+						"label": "seen",
+						"cells": [
+							"a"
+						],
+						"marked": [
+							0
+						]
+					}
+				]
+			},
+			{
+				"caption": "После B в seen: a, b.",
+				"rows": [
+					{
+						"label": "seen",
+						"cells": [
+							"a",
+							"b"
+						],
+						"marked": [
+							1
+						]
+					}
+				]
+			}
+		]
+	}
+]

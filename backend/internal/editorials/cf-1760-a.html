@@ -1,0 +1,39 @@
+<h3>Решение 1. Sorting</h3>
+<p>В тройке <code>5 2 6</code> на втором месте стоит <code>2</code>. Команда <code>numbers.sort()</code> располагает числа в том же списке по возрастанию. В списке <code>[2, 5, 6]</code> слева от <code>5</code> стоит меньшее число, а справа большее. Здесь <code>numbers[0]</code> даёт <code>2</code>, а <code>numbers[1]</code> даёт <code>5</code>.</p>
+<p>После упорядочивания тройки разных чисел минимум стоит первым, а максимум последним. Между ними остаётся искомое число. В Python индексы начинаются с <code>0</code>, поэтому второе число берём из <code>numbers[1]</code>.</p>
+<p>Для тройки <code>14 3 4</code> получаем <code>3 &lt; 4 &lt; 14</code>. Ответ равен <code>4</code>. Среднее арифметическое <code>(14 + 3 + 4) / 3 = 7</code> не подходит, потому что в тройке числа <code>7</code> нет.</p>
+<figure data-figure="middle"></figure>
+<pre class="no-run"><code class="language-python">import sys
+
+readline = sys.stdin.readline
+t = int(readline())
+answers = []
+for _ in range(t):
+    numbers = list(map(int, readline().split()))
+    numbers.sort()
+    answers.append(str(numbers[1]))
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> <code>O(1)</code> на выбор среднего числа из тройки и <code>O(t)</code> на всю программу в худшем случае. Список <code>numbers</code> всегда содержит только три числа. <strong>Дополнительная память:</strong> <code>O(1)</code> для обработки тройки и <code>O(t)</code> для всей программы в худшем случае. В конце цикла в списке <code>answers</code> лежат <code>t</code> строк. Каждое число тройки лежит в пределах от <code>1</code> до <code>20</code>, поэтому в каждой строке одна или две цифры. Пока <code>join</code> собирает из них строку для печати, список тоже остаётся в памяти.</p>
+<h3>Решение 2. Сравнения</h3>
+<p>Пусть <code>a = 5</code>, <code>b = 2</code> и <code>c = 6</code>. Неравенство <code>2 &lt; 5 &lt; 6</code> показывает, что ответ равен <code>a</code>. Если поменять <code>b</code> и <code>c</code> местами, число <code>5</code> по-прежнему будет средним. Поэтому условие для <code>a</code> допускает как <code>b &lt; a &lt; c</code>, так и <code>c &lt; a &lt; b</code>.</p>
+<p>В тройке <code>20 2 1</code> число <code>a = 20</code> больше двух остальных. Для <code>b</code> выполняется условие <code>c &lt; b &lt; a</code>, так как <code>1 &lt; 2 &lt; 20</code>. Ответ равен <code>b = 2</code>. Проверка для <code>b</code> учитывает и обратный порядок <code>a &lt; b &lt; c</code>.</p>
+<p>В тройке <code>14 3 4</code> число <code>a = 14</code> самое большое, а <code>b = 3</code> самое маленькое. Обе проверки дают <code>False</code>, и программа выбирает <code>c = 4</code>. Среди трёх разных чисел ровно одно лежит между остальными. Если ни <code>a</code>, ни <code>b</code> не подошли, остаётся <code>c</code>.</p>
+<pre class="no-run"><code class="language-python">import sys
+
+readline = sys.stdin.readline
+t = int(readline())
+answers = []
+for _ in range(t):
+    a, b, c = map(int, readline().split())
+    if b &lt; a &lt; c or c &lt; a &lt; b:
+        middle = a
+    elif a &lt; b &lt; c or c &lt; b &lt; a:
+        middle = b
+    else:
+        middle = c
+    answers.append(str(middle))
+print("\n".join(answers))
+</code></pre>
+<p><strong>Время:</strong> <code>O(1)</code> на выбор среднего числа из тройки и <code>O(t)</code> на всю программу в худшем случае. Для каждой тройки код проверяет не более двух условий. <strong>Дополнительная память:</strong> <code>O(1)</code> для обработки тройки и <code>O(t)</code> для всей программы в худшем случае. Число переменных для сравнений постоянно, а для печати программа снова хранит список <code>answers</code> и общую строку.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>

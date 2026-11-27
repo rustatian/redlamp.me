@@ -1,0 +1,14 @@
+<p>В строке <code>{b, a, b, a}</code> 12 символов: скобки <code>{</code> и <code>}</code>, три запятые <code>,</code>, три пробела и четыре буквы <code>b</code>, <code>a</code>, <code>b</code>, <code>a</code>. Вызов <code>set("{b, a, b, a}")</code> без отбора даёт <code>6</code> разных символов вместо <code>2</code> букв, потому что скобки, запятая и пробел тоже попадают в множество. Считать нужно только буквы: сначала встречаются <code>b</code> и <code>a</code>, затем обе повторяются, поэтому ответ равен <code>2</code>.</p>
+<p>Будем хранить встреченные буквы в множестве <code>seen</code>. Перебираем строку по одному символу. Текущий символ обозначим <code>ch</code>. Для символов <code>{</code>, <code>,</code>, пробела и <code>}</code> вызов <code>ch.isalpha()</code> возвращает <code>False</code>, а для букв <code>b</code> и <code>a</code> возвращает <code>True</code>. Метод <code>ch.isalpha()</code> даёт <code>True</code> только для букв, поэтому в множество <code>seen</code> попадают только буквы. При первом добавлении буквы размер <code>seen</code> растёт на 1. При повторном добавлении той же буквы размер остаётся прежним.</p>
+<figure data-figure="letters"></figure>
+<p>Так каждая буква из строки входит в <code>seen</code> ровно один раз, и <code>len(seen)</code> даёт ответ. В строке <code>{}</code> обе скобки не проходят проверку, поэтому программа печатает <code>0</code>.</p>
+<pre class="no-run"><code class="language-python">line = input()
+seen = set()
+for ch in line:
+    if ch.isalpha():
+        seen.add(ch)
+print(len(seen))
+</code></pre>
+<p>Пусть <code>n</code> - длина входной строки. <strong>Время:</strong> ожидаемое O(n) для всей строки. В <code>seen</code> не больше 26 разных букв, поэтому даже в худшем случае одно добавление занимает O(1), а весь проход занимает O(n). Входная строка <code>line</code> занимает O(n) памяти. <strong>Дополнительная память:</strong> O(1) в худшем случае для множества и текущего символа.</p>
+<h3>Типичные ошибки</h3>
+<p>Код <code>len(set(line[1:-1].split(", ")))</code> ошибётся на входе <code>{}</code>. На строке <code>{b, a, b, a}</code> срез <code>line[1:-1]</code> убирает скобки и даёт <code>"b, a, b, a"</code>. Вызов <code>"b, a, b, a".split(", ")</code> возвращает список <code>['b', 'a', 'b', 'a']</code>, а <code>len(set(['b', 'a', 'b', 'a']))</code> даёт верный ответ <code>2</code>. На входе <code>{}</code> срез <code>line[1:-1]</code> равен пустой строке <code>""</code>. Вызов <code>"".split(", ")</code> возвращает список <code>['']</code> из одного элемента, поэтому <code>len(set(['']))</code> даёт <code>1</code> вместо <code>0</code>. Метод <code>ch.isalpha()</code> отбрасывает скобки, запятые и пробелы без разбиения строки.</p>
