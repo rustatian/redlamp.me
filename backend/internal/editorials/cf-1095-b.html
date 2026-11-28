@@ -1,0 +1,39 @@
+<h3>Решение 1. Sorting</h3>
+<p>В первом примере числа уже не убывают: <code>[1, 3, 3, 7]</code>. Если убрать <code>1</code>, разность станет <code>7 − 3 = 4</code>. Если убрать <code>7</code>, получим <code>3 − 1 = 2</code>. Удаление любой тройки сохранит оба края и разность <code>7 − 1 = 6</code>.</p>
+<p>После Sorting удаление внутреннего элемента сохраняет прежнюю разность. Удаление крайнего элемента может только уменьшить разность или оставить её прежней. Поэтому достаточно сравнить два удаления: без первого числа разность равна <code>a[-1] − a[1]</code>, без последнего она равна <code>a[-2] − a[0]</code>.</p>
+<p>Иногда лучший ответ даёт и внутренний элемент: в <code>[1, 1, 2, 3, 3]</code> после любого удаления останутся и единица, и тройка. Во втором примере после удаления останется одно число, поэтому обе разности равны нулю.</p>
+<figure data-figure="ends"></figure>
+<p>Оставим крайние числа <code>1</code> и <code>9</code> и поменяем среднее по порядку число. При <code>7</code> лучше убрать <code>1</code>, а при <code>3</code> лучше убрать <code>9</code>: в обоих случаях останется разность <code>2</code>. При <code>5</code> можно убрать любой край: <code>9 − 5 = 5 − 1 = 4</code>.</p>
+<figure data-figure="small-cases"></figure>
+<pre class="no-run"><code class="language-python">import sys
+
+n = int(sys.stdin.readline())
+a = list(map(int, sys.stdin.readline().split()))
+a.sort()
+print(min(a[-1] - a[1], a[-2] - a[0]))
+</code></pre>
+<p><strong>Время:</strong> O(n log n) в худшем случае на весь ввод из одного случая: больше всего времени может занять Sorting. <strong>Дополнительная память:</strong> O(n) в худшем случае на весь ввод. При чтении Python хранит строку и результат split(), а при переводе в числа строит список из <code>n</code> чисел. Для Sorting также может понадобиться временное место на O(n) элементов. Программа сразу печатает одно число.</p>
+<h3>Решение 2. Linear Scan</h3>
+<p>В первом примере после первых двух чисел меньшая пара по возрастанию равна <code>(1, 3)</code>, а большая по убыванию равна <code>(3, 1)</code>. Следующая тройка занимает второе место в большой паре: <code>(3, 3)</code>. Когда приходит семёрка, она становится наибольшей, а прежняя тройка занимает второе место: <code>(7, 3)</code>.</p>
+<p>Для уже прочитанных чисел будем хранить два наименьших значения <code>(low, low2)</code> с <code>low ≤ low2</code> и два наибольших значения <code>(high, high2)</code> с <code>high ≥ high2</code>. Запись <code>values = map(int, words)</code> переводит слова в числа по одному при чтении и запоминает текущую позицию. По условию <code>n ≥ 2</code>, поэтому первые два вызова <code>next(values)</code> всегда получают пару чисел. Вызов <code>sorted</code> ставит меньшее число в <code>low</code>, а большее в <code>high</code>. Для этих двух чисел (<code>low ≤ high</code>) второе наименьшее равно <code>high</code>, а второе наибольшее равно <code>low</code>, поэтому задаём <code>low2, high2 = high, low</code>. Цикл <code>for x in values:</code> читает только оставшиеся числа, начиная с третьего (при <code>n = 2</code> таких чисел нет). Переменная <code>x</code> обозначает каждое следующее число.</p>
+<p>Если <code>x</code> меньше <code>low</code>, сдвигаем <code>low</code> в <code>low2</code> и записываем <code>x</code> в <code>low</code>. Иначе заменяем только <code>low2</code> на <code>x</code>, если <code>x</code> меньше <code>low2</code>. Для большой пары <code>(high, high2)</code> сравниваем в обратную сторону. Если <code>x</code> больше <code>high</code>, сдвигаем <code>high</code> в <code>high2</code> и записываем <code>x</code> в <code>high</code>. Иначе заменяем только <code>high2</code> на <code>x</code>, если <code>x</code> больше <code>high2</code>. Так обе пары учитывают повторы: после цикла <code>(low, low2)</code> равно <code>(a[0], a[1])</code>, а <code>(high, high2)</code> равно <code>(a[-1], a[-2])</code> из Sorting. Поэтому удаление минимума <code>low</code> даёт разность <code>high − low2</code> (как <code>a[-1] − a[1]</code>), а удаление максимума <code>high</code> даёт <code>high2 − low</code> (как <code>a[-2] − a[0]</code>).</p>
+<pre class="no-run"><code class="language-python">import sys
+
+n = int(sys.stdin.readline())
+words = sys.stdin.readline().split()
+values = map(int, words)
+low, high = sorted((next(values), next(values)))
+low2, high2 = high, low
+for x in values:
+    if x &lt; low:
+        low2, low = low, x
+    elif x &lt; low2:
+        low2 = x
+    if x &gt; high:
+        high2, high = high, x
+    elif x &gt; high2:
+        high2 = x
+print(min(high - low2, high2 - low))
+</code></pre>
+<p><strong>Время:</strong> O(n) в худшем случае на весь ввод из одного случая: для каждого числа хватает нескольких сравнений. <strong>Дополнительная память:</strong> O(n) в худшем случае на весь ввод. Для двух пар хватает O(1) памяти, но split() создаёт из входной строки список из <code>n</code> слов. Ответ занимает O(1) памяти и сразу идёт на печать.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>
