@@ -1,0 +1,39 @@
+<h3>Проверка через целую часть корня</h3>
+<p>В первом примере <code>2<sup>2</sup> = 4</code>, поэтому пропускаем <code>4</code>. Число <code>2</code> лежит между квадратами <code>1</code> и <code>4</code>, поэтому ответ равен <code>2</code>.</p>
+<p>Для числа <code>8</code> функция <code>isqrt</code> даёт <code>2</code>, потому что <code>2<sup>2</sup> ≤ 8 &lt; 3<sup>2</sup></code>. Для неотрицательного <code>x</code> она находит наибольшее целое <code>root</code>, квадрат которого не превышает <code>x</code>. Если <code>root · root &lt; x</code>, то следующий квадрат уже больше <code>x</code>.</p>
+<figure data-figure="roots"></figure>
+<p>Во втором примере остаются <code>2</code>, <code>8</code> и <code>32</code>. После каждого такого числа сохраняем в <code>best</code> большее из него и прежнего ответа. После последнего числа в <code>best</code> остаётся наибольшее из подходящих чисел: <code>32</code>.</p>
+<p>Для пары <code>−1</code> и <code>0</code> ответ равен <code>−1</code>: отрицательное число подходит сразу, а <code>0<sup>2</sup> = 0</code>. Поэтому начинать с нуля нельзя. Начнём с нижней границы <code>−10<sup>6</sup></code>: любое подходящее число не меньше неё, а хотя бы одно такое число есть по условию.</p>
+<p>Для трёх чисел <code>−4</code>, <code>−2</code> и <code>0</code> пропускаем <code>0</code>, а из <code>−4</code> и <code>−2</code> большее равно <code>−2</code>. Для двух чисел <code>8</code> и <code>9</code> пропускаем квадрат <code>9 = 3<sup>2</sup></code> и получаем ответ <code>8</code>. Для трёх чисел <code>10</code>, <code>9</code> и <code>8</code> тоже пропускаем <code>9</code>, а число <code>10</code> лежит между квадратами <code>9</code> и <code>16</code>, поэтому выбираем <code>10</code>.</p>
+<figure data-figure="small-cases"></figure>
+<pre class="no-run"><code class="language-python">from math import isqrt
+
+n = int(input())
+words = input().split()
+best = -10**6
+for word in words:
+    x = int(word)
+    if x &gt;= 0:
+        root = isqrt(x)
+        if root * root == x:
+            continue
+    best = max(best, x)
+print(best)
+</code></pre>
+<p><strong>Время:</strong> O(n) в худшем случае: для каждого из <code>n</code> чисел проверка занимает O(1) при заданной границе <code>10<sup>6</sup></code>. <strong>Дополнительная память:</strong> O(n) в худшем случае: при вызове <code>split()</code> в памяти есть строка ввода и список из <code>n</code> коротких строк. Программа решает один случай и печатает одно число, поэтому вывод занимает O(1) памяти.</p>
+<h3>Brute Force: проверка целых корней</h3>
+<p>Для <code>4</code> проверяем квадраты <code>0</code>, <code>1</code> и <code>4</code>: равенство обнаружится только на самом корне <code>2</code>. Начнём с <code>root = 0</code> и будем прибавлять единицу, пока квадрат меньше <code>x</code>. Если при остановке квадрат больше <code>x</code>, равенства уже не будет: дальше квадраты только растут. Для отрицательного <code>x</code> цикл сразу остановится на нуле, и число попадёт в сравнение с <code>best</code>.</p>
+<pre class="no-run"><code class="language-python">n = int(input())
+words = input().split()
+best = -10**6
+for word in words:
+    x = int(word)
+    root = 0
+    while root * root &lt; x:
+        root += 1
+    if root * root != x:
+        best = max(best, x)
+print(best)
+</code></pre>
+<p><strong>Время:</strong> O(n · √M) в худшем случае, где <code>M = 10<sup>6</sup></code> задаёт верхнюю границу числа. При <code>n = 1000</code> цикл сделает не более <code>1000 · 1000 = 10<sup>6</sup></code> прибавлений за весь ввод. <strong>Дополнительная память:</strong> O(n) в худшем случае: при вызове <code>split()</code> в памяти есть строка ввода и список из <code>n</code> коротких строк. Программа решает один случай и печатает одно число, поэтому вывод занимает O(1) памяти.</p>
+<p class="small">Разбор основан на разборе задачи с Codeforces из набора open-r1/codeforces (CC BY 4.0).</p>
